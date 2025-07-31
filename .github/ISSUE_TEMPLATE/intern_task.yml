@@ -1,0 +1,17 @@
+name: Intern task
+description: Task suitable for an intern to pick up
+title: "task: <short description>"
+labels: [good first issue, help wanted]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this task matters and what it's about.
+      placeholder: Background information here.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What needs to be done, expected deliverables, acceptance criteria.
+      placeholder: Checklist or bullet points.
