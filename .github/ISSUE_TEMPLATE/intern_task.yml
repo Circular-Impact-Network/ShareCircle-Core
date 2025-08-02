@@ -15,9 +15,9 @@
 - [ ] <measurable check 2>
 
 ## Constraints / Notes
-- Target effort: <N hours>
-- Tech: <tools/libraries>
-- Dependencies: <other issues/PRs>
+##- Target effort: <N hours>
+##- Tech: <tools/libraries>
+##- Dependencies: <other issues/PRs>
 
 ## Definition of Done
 - [ ] Code + tests merged
