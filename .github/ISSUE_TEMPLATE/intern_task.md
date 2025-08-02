@@ -1,0 +1,33 @@
+---
+name: Intern Task
+about: Create a small, actionable task for interns
+title: "task: [Area] - [Short name]"
+labels: [task, intern]
+assignees: []
+---
+
+## Context
+**Why this matters:** <one paragraph>  
+**Related EPIC:** #<epic-issue-number>
+
+## Scope (mini-tasks)
+- [ ] <mini-task 1>
+- [ ] <mini-task 2>
+- [ ] <mini-task 3>
+
+## Deliverables
+- <files, docs, demo expectations>
+
+## Acceptance Criteria
+- [ ] <measurable check 1>
+- [ ] <measurable check 2>
+
+## Constraints / Notes
+- Target effort: <N hours>  
+- Tech: <tools/libraries>  
+- Dependencies: <other issues/PRs>
+
+## Definition of Done
+- [ ] Code + tests merged
+- [ ] Short README/usage updated
+- [ ] Demo GIF/screenshots attached
