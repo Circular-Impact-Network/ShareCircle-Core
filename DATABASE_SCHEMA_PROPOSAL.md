@@ -45,7 +45,7 @@ This document outlines the proposed database schema design for the ShareCircle p
 
 See the ERD diagram below for a visual representation of the schema design:
 
-![ERD PDF](./docs/share%20circle%20database%20ERD.pdf)
+[📎 Click here to view the ERD (PDF)](./docs/share%20circle%20database%20ERD.pdf)
 
 ---
 
