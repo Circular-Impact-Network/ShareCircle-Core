@@ -30,6 +30,7 @@ This document outlines the proposed database schema design for the ShareCircle p
 - `rental_amount`: price to rent the item
 - `security_deposit`: deposit required
 - `current_user_id`: user currently associated with the item (can be null)
+- `owner_id`: the user who originally owns (provides) the item
 
 ---
 
@@ -45,7 +46,7 @@ This document outlines the proposed database schema design for the ShareCircle p
 
 See the ERD diagram below for a visual representation of the schema design:
 
-[📎 Click here to view the ERD (PDF)](./docs/share%20circle%20database%20ERD.pdf)
+[📎 Click here to view the ERD (PDF)](./docs/sharecircle_erd.pdf)
 
 ---
 
