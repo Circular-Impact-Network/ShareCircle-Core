@@ -62,6 +62,17 @@ Represents shareable or rentable items.
 
 ---
 
+## 🔗 Circle Items
+
+Join table between `Items` and `circles` (many-to-many), means which items can be shown in which circles.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `item_id`      | Integer  | Foreign Key → `users.id`           |
+| `circle_id`    | Integer  | Foreign Key → `circles.id`         |
+
+---
+
 ## 🖼️ Item Images
 
 Stores multiple images per item.
