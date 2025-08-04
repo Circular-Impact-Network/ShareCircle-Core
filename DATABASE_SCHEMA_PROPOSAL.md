@@ -1,55 +1,189 @@
-# 📦 ShareCircle Database Schema Proposal
+# 📦 ShareCircle Database Schema (Task 2.1)
 
-This document outlines the proposed database schema design for the ShareCircle platform. The goal is to support user accounts, group circles, and item sharing with various rental statuses.
-
----
-
-## 🗂️ Entities Overview
-
-### 1. `users`
-- `id`: primary key
-- `name`: user's full name
-- `phone_number`: contact number
-- `email_address`: unique email ID
-- `address`: field for delivery or pickup
-
-### 2. `circles`
-- `id`: primary key
-- `name`: name of the group
-
-### 3. `circle_members`
-- A join table representing many-to-many relationship between `users` and `circles`
-- Composite primary key: (`user_id`, `circle_id`)
-
-### 4. `items`
-- `id`: primary key
-- `name`: item name
-- `description`: text
-- `image_url`: image link or path
-- `status`: one of ('available', 'reserved', 'borrowed', 'overdue')
-- `rental_amount`: price to rent the item
-- `security_deposit`: deposit required
-- `current_user_id`: user currently associated with the item (can be null)
-- `owner_id`: the user who originally owns (provides) the item
+This document outlines the proposed relational database schema for the ShareCircle project.
 
 ---
 
-## 🔗 Relationships
+## 👤 Users
 
-- One `user` can own many `items`
-- One `item` can only be held/reserved/borrowed by one `user` at a time
-- Many-to-many relationship between `users` and `circles` via `circle_members`
+Stores user profile and contact information.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `name`         | Varchar  | User's name                        |
+| `email`        | Varchar  | Email address                      |
+| `phone_number` | Varchar  | Contact number                     |
+| `address`      | Varchar  | Physical address                   |
+| `zip_code`     | Varchar  | Postal code                        |
+| `country`      | Varchar  | Country of residence               |
 
 ---
 
-## 📄 ERD Diagram
+## 👥 Circles
 
-See the ERD diagram below for a visual representation of the schema design:
+Represents sharing groups that users can join.
 
-[📎 Click here to view the ERD (PDF)](./docs/sharecircle_erd.pdf)
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `name`         | Varchar  | Circle name                        |
+| `description`  | Varchar  | Description of the group           |
+| `category`     | Varchar  | Circle category (e.g., local, school) |
 
 ---
 
-## 📝 Notes
+## 🔗 Circle Members
 
-- `current_user_id` in `items` is nullable when available
+Join table between `users` and `circles` (many-to-many).
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `user_id`      | Integer  | Foreign Key → `users.id`           |
+| `circle_id`    | Integer  | Foreign Key → `circles.id`         |
+
+---
+
+## 🎁 Items
+
+Represents shareable or rentable items.
+
+| Column            | Type     | Description                          |
+|-------------------|----------|--------------------------------------|
+| `id`              | Integer  | Primary Key                          |
+| `name`            | Varchar  | Item name                            |
+| `description`     | Text     | Description of the item              |
+| `status`          | Varchar  | Status (e.g., available, borrowed)   |
+| `security_deposit`| Decimal  | Deposit required                     |
+| `rental_amount`   | Decimal  | Rental fee                           |
+| `owner_id`        | Integer  | Foreign Key → `users.id`             |
+| `visibility`      | Varchar  | Public / circle_only / private       |
+| `condition`       | Text     | Current physical condition           |
+
+---
+
+## 🖼️ Item Images
+
+Stores multiple images per item.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `item_id`      | Integer  | Foreign Key → `items.id`           |
+| `image_url`    | Varchar  | Path or URL to image               |
+| `order_index`  | Integer  | Display order                      |
+| `is_cover`     | Boolean  | Whether this is the cover image    |
+
+---
+
+## ⭐ Favorites
+
+Tracks which items a user has favorited.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `user_id`      | Integer  | Foreign Key → `users.id`           |
+| `item_id`      | Integer  | Foreign Key → `items.id`           |
+| `created_at`   | DateTime | When item was favorited            |
+
+---
+
+## 🔄 Borrow Transactions
+
+Represents rental/lending transactions.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `item_id`      | Integer  | Foreign Key → `items.id`           |
+| `borrower_id`  | Integer  | Foreign Key → `users.id`           |
+| `start_date`   | Date     | Start of transaction               |
+| `end_date`     | Date     | End of transaction                 |
+| `status`       | Varchar  | Status (borrowed, returned, etc.)  |
+
+---
+
+## 🗣️ Item Feedbacks
+
+User feedback for items after usage.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
+| `item_id`      | Integer  | Foreign Key → `items.id`           |
+| `reviewer_id`  | Integer  | Foreign Key → `users.id`           |
+| `rating`       | Integer  | 1–5 star rating                    |
+| `comment`      | Text     | Optional text feedback             |
+| `created_at`   | DateTime | Timestamp                          |
+
+---
+
+## 🧑‍🤝‍🧑 User Feedbacks
+
+Mutual ratings between borrower and lender.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
+| `from_user_id` | Integer  | Rater → `users.id`                 |
+| `to_user_id`   | Integer  | Rated → `users.id`                 |
+| `rating`       | Integer  | 1–5 star rating                    |
+| `comment`      | Text     | Optional comment                   |
+| `created_at`   | DateTime | Timestamp                          |
+
+---
+
+## 🛠️ Repair Records
+
+Tracks item repair history and cost responsibilities.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `item_id`      | Integer  | Foreign Key → `items.id`           |
+| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
+| `reported_by`  | Integer  | User who reported → `users.id`     |
+| `repair_status`| Varchar  | pending / in_progress / completed  |
+| `repair_cost`  | Decimal  | Cost of repair                     |
+| `paid_by`      | Varchar  | borrower / lender / both           |
+| `description`  | Text     | What’s broken / damage summary     |
+| `repair_center`| Varchar  | Name of repair center              |
+| `created_at`   | DateTime | When reported                      |
+| `updated_at`   | DateTime | Last update                        |
+
+---
+
+## 🔔 Notifications
+
+In-app alerts for events and reminders.
+
+| Column         | Type     | Description                        |
+|----------------|----------|------------------------------------|
+| `id`           | Integer  | Primary Key                        |
+| `user_id`      | Integer  | Foreign Key → `users.id`           |
+| `type`         | Varchar  | Notification type (e.g. overdue)   |
+| `message`      | Text     | Message content                    |
+| `is_read`      | Boolean  | Whether the user has seen it       |
+| `created_at`   | DateTime | When created                       |
+
+---
+
+## ⚙️ User Settings
+
+Stores each user's preferences.
+
+| Column              | Type     | Description                        |
+|---------------------|----------|------------------------------------|
+| `id`                | Integer  | Primary Key                        |
+| `user_id`           | Integer  | Foreign Key → `users.id`           |
+| `receive_notifications` | Boolean | Opt-in for email/alerts        |
+| `item_visibility`   | Varchar  | Default visibility of new items   |
+| `archive_after_days`| Integer  | Auto-archive duration (optional)  |
+| `updated_at`        | DateTime | Last update                        |
+
+---
+
+📝 _This schema is a starting point and can be extended further based on future platform needs such as logistics integration, reporting, or user roles._
