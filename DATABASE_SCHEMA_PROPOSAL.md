@@ -1,6 +1,6 @@
-# 📦 ShareCircle Database Schema (Task 2.1)
+# 📦 ShareCircle Database Schema
 
-This document outlines the proposed relational database schema for the ShareCircle project.
+This document outlines the relational database schema for the ShareCircle project.
 
 ---
 
@@ -24,12 +24,12 @@ Stores user profile and contact information.
 
 Represents sharing groups that users can join.
 
-| Column         | Type     | Description                        |
-|----------------|----------|------------------------------------|
-| `id`           | Integer  | Primary Key                        |
-| `name`         | Varchar  | Circle name                        |
-| `description`  | Varchar  | Description of the group           |
-| `category`     | Varchar  | Circle category (e.g., local, school) |
+| Column         | Type     | Description                              |
+|----------------|----------|------------------------------------------|
+| `id`           | Integer  | Primary Key                              |
+| `name`         | Varchar  | Circle name                              |
+| `description`  | Varchar  | Description of the group                 |
+| `category`     | Varchar  | Circle category (e.g., local, school)    |
 
 ---
 
@@ -89,101 +89,122 @@ Tracks which items a user has favorited.
 
 ---
 
-## 🔄 Borrow Transactions
+## 🔁 Transactions
 
-Represents rental/lending transactions.
+Represents all item-related transactions: lend, borrow, return, repair, etc.
 
-| Column         | Type     | Description                        |
-|----------------|----------|------------------------------------|
-| `id`           | Integer  | Primary Key                        |
-| `item_id`      | Integer  | Foreign Key → `items.id`           |
-| `borrower_id`  | Integer  | Foreign Key → `users.id`           |
-| `start_date`   | Date     | Start of transaction               |
-| `end_date`     | Date     | End of transaction                 |
-| `status`       | Varchar  | Status (borrowed, returned, etc.)  |
+| Column                | Type     | Description                                  |
+|-----------------------|----------|----------------------------------------------|
+| `id`                  | Integer  | Primary Key                                  |
+| `item_id`             | Integer  | Foreign Key → `items.id`                     |
+| `borrower_id`         | Integer  | Foreign Key → `users.id`                     |
+| `lender_id`           | Integer  | Foreign Key → `users.id`                     |
+| `start_date`          | Date     | Start of transaction                         |
+| `end_date`            | Date     | End of transaction                           |
+| `transaction_type`    | Varchar  | borrow / return / repair                     |
+| `status`              | Varchar  | pending / completed / failed                 |
+| `return_transaction_id` | Integer | (Nullable) FK → `transactions.id` (self ref) |
+| `payment_id`          | Integer  | (Nullable) FK → `payments.id`                |
+
+---
+
+## 💳 Payments
+
+Stores financial information for transactions.
+
+| Column            | Type     | Description                          |
+|-------------------|----------|--------------------------------------|
+| `id`              | Integer  | Primary Key                          |
+| `transaction_id`  | Integer  | Foreign Key → `transactions.id`      |
+| `amount`          | Decimal  | Total amount paid                    |
+| `security_deposit`| Decimal  | Deposit value                        |
+| `rental_fee`      | Decimal  | Fee for item rental                  |
+| `paid_by`         | Varchar  | borrower / platform                  |
+| `payment_method`  | Varchar  | credit_card / wallet / etc.          |
+| `created_at`      | DateTime | Payment timestamp                    |
 
 ---
 
 ## 🗣️ Item Feedbacks
 
-User feedback for items after usage.
+User reviews for items they've borrowed.
 
-| Column         | Type     | Description                        |
-|----------------|----------|------------------------------------|
-| `id`           | Integer  | Primary Key                        |
-| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
-| `item_id`      | Integer  | Foreign Key → `items.id`           |
-| `reviewer_id`  | Integer  | Foreign Key → `users.id`           |
-| `rating`       | Integer  | 1–5 star rating                    |
-| `comment`      | Text     | Optional text feedback             |
-| `created_at`   | DateTime | Timestamp                          |
+| Column         | Type     | Description                                |
+|----------------|----------|--------------------------------------------|
+| `id`           | Integer  | Primary Key                                |
+| `transaction_id`| Integer | Foreign Key → `transactions.id`            |
+| `item_id`      | Integer  | Foreign Key → `items.id`                   |
+| `reviewer_id`  | Integer  | Foreign Key → `users.id`                   |
+| `rating`       | Integer  | 1–5 star rating                            |
+| `comment`      | Text     | Optional text feedback                     |
+| `created_at`   | DateTime | Timestamp                                  |
 
 ---
 
 ## 🧑‍🤝‍🧑 User Feedbacks
 
-Mutual ratings between borrower and lender.
+Mutual feedback between borrower and lender.
 
-| Column         | Type     | Description                        |
-|----------------|----------|------------------------------------|
-| `id`           | Integer  | Primary Key                        |
-| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
-| `from_user_id` | Integer  | Rater → `users.id`                 |
-| `to_user_id`   | Integer  | Rated → `users.id`                 |
-| `rating`       | Integer  | 1–5 star rating                    |
-| `comment`      | Text     | Optional comment                   |
-| `created_at`   | DateTime | Timestamp                          |
+| Column         | Type     | Description                                |
+|----------------|----------|--------------------------------------------|
+| `id`           | Integer  | Primary Key                                |
+| `transaction_id`| Integer | Foreign Key → `transactions.id`            |
+| `from_user_id` | Integer  | Rater → `users.id`                         |
+| `to_user_id`   | Integer  | Rated → `users.id`                         |
+| `rating`       | Integer  | 1–5 star rating                            |
+| `comment`      | Text     | Optional comment                           |
+| `created_at`   | DateTime | Timestamp                                  |
 
 ---
 
 ## 🛠️ Repair Records
 
-Tracks item repair history and cost responsibilities.
+Tracks item repairs, costs, and who paid.
 
-| Column         | Type     | Description                        |
-|----------------|----------|------------------------------------|
-| `id`           | Integer  | Primary Key                        |
-| `item_id`      | Integer  | Foreign Key → `items.id`           |
-| `transaction_id`| Integer | Foreign Key → `borrow_transactions.id` |
-| `reported_by`  | Integer  | User who reported → `users.id`     |
-| `repair_status`| Varchar  | pending / in_progress / completed  |
-| `repair_cost`  | Decimal  | Cost of repair                     |
-| `paid_by`      | Varchar  | borrower / lender / both           |
-| `description`  | Text     | What’s broken / damage summary     |
-| `repair_center`| Varchar  | Name of repair center              |
-| `created_at`   | DateTime | When reported                      |
-| `updated_at`   | DateTime | Last update                        |
+| Column         | Type     | Description                                |
+|----------------|----------|--------------------------------------------|
+| `id`           | Integer  | Primary Key                                |
+| `item_id`      | Integer  | Foreign Key → `items.id`                   |
+| `transaction_id`| Integer | Foreign Key → `transactions.id`            |
+| `reported_by`  | Integer  | Foreign Key → `users.id`                   |
+| `repair_status`| Varchar  | pending / in_progress / completed          |
+| `repair_cost`  | Decimal  | Repair fee                                 |
+| `paid_by`      | Varchar  | borrower / lender / both                   |
+| `description`  | Text     | Issue summary                              |
+| `repair_center`| Varchar  | Name or contact of repair service          |
+| `created_at`   | DateTime | When reported                              |
+| `updated_at`   | DateTime | Last status update                         |
 
 ---
 
 ## 🔔 Notifications
 
-In-app alerts for events and reminders.
+Sends alerts to users.
 
 | Column         | Type     | Description                        |
 |----------------|----------|------------------------------------|
 | `id`           | Integer  | Primary Key                        |
 | `user_id`      | Integer  | Foreign Key → `users.id`           |
-| `type`         | Varchar  | Notification type (e.g. overdue)   |
-| `message`      | Text     | Message content                    |
-| `is_read`      | Boolean  | Whether the user has seen it       |
-| `created_at`   | DateTime | When created                       |
+| `type`         | Varchar  | e.g. item_due, new_comment         |
+| `message`      | Text     | Content of the notification        |
+| `is_read`      | Boolean  | Seen or not                        |
+| `created_at`   | DateTime | Timestamp                          |
 
 ---
 
 ## ⚙️ User Settings
 
-Stores each user's preferences.
+Stores user preferences and archival options.
 
 | Column              | Type     | Description                        |
 |---------------------|----------|------------------------------------|
 | `id`                | Integer  | Primary Key                        |
 | `user_id`           | Integer  | Foreign Key → `users.id`           |
-| `receive_notifications` | Boolean | Opt-in for email/alerts        |
-| `item_visibility`   | Varchar  | Default visibility of new items   |
-| `archive_after_days`| Integer  | Auto-archive duration (optional)  |
+| `receive_notifications` | Boolean | User allows system alerts     |
+| `item_visibility`   | Varchar  | default item privacy setting       |
+| `archive_after_days`| Integer  | Auto-archive items after X days    |
 | `updated_at`        | DateTime | Last update                        |
 
 ---
 
-📝 _This schema is a starting point and can be extended further based on future platform needs such as logistics integration, reporting, or user roles._
+📝 _This schema is flexible and ready to evolve based on future needs such as logistics, shipping, or user permissions._
