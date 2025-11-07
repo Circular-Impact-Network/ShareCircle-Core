@@ -1,0 +1,58 @@
+"use client"
+
+import type React from "react"
+
+import { createContext, useContext, useEffect, useState } from "react"
+import { Toaster } from "@/components/ui/toaster"
+
+type ThemeContextType = {
+  theme: string
+  toggleTheme: () => void
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState("light")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("sharecircle_theme") || "light"
+    setTheme(savedTheme)
+    updateTheme(savedTheme)
+    setMounted(true)
+  }, [])
+
+  const updateTheme = (newTheme: string) => {
+    const htmlElement = document.documentElement
+    if (newTheme === "dark") {
+      htmlElement.classList.add("dark")
+    } else {
+      htmlElement.classList.remove("dark")
+    }
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    localStorage.setItem("sharecircle_theme", newTheme)
+    updateTheme(newTheme)
+  }
+
+  if (!mounted) return <>{children}</>
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+      <Toaster />
+    </ThemeContext.Provider>
+  )
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) {
+    throw new Error("useTheme must be used within ThemeProvider")
+  }
+  return context
+}
