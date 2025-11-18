@@ -7,6 +7,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ItemDetailsModal } from "@/components/modals/item-details-modal"
 import { AddItemModal } from "@/components/modals/add-item-modal"
 
+interface Item {
+  id: number
+  title: string
+  description: string
+  image: string
+  postedBy: { name: string; avatar: string }
+  availability: string
+  tags: string[]
+}
+
 const mockItems = [
   {
     id: 1,
@@ -42,7 +52,7 @@ interface CircleDetailsProps {
 }
 
 export function CircleDetails({ circleName = "Beach House Friends" }: CircleDetailsProps) {
-  const [selectedItem, setSelectedItem] = useState(null)
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [showAddItem, setShowAddItem] = useState(false)
   const [copied, setCopied] = useState(false)
 

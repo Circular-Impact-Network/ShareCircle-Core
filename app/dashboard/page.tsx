@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Sidebar } from "@/components/app/sidebar"
@@ -17,15 +17,20 @@ export default function Dashboard() {
   const { data: session, status } = useSession()
   const [currentPage, setCurrentPage] = useState("home")
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Redirect to login if not authenticated
-  if (status === "unauthenticated") {
-    router.push("/login")
-    return null
-  }
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  // Show loading while checking authentication
-  if (status === "loading") {
+  useEffect(() => {
+    if (mounted && status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [mounted, status, router])
+
+  // Show loading while checking authentication or during SSR
+  if (!mounted || status === "loading" || status === "unauthenticated") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center">

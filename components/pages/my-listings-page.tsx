@@ -8,7 +8,39 @@ import { DeleteItemDialog } from "@/components/dialogs/delete-item-dialog"
 import { EditItemDialog } from "@/components/dialogs/edit-item-dialog"
 import { CreateListingModal } from "@/components/modals/create-listing-modal"
 
-const mockMyListingsInitial = {
+interface ActiveListing {
+  id: number
+  title: string
+  image: string
+  circle: string
+  requests: number
+}
+
+interface LentOutListing {
+  id: number
+  title: string
+  image: string
+  circle: string
+  borrower: { name: string; avatar: string }
+  lentOn: string
+  dueDate: string
+}
+
+interface ReturnedListing {
+  id: number
+  title: string
+  image: string
+  circle: string
+  returnedDate: string
+}
+
+interface Listings {
+  active: ActiveListing[]
+  lentOut: LentOutListing[]
+  returned: ReturnedListing[]
+}
+
+const mockMyListingsInitial: Listings = {
   active: [
     {
       id: 1,
@@ -76,10 +108,10 @@ export function MyListingsPage() {
 
     const updatedListings = { ...listings }
     const tabKey = selectedItem.tab as keyof typeof listings
-    const itemIndex = updatedListings[tabKey].findIndex((item: any) => item.id === selectedItem.id)
+    const itemIndex = updatedListings[tabKey].findIndex((item) => item.id === selectedItem.id)
 
     if (itemIndex !== -1) {
-      updatedListings[tabKey][itemIndex] = {
+      ;(updatedListings[tabKey][itemIndex] as any) = {
         ...updatedListings[tabKey][itemIndex],
         title,
         circle,
@@ -96,7 +128,7 @@ export function MyListingsPage() {
 
     const updatedListings = { ...listings }
     const tabKey = selectedItem.tab as keyof typeof listings
-    updatedListings[tabKey] = updatedListings[tabKey].filter((item: any) => item.id !== selectedItem.id)
+    updatedListings[tabKey] = updatedListings[tabKey].filter((item) => item.id !== selectedItem.id) as any
     setListings(updatedListings)
 
     setDeleteDialogOpen(false)

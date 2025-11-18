@@ -13,6 +13,16 @@ interface CircleDetailsPageProps {
   onBack: () => void
 }
 
+interface Item {
+  id: number
+  title: string
+  description: string
+  image: string
+  postedBy: { name: string; avatar: string }
+  availability: string
+  tags: string[]
+}
+
 const mockCircleDetails = {
   "1": {
     id: "1",
@@ -61,7 +71,7 @@ const mockCircleDetails = {
 }
 
 export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) {
-  const [selectedItem, setSelectedItem] = useState(null)
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [showAddItem, setShowAddItem] = useState(false)
   const [copied, setCopied] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState<"creator" | "member" | "none">("member")

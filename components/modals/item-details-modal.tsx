@@ -4,8 +4,18 @@ import { X, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
+interface Item {
+  id: number
+  title: string
+  description: string
+  image: string
+  postedBy: { name: string; avatar: string }
+  availability: string
+  tags: string[]
+}
+
 interface ItemDetailsModalProps {
-  item: any
+  item: Item | null
   onOpenChange: (open: boolean) => void
 }
 

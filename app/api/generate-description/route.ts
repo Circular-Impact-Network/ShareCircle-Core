@@ -14,7 +14,6 @@ export async function POST(request: Request) {
       Include practical information about the item that would help someone decide to borrow it. 
       Keep it concise and friendly. Do not include price information.`,
       temperature: 0.7,
-      maxTokens: 150,
     })
 
     return Response.json({ description: text })
