@@ -2,7 +2,7 @@
 
 import { Home, Search, LayoutGrid, MessageSquare, User, LogOut, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
@@ -13,15 +13,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const router = useRouter()
-  const [userEmail, setUserEmail] = useState("")
-  const [userName, setUserName] = useState("")
-
-  useEffect(() => {
-    const email = localStorage.getItem("sharecircle_user_email") || ""
-    const name = localStorage.getItem("sharecircle_user_name") || ""
-    setUserEmail(email)
-    setUserName(name)
-  }, [])
+  const { data: session } = useSession()
 
   const navItems = [
     { id: "home", label: "Home", icon: Home },
@@ -32,14 +24,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
     { id: "profile", label: "Profile", icon: User },
   ]
 
-  const handleLogout = () => {
-    localStorage.removeItem("sharecircle_auth")
-    localStorage.removeItem("sharecircle_user_email")
-    localStorage.removeItem("sharecircle_user_name")
-    router.push("/landing")
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/landing" })
   }
 
   const getInitials = (name: string) => {
+    if (!name) return "U"
     return name
       .split(" ")
       .map((n) => n[0])
@@ -80,17 +70,17 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
       {/* Footer */}
       {/* User Profile Section */}
-        {userEmail && (
+        {session?.user && (
           <div className="px-4 py-3 border-t border-border">
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 bg-primary">
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold leading-[1.6rem]">
-                  {getInitials(userName || userEmail)}
+                  {getInitials(session.user.name || session.user.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{userName || userEmail.split("@")[0]}</p>
-                <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                <p className="text-sm font-medium truncate">{session.user.name || session.user.email?.split("@")[0]}</p>
+                <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
               </div>
               <Button variant="outline" className="gap-2 bg-transparent" onClick={handleLogout}>
                 <LogOut className="w-4 h-4" />

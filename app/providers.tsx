@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
+import { SessionProvider } from "next-auth/react"
 import { Toaster } from "@/components/ui/toaster"
 
 type ThemeContextType = {
@@ -42,10 +43,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   if (!mounted) return <>{children}</>
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-      <Toaster />
-    </ThemeContext.Provider>
+    <SessionProvider>
+      <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        {children}
+        <Toaster />
+      </ThemeContext.Provider>
+    </SessionProvider>
   )
 }
 

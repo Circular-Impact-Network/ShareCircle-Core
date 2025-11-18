@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Sidebar } from "@/components/app/sidebar"
 import { DashboardHome } from "@/components/pages/dashboard-home"
 import { BrowseListingsPage } from "@/components/pages/browse-listings-page"
@@ -13,20 +14,18 @@ import { ProfilePage } from "@/components/pages/profile-page"
 
 export default function Dashboard() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [currentPage, setCurrentPage] = useState("home")
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("sharecircle_auth") === "true"
-    if (!isAuthenticated) {
-      router.push("/landing")
-    } else {
-      setIsLoading(false)
-    }
-  }, [router])
+  // Redirect to login if not authenticated
+  if (status === "unauthenticated") {
+    router.push("/login")
+    return null
+  }
 
-  if (isLoading) {
+  // Show loading while checking authentication
+  if (status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center">
