@@ -18,19 +18,24 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState("home")
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [bypassAuth, setBypassAuth] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    // TEMP: Check for auth bypass flag
+    const bypass = localStorage.getItem("auth_bypass") === "true"
+    setBypassAuth(bypass)
   }, [])
 
   useEffect(() => {
-    if (mounted && status === "unauthenticated") {
+    // TEMP: Only redirect if not bypassed
+    if (mounted && status === "unauthenticated" && !bypassAuth) {
       router.push("/login")
     }
-  }, [mounted, status, router])
+  }, [mounted, status, router, bypassAuth])
 
-  // Show loading while checking authentication or during SSR
-  if (!mounted || status === "loading" || status === "unauthenticated") {
+  // Show loading while checking authentication or during SSR (unless bypassed)
+  if (!mounted || (!bypassAuth && (status === "loading" || status === "unauthenticated"))) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center">

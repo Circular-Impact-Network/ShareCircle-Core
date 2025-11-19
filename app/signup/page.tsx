@@ -88,6 +88,17 @@ export default function Signup() {
     }
   }
 
+  const handleBypassAuth = () => {
+    // TEMP: Set bypass flag in localStorage
+    localStorage.setItem("auth_bypass", "true")
+    localStorage.setItem("auth_bypass_user", JSON.stringify({
+      id: "temp-user-id",
+      email: "temp@example.com",
+      name: "Temp User"
+    }))
+    router.push("/dashboard")
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - Image/Brand */}
@@ -205,6 +216,21 @@ export default function Signup() {
               Login
             </Link>
           </p>
+
+          {/* TEMP: Auth Bypass Button */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-11 text-muted-foreground"
+              onClick={handleBypassAuth}
+            >
+              ⚠️ TEMP: Bypass Auth (Dev Only)
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Temporary workaround for Prisma errors
+            </p>
+          </div>
         </div>
       </div>
     </div>
