@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         email,
-        password: hashedPassword,
+        hashed_password: hashedPassword,
       },
       select: {
         id: true,
