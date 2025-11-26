@@ -15,22 +15,6 @@ interface SidebarProps {
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const router = useRouter()
   const { data: session } = useSession()
-  const [bypassUser, setBypassUser] = useState<{ id: string; email: string; name: string } | null>(null)
-
-  useEffect(() => {
-    // TEMP: Check for bypass user data
-    const bypass = localStorage.getItem("auth_bypass") === "true"
-    if (bypass) {
-      const userStr = localStorage.getItem("auth_bypass_user")
-      if (userStr) {
-        try {
-          setBypassUser(JSON.parse(userStr))
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    }
-  }, [])
 
   const navItems = [
     { id: "home", label: "Home", icon: Home },
@@ -42,14 +26,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   ]
 
   const handleLogout = async () => {
-    // TEMP: Clear bypass flag if set
-    if (localStorage.getItem("auth_bypass") === "true") {
-      localStorage.removeItem("auth_bypass")
-      localStorage.removeItem("auth_bypass_user")
-      router.push("/landing")
-    } else {
-      await signOut({ callbackUrl: "/landing" })
-    }
+    await signOut({ callbackUrl: "/landing" })
   }
 
   const getInitials = (name: string) => {
@@ -94,25 +71,24 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
       {/* Footer */}
       {/* User Profile Section */}
-        {(session?.user || bypassUser) && (
+        {session?.user && (
           <div className="px-4 py-3 border-t border-border">
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 bg-primary">
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold leading-[1.6rem]">
                   {getInitials(
-                    session?.user?.name || bypassUser?.name || 
-                    session?.user?.email || bypassUser?.email || "U"
+                    session?.user?.name || 
+                    session?.user?.email || "U"
                   )}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {session?.user?.name || bypassUser?.name || 
-                   session?.user?.email?.split("@")[0] || bypassUser?.email?.split("@")[0]}
+                  {session?.user?.name || 
+                   session?.user?.email?.split("@")[0]}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {session?.user?.email || bypassUser?.email}
-                  {bypassUser && <span className="ml-1 text-orange-500">(Bypass)</span>}
+                  {session?.user?.email}
                 </p>
               </div>
               <Button variant="outline" className="gap-2 bg-transparent" onClick={handleLogout}>

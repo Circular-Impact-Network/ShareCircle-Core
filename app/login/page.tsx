@@ -57,16 +57,7 @@ export default function Login() {
     }
   }
 
-  const handleBypassAuth = () => {
-    // TEMP: Set bypass flag in localStorage
-    localStorage.setItem("auth_bypass", "true")
-    localStorage.setItem("auth_bypass_user", JSON.stringify({
-      id: "temp-user-id",
-      email: "temp@example.com",
-      name: "Temp User"
-    }))
-    router.push("/dashboard")
-  }
+
 
   return (
     <div className="min-h-screen flex">
@@ -148,13 +139,12 @@ export default function Login() {
             type="button"
             variant="outline"
             className="w-full h-11"
-            disabled={true}
-            title="Coming soon"
+            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
           >
             <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
               <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
             </svg>
-            Sign in with Google (Coming Soon)
+            Sign in with Google
           </Button>
 
           <p className="text-center text-muted-foreground mt-6">
@@ -164,20 +154,7 @@ export default function Login() {
             </Link>
           </p>
 
-          {/* TEMP: Auth Bypass Button */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-11 text-muted-foreground"
-              onClick={handleBypassAuth}
-            >
-              ⚠️ TEMP: Bypass Auth (Dev Only)
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Temporary workaround for Prisma errors
-            </p>
-          </div>
+
         </div>
       </div>
     </div>
