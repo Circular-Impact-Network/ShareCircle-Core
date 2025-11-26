@@ -40,8 +40,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateTheme(newTheme)
   }
 
-  if (!mounted) return <>{children}</>
-
   return (
     <SessionProvider>
       <ThemeContext.Provider value={{ theme, toggleTheme }}>
