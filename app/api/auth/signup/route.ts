@@ -5,23 +5,25 @@ import bcrypt from "bcryptjs"
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, email, password } = body
+    const { name, email, password, phoneNumber, countryCode } = body
 
     // Validation
-    if (!name || !email || !password) {
+    if (!name || (!email && !phoneNumber) || !password) {
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: "Name, password, and either email or phone number are required" },
         { status: 400 }
       )
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      )
+    // Validate email format if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: "Invalid email format" },
+          { status: 400 }
+        )
+      }
     }
 
     // Validate password strength (minimum 6 characters)
@@ -33,15 +35,31 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+    if (email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "User with this email already exists" },
-        { status: 409 }
-      )
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "User with this email already exists" },
+          { status: 409 }
+        )
+      }
+    }
+
+    if (phoneNumber) {
+      // Note: phone_number is not unique in schema currently, but we should check
+      const existingUserByPhone = await prisma.user.findFirst({
+        where: { phone_number: phoneNumber }
+      })
+
+      if (existingUserByPhone) {
+        return NextResponse.json(
+          { error: "User with this phone number already exists" },
+          { status: 409 }
+        )
+      }
     }
 
     // Hash password
@@ -51,8 +69,10 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: email || `${phoneNumber}@phone.sharecircle.com`,
         hashed_password: hashedPassword,
+        phone_number: phoneNumber,
+        country_code: countryCode,
       },
       select: {
         id: true,

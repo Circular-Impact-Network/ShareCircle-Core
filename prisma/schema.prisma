@@ -19,6 +19,7 @@ model User {
   image             String?   // NextAuth expects this field for OAuth profile pictures
   hashed_password   String?   // For credentials-based auth (optional for OAuth users)
   phone_number      String?   @map("phone_number")
+  country_code      String?   @map("country_code")
   address           String?
   zip_code          String?   @map("zip_code")
   country           String?

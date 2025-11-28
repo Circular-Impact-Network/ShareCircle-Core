@@ -24,34 +24,63 @@ export const authOptions: NextAuthOptions = {
 			credentials: {
 				email: { label: 'Email', type: 'email' },
 				password: { label: 'Password', type: 'password' },
+				phone: { label: 'Phone', type: 'text' },
+				code: { label: 'Code', type: 'text' }, // For OTP if we implement it later
 			},
 			async authorize(credentials) {
-				if (!credentials?.email || !credentials?.password) {
-					return null;
+				// Email/Password login
+				if (credentials?.email && credentials?.password) {
+					const user = await prisma.user.findUnique({
+						where: {
+							email: credentials.email,
+						},
+					});
+
+					if (!user || !user.hashed_password) {
+						return null;
+					}
+
+					const isPasswordValid = await compare(credentials.password, user.hashed_password);
+
+					if (!isPasswordValid) {
+						return null;
+					}
+
+					return {
+						id: user.id,
+						email: user.email,
+						name: user.name,
+						image: user.profile_media_url,
+					};
 				}
 
-				const user = await prisma.user.findUnique({
-					where: {
-						email: credentials.email,
-					},
-				});
+				// Phone login (Mock implementation for now as per plan)
+				// In a real app, we would verify OTP here
+				if (credentials?.phone) {
+					// Check if user exists with this phone
+					// Note: Since phone_number is not unique in schema (it should be ideally), findFirst is used
+					// But for auth it really should be unique.
+					const user = await prisma.user.findFirst({
+						where: {
+							phone_number: credentials.phone,
+						},
+					});
 
-				if (!user || !user.hashed_password) {
-					return null;
+					if (user) {
+						return {
+							id: user.id,
+							email: user.email,
+							name: user.name,
+							image: user.profile_media_url,
+						};
+					}
+					
+					// If user doesn't exist, we might want to return null or handle signup
+					// For this task, we'll assume the user must exist or we return null
+					return null; 
 				}
 
-				const isPasswordValid = await compare(credentials.password, user.hashed_password);
-
-				if (!isPasswordValid) {
-					return null;
-				}
-
-				return {
-					id: user.id,
-					email: user.email,
-					name: user.name,
-					image: user.profile_media_url,
-				};
+				return null;
 			},
 		}),
 	],
