@@ -10,7 +10,7 @@ import { MyListingsPage } from "@/components/pages/my-listings-page"
 import { CirclesPage } from "@/components/pages/circles-page"
 import { CircleDetailsPage } from "@/components/pages/circle-details-page"
 import { MessagesPage } from "@/components/pages/messages-page"
-import { ProfilePage } from "@/components/pages/profile-page"
+import { SettingsPage } from "@/components/pages/settings-page"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -64,8 +64,8 @@ export default function Dashboard() {
         return <CircleDetailsPage circleId={selectedCircleId!} onBack={() => setCurrentPage("circles")} />
       case "messages":
         return <MessagesPage />
-      case "profile":
-        return <ProfilePage />
+      case "settings":
+        return <SettingsPage />
       default:
         return <DashboardHome onNavigate={setCurrentPage} />
     }

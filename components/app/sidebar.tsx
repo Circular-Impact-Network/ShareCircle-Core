@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Search, LayoutGrid, MessageSquare, User, LogOut, Plus } from "lucide-react"
+import { Home, Search, LayoutGrid, MessageSquare, User, LogOut, Plus, Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
     { id: "circles", label: "Circles", icon: LayoutGrid },
     { id: "my-listings", label: "My Listings", icon: Plus },
     { id: "messages", label: "Messages", icon: MessageSquare },
-    { id: "profile", label: "Profile", icon: User },
+    { id: "settings", label: "Settings", icon: Settings },
   ]
 
   const handleLogout = async () => {
