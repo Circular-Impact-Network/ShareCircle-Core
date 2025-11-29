@@ -1,11 +1,13 @@
 "use client"
 
-import { Home, Search, LayoutGrid, MessageSquare, User, LogOut, Plus, Settings } from "lucide-react"
+import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useSession, signOut } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useState, useEffect } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
+import { toggleMobileSidebar, setMobileSidebarOpen } from "@/lib/redux/slices/uiSlice"
+import { selectUserImage, selectUserName, selectUserEmail } from "@/lib/redux/selectors/userSelectors"
 
 interface SidebarProps {
   currentPage: string
@@ -14,7 +16,13 @@ interface SidebarProps {
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const dispatch = useAppDispatch()
+  const isMobileSidebarOpen = useAppSelector((state) => state.ui.isMobileSidebarOpen)
+  
+  // Redux selectors for user data
+  const userImage = useAppSelector(selectUserImage)
+  const userName = useAppSelector(selectUserName)
+  const userEmail = useAppSelector(selectUserEmail)
 
   const navItems = [
     { id: "home", label: "Home", icon: Home },
@@ -39,14 +47,28 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       .slice(0, 2)
   }
 
-  return (
-    <div className="w-64 border-r border-border bg-card flex flex-col h-screen">
+  const handleNavClick = (pageId: string) => {
+    onPageChange(pageId)
+    // Close mobile sidebar when navigating
+    dispatch(setMobileSidebarOpen(false))
+  }
+
+  const SidebarContent = () => (
+    <>
       {/* Logo */}
-      <div className="p-6 border-b border-border flex items-center gap-3 px-4 py-3">
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <span className="text-primary-foreground font-bold text-sm">SC</span>
+      <div className="p-6 border-b border-border flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">SC</span>
+          </div>
+          <span className="font-display font-semibold text-lg">ShareCircle</span>
         </div>
-        <span className="font-display font-semibold text-lg">ShareCircle</span>
+        <button
+          onClick={() => dispatch(setMobileSidebarOpen(false))}
+          className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -57,7 +79,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           return (
             <button
               key={item.id}
-              onClick={() => onPageChange(item.id)}
+              onClick={() => handleNavClick(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
                 isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
               }`}
@@ -69,40 +91,60 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
       {/* User Profile Section */}
-        {session?.user && (
-          <div className="px-4 py-3 border-t border-border">
-            <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10 bg-primary">
-                <AvatarFallback className="bg-primary text-primary-foreground font-semibold leading-[1.6rem]">
-                  {getInitials(
-                    session?.user?.name || 
-                    session?.user?.email || "U"
-                  )}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {session?.user?.name || 
-                   session?.user?.email?.split("@")[0]}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {session?.user?.email}
-                </p>
-              </div>
-              <Button variant="outline" className="gap-2 bg-transparent" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
-              </Button>
+      {(userName || userEmail) && (
+        <div className="px-4 py-3 border-t border-border">
+          <div className="flex items-center gap-3">
+            <Avatar className="w-10 h-10 bg-primary">
+              <AvatarImage src={userImage || ""} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-semibold leading-[1.6rem]">
+                {getInitials(
+                  userName || 
+                  userEmail || "U"
+                )}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {userName || 
+                 userEmail?.split("@")[0]}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {userEmail}
+              </p>
             </div>
+            <Button variant="outline" className="gap-2 bg-transparent" onClick={handleLogout}>
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
-        )}
-      {/*<div className="p-4 border-t border-border">
-        <Button variant="outline" className="w-full gap-2 bg-transparent" onClick={handleLogout}>
-          <LogOut className="w-4 h-4" />
-          Logout
-        </Button>
-      </div>*/}
-    </div>
+        </div>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex w-64 border-r border-border bg-card flex-col h-screen">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => dispatch(setMobileSidebarOpen(false))}
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 w-64 border-r border-border bg-card flex flex-col h-screen z-50 transform transition-transform duration-300 lg:hidden ${
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <SidebarContent />
+      </div>
+    </>
   )
 }

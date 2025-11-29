@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { Menu } from "lucide-react"
 import { Sidebar } from "@/components/app/sidebar"
 import { DashboardHome } from "@/components/pages/dashboard-home"
 import { BrowseListingsPage } from "@/components/pages/browse-listings-page"
@@ -11,6 +12,9 @@ import { CirclesPage } from "@/components/pages/circles-page"
 import { CircleDetailsPage } from "@/components/pages/circle-details-page"
 import { MessagesPage } from "@/components/pages/messages-page"
 import { SettingsPage } from "@/components/pages/settings-page"
+import { useAppDispatch } from "@/lib/redux/hooks"
+import { toggleMobileSidebar } from "@/lib/redux/slices/uiSlice"
+import { useUserSync } from "@/hooks/useUserSync"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -18,6 +22,10 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState("home")
   const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const dispatch = useAppDispatch()
+  
+  // Sync user data from session to Redux
+  useUserSync()
 
   useEffect(() => {
     setMounted(true)
@@ -74,7 +82,17 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
-      <main className="flex-1 overflow-auto">{renderPage()}</main>
+      <main className="flex-1 overflow-auto">
+        {/* Mobile menu button */}
+        <button
+          onClick={() => dispatch(toggleMobileSidebar())}
+          className="lg:hidden fixed top-4 left-4 z-30 p-2 bg-card border border-border rounded-lg shadow-lg hover:bg-muted transition-colors"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        {renderPage()}
+      </main>
     </div>
   )
 }
+
