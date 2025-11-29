@@ -5,6 +5,8 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { SessionProvider } from "next-auth/react"
 import { Toaster } from "@/components/ui/toaster"
+import { Provider as ReduxProvider } from 'react-redux'
+import { store } from '@/lib/redux'
 
 type ThemeContextType = {
   theme: string
@@ -41,12 +43,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SessionProvider>
-      <ThemeContext.Provider value={{ theme, toggleTheme }}>
-        {children}
-        <Toaster />
-      </ThemeContext.Provider>
-    </SessionProvider>
+    <ReduxProvider store={store}>
+      <SessionProvider>
+        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+          {children}
+          <Toaster />
+        </ThemeContext.Provider>
+      </SessionProvider>
+    </ReduxProvider>
   )
 }
 
