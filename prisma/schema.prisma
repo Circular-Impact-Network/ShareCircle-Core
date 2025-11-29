@@ -18,12 +18,11 @@ model User {
   emailVerified     DateTime? @map("email_verified")
   image             String?   // NextAuth expects this field for OAuth profile pictures
   hashed_password   String?   // For credentials-based auth (optional for OAuth users)
-  phone_number      String?   @map("phone_number")
+  phone_number      String?   @unique @map("phone_number")
   country_code      String?   @map("country_code")
   address           String?
   zip_code          String?   @map("zip_code")
   country           String?
-  profile_media_url String?   @map("profile_media_url")
   created_at        DateTime  @default(now()) @map("created_at")
   updated_at        DateTime  @updatedAt @map("updated_at")
 
