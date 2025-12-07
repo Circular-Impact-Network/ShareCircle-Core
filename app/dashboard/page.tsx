@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Menu } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/app/sidebar"
 import { DashboardHome } from "@/components/pages/dashboard-home"
 import { BrowseListingsPage } from "@/components/pages/browse-listings-page"
@@ -84,12 +85,15 @@ export default function Dashboard() {
       <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
       <main className="flex-1 overflow-auto">
         {/* Mobile menu button */}
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
           onClick={() => dispatch(toggleMobileSidebar())}
-          className="lg:hidden fixed top-4 left-4 z-30 p-2 bg-card border border-border rounded-lg shadow-lg hover:bg-muted transition-colors"
+          className="fixed left-4 top-4 z-30 bg-card shadow-lg lg:hidden"
         >
-          <Menu className="w-6 h-6" />
-        </button>
+          <Menu className="h-5 w-5" />
+        </Button>
         {renderPage()}
       </main>
     </div>
