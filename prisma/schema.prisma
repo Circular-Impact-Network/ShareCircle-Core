@@ -1,7 +1,7 @@
 // Prisma schema for ShareCircle
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
@@ -10,25 +10,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums for Circle Management
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum JoinType {
+  CREATED
+  CODE
+  LINK
+}
+
 // User model with requested fields
 model User {
   id                String    @id @default(cuid())
   name              String?
   email             String    @unique
   emailVerified     DateTime? @map("email_verified")
-  image             String?   // NextAuth expects this field for OAuth profile pictures
-  hashed_password   String?   // For credentials-based auth (optional for OAuth users)
-  phone_number      String?   @unique @map("phone_number")
-  country_code      String?   @map("country_code")
+  image             String?
+  hashed_password   String?
+  phone_number      String?   @unique
+  country_code      String?
   address           String?
-  zip_code          String?   @map("zip_code")
+  zip_code          String?
   country           String?
-  created_at        DateTime  @default(now()) @map("created_at")
-  updated_at        DateTime  @updatedAt @map("updated_at")
+  profile_media_url String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 
   // NextAuth relations
   accounts Account[]
   sessions Session[]
+
+  // Circle relations
+  createdCircles    Circle[]       @relation("CircleCreator")
+  circleMemberships CircleMember[]
 
   @@map("users")
 }
@@ -73,3 +90,41 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+// Circle model for group management
+model Circle {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  inviteCode  String   @unique @map("invite_code")
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy User           @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members   CircleMember[]
+
+  @@index([createdById])
+  @@map("circles")
+}
+
+// CircleMember model for membership tracking
+model CircleMember {
+  id       String     @id @default(cuid())
+  circleId String     @map("circle_id")
+  userId   String     @map("user_id")
+  role     MemberRole @default(MEMBER)
+  joinType JoinType   @map("join_type")
+  joinedAt DateTime   @default(now()) @map("joined_at")
+  leftAt   DateTime?  @map("left_at")
+
+  // Relations
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, userId])
+  @@index([circleId])
+  @@index([userId])
+  @@index([leftAt])
+  @@map("circle_members")
+}
