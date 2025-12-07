@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Upload, Sparkles, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CreateListingModalProps {
   open: boolean
@@ -62,6 +64,7 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
       setDescription(data.description)
     } catch (err) {
       setError("Failed to generate description. Please write one manually.")
+    } finally {
       setIsGenerating(false)
     }
   }
@@ -117,9 +120,12 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
           )}
 
           {/* Item Title */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Item Title *</label>
+          <div className="space-y-2">
+            <Label htmlFor="listing-title" className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Item Title *
+            </Label>
             <Input
+              id="listing-title"
               placeholder="e.g., Camping Tent, Power Drill, Ladder"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -128,24 +134,29 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
           </div>
 
           {/* Circle Selection */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Share with Circle *</label>
-            <select
-              value={circle}
-              onChange={(e) => setCircle(e.target.value)}
-              className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
-            >
-              {availableCircles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Share with Circle *
+            </Label>
+            <Select value={circle} onValueChange={setCircle}>
+              <SelectTrigger className="w-full justify-between">
+                <SelectValue placeholder="Choose a circle" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableCircles.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Upload Images</label>
+          <div className="space-y-2">
+            <Label className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Upload Images
+            </Label>
             {imagePreview ? (
               <div className="relative">
                 <img
@@ -170,9 +181,9 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
           </div>
 
           {/* Description with AI Generation */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-foreground">Description *</label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Description *</Label>
               <Button
                 size="sm"
                 variant="outline"
@@ -194,9 +205,12 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
           </div>
 
           {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Tags (comma separated)</label>
+          <div className="space-y-2">
+            <Label htmlFor="listing-tags" className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Tags (comma separated)
+            </Label>
             <Input
+              id="listing-tags"
               placeholder="e.g., Camping, Outdoor, Equipment"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
