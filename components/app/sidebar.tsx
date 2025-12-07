@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks"
 import { toggleMobileSidebar, setMobileSidebarOpen } from "@/lib/redux/slices/uiSlice"
 import { selectUserImage, selectUserName, selectUserEmail } from "@/lib/redux/selectors/userSelectors"
+import { cn } from "@/lib/utils"
 
 interface SidebarProps {
   currentPage: string
@@ -63,30 +64,37 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           </div>
           <span className="font-display font-semibold text-lg">ShareCircle</span>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
           onClick={() => dispatch(setMobileSidebarOpen(false))}
-          className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
         >
-          <X className="w-5 h-5" />
-        </button>
+          <X className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 space-y-2 overflow-y-auto p-4">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = currentPage === item.id
           return (
-            <button
+            <Button
               key={item.id}
+              type="button"
+              variant={isActive ? "default" : "ghost"}
+              className={cn(
+                "w-full justify-start gap-3 px-4 py-3 text-left font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-foreground hover:bg-muted"
+              )}
               onClick={() => handleNavClick(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${
-                isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
-              }`}
             >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-            </button>
+              <Icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Button>
           )
         })}
       </nav>
