@@ -6,6 +6,7 @@ import { Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 
 interface AddItemModalProps {
   open: boolean
@@ -27,8 +28,11 @@ export function AddItemModal({ open, onOpenChange }: AddItemModalProps) {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Item Name</label>
+            <Label htmlFor="item-name" className="mb-2 flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Item Name
+            </Label>
             <Input
+              id="item-name"
               placeholder="e.g., Camping Tent"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -37,8 +41,11 @@ export function AddItemModal({ open, onOpenChange }: AddItemModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Description</label>
+            <Label htmlFor="item-description" className="mb-2 flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Description
+            </Label>
             <Textarea
+              id="item-description"
               placeholder="Describe your item..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -48,7 +55,9 @@ export function AddItemModal({ open, onOpenChange }: AddItemModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Upload Images</label>
+            <Label className="mb-2 flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Upload Images
+            </Label>
             <div className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all duration-200">
               <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
@@ -56,8 +65,11 @@ export function AddItemModal({ open, onOpenChange }: AddItemModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Tags (comma separated)</label>
+            <Label htmlFor="item-tags" className="mb-2 flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+              Tags (comma separated)
+            </Label>
             <Input
+              id="item-tags"
               placeholder="e.g., Camping, Outdoor, Equipment"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
