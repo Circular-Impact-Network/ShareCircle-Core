@@ -3,6 +3,7 @@
 **ShareCircle** is a digital sharing platform built under the Circular Impact Network initiative. It enables communities to share, borrow, and repurpose items with ease.
 
 ## Core Features
+
 - Group-based material sharing (Share Groups)
 - Smart item cataloging with images & metadata
 - Borrow/Reserve/Return workflows with reminders
@@ -10,6 +11,7 @@
 - AI-powered redistribution (Facebook Marketplace etc.)
 
 ## Guiding Principles
+
 - **Convenience** is key – If it's not easy, it won't scale
 - Use **accessible technology** – Low-barrier tools that work on basic devices.
 - Encourage **continuous improvement** – Test fast, learn, and adapt.
@@ -18,6 +20,7 @@
 - Minimal infrastructure dependency – Avoid models that need lockers, staff, or physical inventory.
 
 ## Structure
+
 - `core/`: Open-source base
 - `pro/`: Advanced features (optional commercial license)
 
@@ -38,7 +41,9 @@ bun dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## Licensing
+
 Dual-licensed under MIT and GPL-3. See `LICENSE` for details.
 
 ## How to Contribute
+
 Please read `CONTRIBUTE.MD`.
