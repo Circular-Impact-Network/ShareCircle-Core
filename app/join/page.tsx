@@ -143,7 +143,11 @@ function JoinPageContent() {
 						<Button onClick={() => router.push('/dashboard')} variant="outline">
 							Go to Dashboard
 						</Button>
-						{joinResult.circleId && <Button onClick={() => router.push('/dashboard')}>View Circle</Button>}
+						{joinResult.circleId && (
+							<Button onClick={() => router.push(`/dashboard?circleId=${joinResult.circleId}`)}>
+								View Circle
+							</Button>
+						)}
 					</div>
 				</div>
 			</div>

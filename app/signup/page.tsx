@@ -2,9 +2,9 @@
 
 import type React from 'react';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export default function Signup() {
+function SignupContent() {
 	const [name, setName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
@@ -25,6 +25,8 @@ export default function Signup() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
 	const handleSignup = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -100,8 +102,8 @@ export default function Signup() {
 				return;
 			}
 
-			// Redirect to dashboard
-			router.push('/dashboard');
+			// Redirect to callbackUrl if present, otherwise dashboard
+			router.push(callbackUrl);
 		} catch (err) {
 			setError('Signup failed. Please try again.');
 			setIsLoading(false);
@@ -111,7 +113,7 @@ export default function Signup() {
 	const handleGoogleLogin = async () => {
 		setIsGoogleLoading(true);
 		try {
-			await signIn('google', { callbackUrl: '/dashboard' });
+			await signIn('google', { callbackUrl });
 		} catch (error) {
 			setIsGoogleLoading(false);
 		}
@@ -307,12 +309,31 @@ export default function Signup() {
 
 					<p className="text-center text-muted-foreground mt-6">
 						Already have an account?{' '}
-						<Link href="/login" className="text-primary font-semibold hover:underline">
+						<Link
+							href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'}
+							className="text-primary font-semibold hover:underline"
+						>
 							Login
 						</Link>
 					</p>
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function Signup() {
+	return (
+		<Suspense
+			fallback={
+				<div className="min-h-screen flex items-center justify-center bg-background">
+					<div className="text-center">
+						<p className="text-muted-foreground">Loading...</p>
+					</div>
+				</div>
+			}
+		>
+			<SignupContent />
+		</Suspense>
 	);
 }

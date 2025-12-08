@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,14 @@ import { useAppDispatch } from '@/lib/redux/hooks';
 import { toggleMobileSidebar } from '@/lib/redux/slices/uiSlice';
 import { useUserSync } from '@/hooks/useUserSync';
 
-export default function Dashboard() {
+function DashboardContent() {
 	const router = useRouter();
 	const { data: session, status } = useSession();
+	const searchParams = useSearchParams();
 	const [currentPage, setCurrentPage] = useState('home');
 	const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null);
 	const [mounted, setMounted] = useState(false);
+	const circleIdProcessedRef = useRef(false);
 	const dispatch = useAppDispatch();
 
 	// Sync user data from session to Redux
@@ -31,6 +33,20 @@ export default function Dashboard() {
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	// Check for circleId in URL params and navigate to circle details if present
+	useEffect(() => {
+		if (mounted && status === 'authenticated' && !circleIdProcessedRef.current) {
+			const circleId = searchParams.get('circleId');
+			if (circleId) {
+				setSelectedCircleId(circleId);
+				setCurrentPage('circle-details');
+				circleIdProcessedRef.current = true;
+				// Clean up URL by removing the query parameter
+				router.replace('/dashboard');
+			}
+		}
+	}, [mounted, status, searchParams, router]);
 
 	useEffect(() => {
 		if (mounted && status === 'unauthenticated') {
@@ -97,5 +113,24 @@ export default function Dashboard() {
 				{renderPage()}
 			</main>
 		</div>
+	);
+}
+
+export default function Dashboard() {
+	return (
+		<Suspense
+			fallback={
+				<div className="flex h-screen items-center justify-center bg-background">
+					<div className="text-center">
+						<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
+							<span className="text-primary-foreground font-bold text-sm">SC</span>
+						</div>
+						<p className="text-muted-foreground">Loading...</p>
+					</div>
+				</div>
+			}
+		>
+			<DashboardContent />
+		</Suspense>
 	);
 }
