@@ -74,10 +74,10 @@ export const authOptions: NextAuthOptions = {
 							image: user.image,
 						};
 					}
-					
+
 					// If user doesn't exist, we might want to return null or handle signup
 					// For this task, we'll assume the user must exist or we return null
-					return null; 
+					return null;
 				}
 
 				return null;
