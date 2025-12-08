@@ -96,6 +96,7 @@ model Circle {
   name        String
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
+  avatarUrl   String?  @map("avatar_url")
   createdById String   @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
