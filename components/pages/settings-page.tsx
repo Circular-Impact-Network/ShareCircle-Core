@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Bell, Moon, User, Shield, Smartphone, Mail, Globe, Camera, Loader2, Upload } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/lib/redux/hooks';
 import {
@@ -105,13 +106,8 @@ export function SettingsPage() {
 	};
 
 	const handleUpdateContactInfo = async () => {
-		try {
-			await updateUser({ phoneNumber: phone, countryCode }).unwrap();
-			toast.success('Contact information updated successfully');
-		} catch (error) {
-			console.error('Contact info update error:', error);
-			toast.error('Failed to update contact information');
-		}
+		// Phone number updates disabled for MVP
+		return;
 	};
 
 	const getInitials = (name: string) => {
@@ -236,39 +232,55 @@ export function SettingsPage() {
 
 								<div className="space-y-2">
 									<Label htmlFor="phone">Phone Number</Label>
-									<div className="flex gap-2">
-										<Select value={countryCode} onValueChange={setCountryCode}>
-											<SelectTrigger className="w-[100px]">
-												<SelectValue placeholder="Code" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="+1">🇺🇸 +1</SelectItem>
-												<SelectItem value="+44">🇬🇧 +44</SelectItem>
-												<SelectItem value="+91">🇮🇳 +91</SelectItem>
-												<SelectItem value="+61">🇦🇺 +61</SelectItem>
-												<SelectItem value="+81">🇯🇵 +81</SelectItem>
-												<SelectItem value="+49">🇩🇪 +49</SelectItem>
-											</SelectContent>
-										</Select>
-										<div className="relative flex-1">
-											<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-											<Input
-												id="phone"
-												value={phone}
-												onChange={e => setPhone(e.target.value)}
-												placeholder="1234567890"
-												className="pl-9"
-											/>
-										</div>
-									</div>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className="flex gap-2">
+												<Select value={countryCode} onValueChange={setCountryCode} disabled>
+													<SelectTrigger className="w-[100px]">
+														<SelectValue placeholder="Code" />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="+1">🇺🇸 +1</SelectItem>
+														<SelectItem value="+44">🇬🇧 +44</SelectItem>
+														<SelectItem value="+91">🇮🇳 +91</SelectItem>
+														<SelectItem value="+61">🇦🇺 +61</SelectItem>
+														<SelectItem value="+81">🇯🇵 +81</SelectItem>
+														<SelectItem value="+49">🇩🇪 +49</SelectItem>
+													</SelectContent>
+												</Select>
+												<div className="relative flex-1">
+													<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+													<Input
+														id="phone"
+														value={phone}
+														onChange={e => setPhone(e.target.value)}
+														placeholder="1234567890"
+														className="pl-9"
+														disabled
+													/>
+												</div>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent>
+											<p>Coming soon</p>
+										</TooltipContent>
+									</Tooltip>
 								</div>
 							</div>
 
 							<div className="flex justify-end pt-4">
-								<Button onClick={handleUpdateContactInfo} disabled={isLoading}>
-									{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-									Update Contact Info
-								</Button>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<span>
+											<Button onClick={handleUpdateContactInfo} disabled>
+												Update Contact Info
+											</Button>
+										</span>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Coming soon</p>
+									</TooltipContent>
+								</Tooltip>
 							</div>
 						</CardContent>
 					</Card>

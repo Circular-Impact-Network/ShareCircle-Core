@@ -12,6 +12,7 @@ import { Share2, Phone, Mail, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 function LoginContent() {
 	const [email, setEmail] = useState('');
@@ -32,6 +33,13 @@ function LoginContent() {
 		setIsLoading(true);
 
 		try {
+			// Prevent phone login (disabled for MVP)
+			if (loginMethod === 'phone') {
+				setError('');
+				setIsLoading(false);
+				return;
+			}
+
 			if (loginMethod === 'email') {
 				if (!email || !password) {
 					setError('Please fill in all fields');
@@ -129,11 +137,25 @@ function LoginContent() {
 					<Tabs
 						defaultValue="email"
 						className="w-full"
-						onValueChange={v => setLoginMethod(v as 'email' | 'phone')}
+						onValueChange={v => {
+							if (v === 'phone') return; // Prevent switching to phone tab
+							setLoginMethod(v as 'email' | 'phone');
+						}}
 					>
 						<TabsList className="grid w-full grid-cols-2 mb-6">
 							<TabsTrigger value="email">Email</TabsTrigger>
-							<TabsTrigger value="phone">Phone</TabsTrigger>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div className="flex w-full">
+										<TabsTrigger value="phone" disabled className="flex-1">
+											Phone
+										</TabsTrigger>
+									</div>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Coming soon</p>
+								</TooltipContent>
+							</Tooltip>
 						</TabsList>
 
 						<form onSubmit={handleLogin} className="space-y-4">
@@ -164,32 +186,39 @@ function LoginContent() {
 							</TabsContent>
 
 							<TabsContent value="phone" className="space-y-4 mt-0">
-								<div>
-									<label className="block text-sm font-medium mb-2">Phone Number</label>
-									<div className="flex gap-2">
-										<Select value={countryCode} onValueChange={setCountryCode} disabled={isLoading}>
-											<SelectTrigger className="w-[100px]">
-												<SelectValue placeholder="Code" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="+1">🇺🇸 +1</SelectItem>
-												<SelectItem value="+44">🇬🇧 +44</SelectItem>
-												<SelectItem value="+91">🇮🇳 +91</SelectItem>
-												<SelectItem value="+61">🇦🇺 +61</SelectItem>
-												<SelectItem value="+81">🇯🇵 +81</SelectItem>
-												<SelectItem value="+49">🇩🇪 +49</SelectItem>
-											</SelectContent>
-										</Select>
-										<Input
-											type="tel"
-											placeholder="1234567890"
-											value={phoneNumber}
-											onChange={e => setPhoneNumber(e.target.value)}
-											className="flex-1"
-											disabled={isLoading}
-										/>
-									</div>
-								</div>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div>
+											<label className="block text-sm font-medium mb-2">Phone Number</label>
+											<div className="flex gap-2">
+												<Select value={countryCode} onValueChange={setCountryCode} disabled>
+													<SelectTrigger className="w-[100px]">
+														<SelectValue placeholder="Code" />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="+1">🇺🇸 +1</SelectItem>
+														<SelectItem value="+44">🇬🇧 +44</SelectItem>
+														<SelectItem value="+91">🇮🇳 +91</SelectItem>
+														<SelectItem value="+61">🇦🇺 +61</SelectItem>
+														<SelectItem value="+81">🇯🇵 +81</SelectItem>
+														<SelectItem value="+49">🇩🇪 +49</SelectItem>
+													</SelectContent>
+												</Select>
+												<Input
+													type="tel"
+													placeholder="1234567890"
+													value={phoneNumber}
+													onChange={e => setPhoneNumber(e.target.value)}
+													className="flex-1"
+													disabled
+												/>
+											</div>
+										</div>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>Coming soon</p>
+									</TooltipContent>
+								</Tooltip>
 							</TabsContent>
 
 							<Button
