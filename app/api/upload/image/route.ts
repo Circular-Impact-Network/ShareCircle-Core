@@ -3,12 +3,23 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
 
+// Allowed storage buckets
+const ALLOWED_BUCKETS = ['avatars', 'items'];
+
 export async function POST(req: NextRequest) {
 	try {
 		const session = await getServerSession(authOptions);
 
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Get bucket from query params (default to 'avatars')
+		const bucket = req.nextUrl.searchParams.get('bucket') || 'avatars';
+
+		// Validate bucket
+		if (!ALLOWED_BUCKETS.includes(bucket)) {
+			return NextResponse.json({ error: `Invalid bucket. Allowed: ${ALLOWED_BUCKETS.join(', ')}` }, { status: 400 });
 		}
 
 		const formData = await req.formData();
@@ -34,15 +45,15 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Upload to Supabase and get file path
-		const filePath = await uploadImage(file, 'avatars', session.user.id);
+		const filePath = await uploadImage(file, bucket, session.user.id);
 
-		// Generate signed URL (valid for 1 year)
-		const signedUrl = await getSignedUrl(filePath, 'avatars');
+		// Generate signed URL for immediate use/preview
+		const signedUrl = await getSignedUrl(filePath, bucket);
 
 		return NextResponse.json(
 			{
-				url: signedUrl,
-				path: filePath,
+				path: filePath, // Store this in DB
+				url: signedUrl, // Use for immediate preview
 			},
 			{ status: 200 },
 		);

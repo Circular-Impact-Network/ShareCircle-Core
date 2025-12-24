@@ -21,6 +21,9 @@ import {
 	Users,
 	ChevronLeft,
 	ChevronRight,
+	Package,
+	Trash2,
+	Edit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,6 +52,7 @@ import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
+import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
 
 interface CircleDetailsPageProps {
 	circleId: string;
@@ -85,21 +89,12 @@ interface Circle {
 	members: Member[];
 }
 
-interface Item {
-	id: number;
-	title: string;
-	description: string;
-	image: string;
-	postedBy: { name: string; avatar: string };
-	availability: string;
-	tags: string[];
-}
-
 export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) {
 	const { data: session } = useSession();
 	const [circle, setCircle] = useState<Circle | null>(null);
-	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
+	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showInviteSection, setShowInviteSection] = useState(false);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
@@ -110,6 +105,10 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 	const [isProcessingMember, setIsProcessingMember] = useState(false);
 	const membersScrollRef = useRef<HTMLDivElement>(null);
 	const { toast } = useToast();
+
+	// Items query and mutation
+	const { data: items = [], isLoading: isLoadingItems, refetch: refetchItems } = useGetCircleItemsQuery(circleId);
+	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 
 	const fetchCircle = useCallback(async () => {
 		try {
@@ -767,27 +766,172 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 				)}
 			</div>
 
-			{/* Items Section - Placeholder for now */}
-			<Card className="mb-8 border-dashed border-border/70 bg-card">
-				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle className="text-2xl">Shared Items</CardTitle>
+			{/* Items Section */}
+			<div className="mb-8">
+				<div className="flex items-center justify-between mb-4">
+					<div className="flex items-center gap-3">
+						<h2 className="text-xl font-semibold sm:text-2xl">Shared Items</h2>
+						<Badge variant="outline" className="text-xs">
+							{items.length}
+						</Badge>
+					</div>
 					<Button onClick={() => setShowAddItem(true)} className="gap-2" size="sm">
 						<Plus className="h-4 w-4" />
 						<span className="hidden sm:inline">Add Item</span>
 						<span className="sm:hidden">Add</span>
 					</Button>
-				</CardHeader>
-				<CardContent className="flex flex-col items-center gap-4 text-center">
-					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-border/80">
-						<Plus className="h-6 w-6 text-muted-foreground" />
+				</div>
+
+				{isLoadingItems ? (
+					<div className="flex flex-col items-center justify-center py-12">
+						<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+						<p className="text-sm text-muted-foreground">Loading items...</p>
 					</div>
-					<p className="text-sm text-muted-foreground">No items shared yet</p>
-					<Button onClick={() => setShowAddItem(true)} variant="outline" className="gap-2">
-						<Plus className="h-4 w-4" />
-						Add the first item
-					</Button>
-				</CardContent>
-			</Card>
+				) : items.length === 0 ? (
+					<Card className="border-dashed border-border/70 bg-card">
+						<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+							<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+								<Package className="h-7 w-7 text-primary" />
+							</div>
+							<div>
+								<p className="font-medium text-foreground mb-1">No items shared yet</p>
+								<p className="text-sm text-muted-foreground">Be the first to share something with this circle!</p>
+							</div>
+							<Button onClick={() => setShowAddItem(true)} variant="outline" className="gap-2">
+								<Plus className="h-4 w-4" />
+								Add the first item
+							</Button>
+						</CardContent>
+					</Card>
+				) : (
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+						{items.map(item => (
+							<Card
+								key={item.id}
+								className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
+								onClick={() => setSelectedItem(item)}
+							>
+								{/* Item Image */}
+								<div className="aspect-square relative overflow-hidden bg-muted">
+									<img
+										src={item.imageUrl}
+										alt={item.name}
+										className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+									/>
+									{item.isOwner && (
+										<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+											<Button
+												variant="secondary"
+												size="icon"
+												className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+												onClick={e => {
+													e.stopPropagation();
+													setItemToDelete(item);
+												}}
+											>
+												<Trash2 className="h-4 w-4 text-destructive" />
+											</Button>
+										</div>
+									)}
+								</div>
+
+								{/* Item Details */}
+								<CardContent className="p-4">
+									<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
+									{item.description && (
+										<p className="text-sm text-muted-foreground line-clamp-2 mb-3">{item.description}</p>
+									)}
+
+									{/* Tags */}
+									{item.tags.length > 0 && (
+										<div className="flex flex-wrap gap-1.5 mb-3">
+											{item.tags.slice(0, 3).map(tag => (
+												<Badge key={tag} variant="secondary" className="text-xs">
+													{tag}
+												</Badge>
+											))}
+											{item.tags.length > 3 && (
+												<Badge variant="outline" className="text-xs">
+													+{item.tags.length - 3}
+												</Badge>
+											)}
+										</div>
+									)}
+
+									{/* Owner */}
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<Avatar className="h-5 w-5">
+											<AvatarImage src={item.owner.image || undefined} />
+											<AvatarFallback className="text-[10px]">
+												{item.owner.name?.[0]?.toUpperCase() || '?'}
+											</AvatarFallback>
+										</Avatar>
+										<span className="truncate">{item.owner.name || 'Unknown'}</span>
+										{item.isOwner && (
+											<Badge variant="outline" className="text-[10px] px-1.5 py-0">
+												You
+											</Badge>
+										)}
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				)}
+			</div>
+
+			{/* Delete Item Confirmation Dialog */}
+			<Dialog
+				open={!!itemToDelete}
+				onOpenChange={open => {
+					if (!open) setItemToDelete(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Delete Item</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button variant="outline" onClick={() => setItemToDelete(null)} disabled={isDeletingItem}>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={async () => {
+								if (!itemToDelete) return;
+								try {
+									await deleteItem(itemToDelete.id).unwrap();
+									toast({
+										title: 'Item deleted',
+										description: `${itemToDelete.name} has been deleted.`,
+									});
+									setItemToDelete(null);
+								} catch (error) {
+									console.error('Failed to delete item:', error);
+									toast({
+										title: 'Error',
+										description: 'Failed to delete item. Please try again.',
+										variant: 'destructive',
+									});
+								}
+							}}
+							disabled={isDeletingItem}
+						>
+							{isDeletingItem ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								'Delete'
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{/* Member Action Confirmation Dialog */}
 			<Dialog
@@ -852,7 +996,12 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 
 			{/* Modals */}
 			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
-			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
+			<AddItemModal
+				open={showAddItem}
+				onOpenChange={setShowAddItem}
+				currentCircleId={circleId}
+				onItemCreated={() => refetchItems()}
+			/>
 
 			{/* Settings Dialog - Admin Only */}
 			{isAdmin && (

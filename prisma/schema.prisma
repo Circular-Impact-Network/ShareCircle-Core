@@ -47,6 +47,9 @@ model User {
   createdCircles    Circle[]       @relation("CircleCreator")
   circleMemberships CircleMember[]
 
+  // Item relations
+  items Item[]
+
   @@map("users")
 }
 
@@ -97,6 +100,7 @@ model Circle {
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
   avatarUrl   String?  @map("avatar_url")
+  avatarPath  String?  @map("avatar_path")
   createdById String   @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -104,6 +108,7 @@ model Circle {
   // Relations
   createdBy User           @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Cascade)
   members   CircleMember[]
+  items     ItemCircle[]
 
   @@index([createdById])
   @@map("circles")
@@ -128,4 +133,42 @@ model CircleMember {
   @@index([userId])
   @@index([leftAt])
   @@map("circle_members")
+}
+
+// Item model for shared items
+model Item {
+  id          String   @id @default(cuid())
+  ownerId     String   @map("owner_id")
+  imagePath   String   @map("image_path")
+  name        String
+  description String?  @db.Text
+  categories  String[] @default([])
+  tags        String[] @default([])
+  // Note: embedding vector(1024) is handled via raw SQL, not in Prisma
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner   User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  circles ItemCircle[]
+
+  @@index([ownerId])
+  @@map("items")
+}
+
+// ItemCircle model for sharing items across multiple circles
+model ItemCircle {
+  id       String   @id @default(cuid())
+  itemId   String   @map("item_id")
+  circleId String   @map("circle_id")
+  sharedAt DateTime @default(now()) @map("shared_at")
+
+  // Relations
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, circleId])
+  @@index([circleId])
+  @@index([itemId])
+  @@map("item_circles")
 }

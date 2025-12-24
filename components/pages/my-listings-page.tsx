@@ -1,300 +1,276 @@
 'use client';
+
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Loader2, Package, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Edit2, Trash2, CheckCircle, Plus } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { DeleteItemDialog } from '@/components/dialogs/delete-item-dialog';
-import { EditItemDialog } from '@/components/dialogs/edit-item-dialog';
-import { CreateListingModal } from '@/components/modals/create-listing-modal';
-
-interface ActiveListing {
-	id: number;
-	title: string;
-	image: string;
-	circle: string;
-	requests: number;
-}
-
-interface LentOutListing {
-	id: number;
-	title: string;
-	image: string;
-	circle: string;
-	borrower: { name: string; avatar: string };
-	lentOn: string;
-	dueDate: string;
-}
-
-interface ReturnedListing {
-	id: number;
-	title: string;
-	image: string;
-	circle: string;
-	returnedDate: string;
-}
-
-interface Listings {
-	active: ActiveListing[];
-	lentOut: LentOutListing[];
-	returned: ReturnedListing[];
-}
-
-const mockMyListingsInitial: Listings = {
-	active: [
-		{
-			id: 1,
-			title: 'Tent',
-			image: '/camping-tent.png',
-			circle: 'Beach House Friends',
-			requests: 2,
-		},
-		{
-			id: 2,
-			title: 'Projector',
-			image: '/home-theater-projector.png',
-			circle: 'Beach House Friends',
-			requests: 1,
-		},
-	],
-	lentOut: [
-		{
-			id: 3,
-			title: 'Bike Rack',
-			image: '/bike-rack.jpg',
-			circle: 'Hiking Club',
-			borrower: { name: 'John', avatar: 'J' },
-			lentOn: '2024-11-01',
-			dueDate: '2024-11-15',
-		},
-	],
-	returned: [
-		{
-			id: 4,
-			title: 'Kayak',
-			image: '/single-person-kayak.png',
-			circle: 'Beach House Friends',
-			returnedDate: '2024-10-30',
-		},
-	],
-};
-
-const mockCircles = [
-	{ id: '1', name: 'Beach House Friends' },
-	{ id: '2', name: 'Hiking Club' },
-	{ id: '3', name: 'Neighborhood Circle' },
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AddItemModal } from '@/components/modals/add-item-modal';
+import { ItemDetailsModal } from '@/components/modals/item-details-modal';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { useGetAllItemsQuery, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
+import { useToast } from '@/hooks/use-toast';
 
 export function MyListingsPage() {
-	const [listings, setListings] = useState(mockMyListingsInitial);
-	const [editDialogOpen, setEditDialogOpen] = useState(false);
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [createListingOpen, setCreateListingOpen] = useState(false);
-	const [selectedItem, setSelectedItem] = useState<any>(null);
-	const [selectedTab, setSelectedTab] = useState('active');
+	const [showAddItem, setShowAddItem] = useState(false);
+	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+	const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+	const { toast } = useToast();
 
-	const handleEditClick = (item: any, tab: string) => {
-		setSelectedItem({ ...item, tab });
-		setEditDialogOpen(true);
-	};
+	// Fetch all items
+	const { data: allItems = [], isLoading, refetch } = useGetAllItemsQuery();
+	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 
-	const handleDeleteClick = (item: any, tab: string) => {
-		setSelectedItem({ ...item, tab });
-		setDeleteDialogOpen(true);
-	};
+	// Filter to only user's items
+	const myItems = allItems.filter(item => item.isOwner);
 
-	const handleEditConfirm = (title: string, circle: string) => {
-		if (!selectedItem) return;
+	const handleDelete = async () => {
+		if (!itemToDelete) return;
 
-		const updatedListings = { ...listings };
-		const tabKey = selectedItem.tab as keyof typeof listings;
-		const itemIndex = updatedListings[tabKey].findIndex(item => item.id === selectedItem.id);
-
-		if (itemIndex !== -1) {
-			(updatedListings[tabKey][itemIndex] as any) = {
-				...updatedListings[tabKey][itemIndex],
-				title,
-				circle,
-			};
-			setListings(updatedListings);
+		try {
+			await deleteItem(itemToDelete.id).unwrap();
+			toast({
+				title: 'Item deleted',
+				description: `${itemToDelete.name} has been deleted.`,
+			});
+			setItemToDelete(null);
+		} catch (error) {
+			console.error('Failed to delete item:', error);
+			toast({
+				title: 'Error',
+				description: 'Failed to delete item. Please try again.',
+				variant: 'destructive',
+			});
 		}
-
-		setEditDialogOpen(false);
-		setSelectedItem(null);
-	};
-
-	const handleDeleteConfirm = () => {
-		if (!selectedItem) return;
-
-		const updatedListings = { ...listings };
-		const tabKey = selectedItem.tab as keyof typeof listings;
-		updatedListings[tabKey] = updatedListings[tabKey].filter(item => item.id !== selectedItem.id) as any;
-		setListings(updatedListings);
-
-		setDeleteDialogOpen(false);
-		setSelectedItem(null);
-	};
-
-	const handleCreateListing = (listing: any) => {
-		const newItem = {
-			id: Math.max(...listings.active.map(i => i.id), 0) + 1,
-			...listing,
-			requests: 0,
-		};
-
-		setListings({
-			...listings,
-			active: [...listings.active, newItem],
-		});
-
-		setCreateListingOpen(false);
 	};
 
 	return (
-		<div className="p-8 px-6 py-3">
-			<div className="flex items-center justify-between mb-8">
+		<div className="p-4 sm:p-6 lg:p-8">
+			{/* Header */}
+			<div className="mb-6 flex items-center justify-between">
 				<div>
-					<h1 className="text-4xl font-bold text-foreground mb-2">My Listings</h1>
-					<p className="text-muted-foreground">Manage your shared items</p>
+					<h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">My Listings</h1>
+					<p className="text-muted-foreground">Manage items you&apos;re sharing</p>
 				</div>
-				<Button onClick={() => setCreateListingOpen(true)} className="gap-2">
-					<Plus className="w-4 h-4" />
-					Create Listing
+				<Button onClick={() => setShowAddItem(true)} className="gap-2">
+					<Plus className="h-4 w-4" />
+					<span className="hidden sm:inline">Add Item</span>
+					<span className="sm:hidden">Add</span>
 				</Button>
 			</div>
 
-			<Tabs defaultValue="active" className="w-full" onValueChange={setSelectedTab}>
-				<TabsList className="mb-8">
-					<TabsTrigger value="active">Active ({listings.active.length})</TabsTrigger>
-					<TabsTrigger value="lent">Lent Out ({listings.lentOut.length})</TabsTrigger>
-					<TabsTrigger value="returned">Returned ({listings.returned.length})</TabsTrigger>
+			{/* Tabs for different item states */}
+			<Tabs defaultValue="all" className="space-y-6">
+				<TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
+					<TabsTrigger value="all">
+						All Items
+						{myItems.length > 0 && (
+							<Badge variant="secondary" className="ml-2">
+								{myItems.length}
+							</Badge>
+						)}
+					</TabsTrigger>
+					<TabsTrigger value="active">Active</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="active" className="space-y-4">
-					{listings.active.map(item => (
-						<div
-							key={item.id}
-							className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:shadow-md transition-shadow"
-						>
-							<img
-								src={item.image || '/placeholder.svg'}
-								alt={item.title}
-								className="w-20 h-20 rounded object-cover"
-							/>
-							<div className="flex-1">
-								<h3 className="font-semibold text-card-foreground">{item.title}</h3>
-								<p className="text-sm text-muted-foreground">{item.circle}</p>
-								<p className="text-xs text-accent mt-1">{item.requests} requests</p>
-							</div>
-							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									className="gap-2 bg-transparent"
-									onClick={() => handleEditClick(item, 'active')}
-								>
-									<Edit2 className="w-4 h-4" />
-									Edit
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									className="gap-2 text-destructive bg-transparent"
-									onClick={() => handleDeleteClick(item, 'active')}
-								>
-									<Trash2 className="w-4 h-4" />
-									Delete
-								</Button>
-							</div>
+				{/* All Items Tab */}
+				<TabsContent value="all" className="space-y-4">
+					{/* Loading State */}
+					{isLoading && (
+						<div className="flex flex-col items-center justify-center py-12">
+							<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+							<p className="text-sm text-muted-foreground">Loading your items...</p>
 						</div>
-					))}
-				</TabsContent>
+					)}
 
-				<TabsContent value="lent" className="space-y-4">
-					{listings.lentOut.map(item => (
-						<div
-							key={item.id}
-							className="bg-card border border-border rounded-lg p-4 flex items-center gap-4"
-						>
-							<img
-								src={item.image || '/placeholder.svg'}
-								alt={item.title}
-								className="w-20 h-20 rounded object-cover"
-							/>
-							<div className="flex-1">
-								<h3 className="font-semibold text-card-foreground">{item.title}</h3>
-								<p className="text-sm text-muted-foreground">{item.circle}</p>
-								<div className="flex items-center gap-2 mt-2">
-									<Avatar className="w-5 h-5">
-										<AvatarFallback className="text-xs bg-primary text-primary-foreground">
-											{item.borrower.avatar}
-										</AvatarFallback>
-									</Avatar>
-									<span className="text-xs text-muted-foreground">
-										Lent to {item.borrower.name} • Due {item.dueDate}
-									</span>
+					{/* Empty State */}
+					{!isLoading && myItems.length === 0 && (
+						<Card className="border-dashed border-border/70 bg-card">
+							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+								<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+									<Package className="h-7 w-7 text-primary" />
 								</div>
-							</div>
-							<Button size="sm" className="gap-2">
-								<CheckCircle className="w-4 h-4" />
-								Mark Returned
-							</Button>
+								<div>
+									<p className="font-medium text-foreground mb-1">No items yet</p>
+									<p className="text-sm text-muted-foreground mb-4">
+										Start sharing items with your circles
+									</p>
+									<Button onClick={() => setShowAddItem(true)} className="gap-2">
+										<Plus className="h-4 w-4" />
+										Add Your First Item
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Items Grid */}
+					{!isLoading && myItems.length > 0 && (
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+							{myItems.map(item => (
+								<Card
+									key={item.id}
+									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all"
+								>
+									{/* Item Image */}
+									<div
+										className="aspect-square relative overflow-hidden bg-muted cursor-pointer"
+										onClick={() => setSelectedItem(item)}
+									>
+										<img
+											src={item.imageUrl}
+											alt={item.name}
+											className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+										/>
+										<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+											<Button
+												variant="secondary"
+												size="icon"
+												className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+												onClick={e => {
+													e.stopPropagation();
+													setItemToDelete(item);
+												}}
+											>
+												<Trash2 className="h-4 w-4 text-destructive" />
+											</Button>
+										</div>
+									</div>
+
+									{/* Item Details */}
+									<CardContent className="p-4">
+										<h3
+											className="font-semibold text-foreground truncate mb-1 cursor-pointer hover:text-primary"
+											onClick={() => setSelectedItem(item)}
+										>
+											{item.name}
+										</h3>
+										{item.description && (
+											<p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+												{item.description}
+											</p>
+										)}
+
+										{/* Tags */}
+										{item.tags.length > 0 && (
+											<div className="flex flex-wrap gap-1.5 mb-3">
+												{item.tags.slice(0, 3).map(tag => (
+													<Badge key={tag} variant="secondary" className="text-xs">
+														{tag}
+													</Badge>
+												))}
+												{item.tags.length > 3 && (
+													<Badge variant="outline" className="text-xs">
+														+{item.tags.length - 3}
+													</Badge>
+												)}
+											</div>
+										)}
+
+										{/* Shared in Circles */}
+										{item.circles.length > 0 && (
+											<div className="text-xs text-muted-foreground truncate">
+												Shared in: {item.circles.map(c => c.name).join(', ')}
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							))}
 						</div>
-					))}
+					)}
 				</TabsContent>
 
-				<TabsContent value="returned" className="space-y-4">
-					{listings.returned.map(item => (
-						<div
-							key={item.id}
-							className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 opacity-75"
-						>
-							<img
-								src={item.image || '/placeholder.svg'}
-								alt={item.title}
-								className="w-20 h-20 rounded object-cover"
-							/>
-							<div className="flex-1">
-								<h3 className="font-semibold text-card-foreground">{item.title}</h3>
-								<p className="text-sm text-muted-foreground">{item.circle}</p>
-								<p className="text-xs text-muted-foreground mt-1">Returned {item.returnedDate}</p>
-							</div>
+				{/* Active Tab (same content for now) */}
+				<TabsContent value="active" className="space-y-4">
+					{!isLoading && myItems.length === 0 ? (
+						<Card className="border-dashed border-border/70 bg-card">
+							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+								<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+									<Package className="h-7 w-7 text-primary" />
+								</div>
+								<div>
+									<p className="font-medium text-foreground mb-1">No active items</p>
+									<p className="text-sm text-muted-foreground">
+										Your active listings will appear here
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+							{myItems.map(item => (
+								<Card
+									key={item.id}
+									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
+									onClick={() => setSelectedItem(item)}
+								>
+									<div className="aspect-square relative overflow-hidden bg-muted">
+										<img
+											src={item.imageUrl}
+											alt={item.name}
+											className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+										/>
+									</div>
+									<CardContent className="p-4">
+										<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
+										{item.circles.length > 0 && (
+											<p className="text-sm text-muted-foreground truncate">
+												{item.circles[0].name}
+											</p>
+										)}
+									</CardContent>
+								</Card>
+							))}
 						</div>
-					))}
+					)}
 				</TabsContent>
 			</Tabs>
 
-			{selectedItem && (
-				<DeleteItemDialog
-					isOpen={deleteDialogOpen}
-					itemTitle={selectedItem.title}
-					onConfirm={handleDeleteConfirm}
-					onCancel={() => {
-						setDeleteDialogOpen(false);
-						setSelectedItem(null);
-					}}
-				/>
-			)}
+			{/* Delete Confirmation Dialog */}
+			<Dialog
+				open={!!itemToDelete}
+				onOpenChange={open => {
+					if (!open) setItemToDelete(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Delete Item</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be
+							undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button variant="outline" onClick={() => setItemToDelete(null)} disabled={isDeletingItem}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={handleDelete} disabled={isDeletingItem}>
+							{isDeletingItem ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								'Delete'
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-			{selectedItem && (
-				<EditItemDialog
-					isOpen={editDialogOpen}
-					itemTitle={selectedItem.title}
-					itemCircle={selectedItem.circle}
-					onConfirm={handleEditConfirm}
-					onCancel={() => {
-						setEditDialogOpen(false);
-						setSelectedItem(null);
-					}}
-				/>
-			)}
-
-			<CreateListingModal
-				open={createListingOpen}
-				onOpenChange={setCreateListingOpen}
-				onSubmit={handleCreateListing}
-				availableCircles={mockCircles}
-			/>
+			{/* Modals */}
+			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} onItemCreated={() => refetch()} />
+			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</div>
 	);
 }

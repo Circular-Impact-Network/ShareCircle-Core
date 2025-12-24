@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
+import { getSignedUrl } from '@/lib/supabase';
 
 // GET /api/circles/[id] - Get circle details with members
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -65,13 +66,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			return NextResponse.json({ error: 'Circle not found' }, { status: 404 });
 		}
 
+		// Generate signed URL from path if available
+		let avatarUrl = circle.avatarUrl;
+		if (circle.avatarPath) {
+			try {
+				avatarUrl = await getSignedUrl(circle.avatarPath, 'avatars');
+			} catch (error) {
+				console.error('Failed to generate avatar signed URL:', error);
+			}
+		}
+
 		return NextResponse.json(
 			{
 				id: circle.id,
 				name: circle.name,
 				description: circle.description,
 				inviteCode: circle.inviteCode,
-				avatarUrl: circle.avatarUrl,
+				avatarUrl,
 				createdAt: circle.createdAt,
 				updatedAt: circle.updatedAt,
 				createdBy: circle.createdBy,

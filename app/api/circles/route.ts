@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { JoinType, MemberRole } from '@prisma/client';
+import { getSignedUrl } from '@/lib/supabase';
 
 // Generate 8-character alphanumeric invite code
 function generateInviteCode(): string {
@@ -76,27 +77,41 @@ export async function GET(req: NextRequest) {
 		});
 
 		// Transform the response to include user's role in each circle
-		const circlesWithRole = circles.map(circle => {
-			const userMembership = circle.members.find(m => m.userId === userId);
-			return {
-				id: circle.id,
-				name: circle.name,
-				description: circle.description,
-				inviteCode: circle.inviteCode,
-				avatarUrl: circle.avatarUrl,
-				createdAt: circle.createdAt,
-				updatedAt: circle.updatedAt,
-				createdBy: circle.createdBy,
-				membersCount: circle._count.members,
-				userRole: userMembership?.role || null,
-				// Include first 5 member avatars for preview
-				memberPreviews: circle.members.slice(0, 5).map(m => ({
-					id: m.user.id,
-					name: m.user.name,
-					image: m.user.image,
-				})),
-			};
-		});
+		// Generate signed URLs for avatars
+		const circlesWithRole = await Promise.all(
+			circles.map(async circle => {
+				const userMembership = circle.members.find(m => m.userId === userId);
+
+				// Generate signed URL from path if available
+				let avatarUrl = circle.avatarUrl;
+				if (circle.avatarPath) {
+					try {
+						avatarUrl = await getSignedUrl(circle.avatarPath, 'avatars');
+					} catch (error) {
+						console.error('Failed to generate avatar signed URL:', error);
+					}
+				}
+
+				return {
+					id: circle.id,
+					name: circle.name,
+					description: circle.description,
+					inviteCode: circle.inviteCode,
+					avatarUrl,
+					createdAt: circle.createdAt,
+					updatedAt: circle.updatedAt,
+					createdBy: circle.createdBy,
+					membersCount: circle._count.members,
+					userRole: userMembership?.role || null,
+					// Include first 5 member avatars for preview
+					memberPreviews: circle.members.slice(0, 5).map(m => ({
+						id: m.user.id,
+						name: m.user.name,
+						image: m.user.image,
+					})),
+				};
+			}),
+		);
 
 		return NextResponse.json(circlesWithRole, { status: 200 });
 	} catch (error) {

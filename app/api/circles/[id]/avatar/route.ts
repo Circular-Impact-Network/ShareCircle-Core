@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		// Get the current circle to check for existing avatar
 		const circle = await prisma.circle.findUnique({
 			where: { id: circleId },
-			select: { avatarUrl: true },
+			select: { avatarPath: true },
 		});
 
 		if (!circle) {
@@ -64,45 +64,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		}
 
 		// Delete old avatar if exists
-		const parsePathFromUrl = (url?: string | null) => {
-			if (!url) return null;
+		if (circle.avatarPath) {
 			try {
-				const u = new URL(url);
-				// signed URL path format: /storage/v1/object/sign/<bucket>/<path>?...
-				const parts = u.pathname.split('/object/sign/');
-				if (parts.length === 2) {
-					const afterSign = parts[1];
-					const pathWithBucket = afterSign.split('?')[0];
-					const bucketAndPath = pathWithBucket.split('/');
-					bucketAndPath.shift(); // remove bucket
-					return bucketAndPath.join('/');
-				}
-			} catch {
-				return null;
+				await deleteImage(circle.avatarPath, 'avatars');
+			} catch (error) {
+				console.error('Failed to delete old avatar:', error);
 			}
-			return null;
-		};
-
-		const existingPath = parsePathFromUrl(circle.avatarUrl);
+		}
 
 		// Upload new avatar to Supabase
 		// Using circleId as the folder to organize files
-		const filePath = await uploadImage(file, 'circle-avatars', circleId);
+		const filePath = await uploadImage(file, 'avatars', circleId);
 
-		// Generate signed URL (valid for 1 year)
-		const signedUrl = await getSignedUrl(filePath, 'circle-avatars');
+		// Generate signed URL for immediate use
+		const signedUrl = await getSignedUrl(filePath, 'avatars');
 
-		// Update circle with new avatar info
-		const updatedCircle = await prisma.circle.update({
+		// Update circle with new avatar path (store path, not URL)
+		await prisma.circle.update({
 			where: { id: circleId },
 			data: {
-				avatarUrl: signedUrl,
+				avatarPath: filePath,
+				avatarUrl: signedUrl, // Also update avatarUrl for backward compatibility
 			},
 		});
 
 		return NextResponse.json(
 			{
-				avatarUrl: updatedCircle.avatarUrl,
+				avatarUrl: signedUrl,
+				avatarPath: filePath,
 			},
 			{ status: 200 },
 		);
@@ -141,7 +130,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		// Get the current circle
 		const circle = await prisma.circle.findUnique({
 			where: { id: circleId },
-			select: { avatarUrl: true },
+			select: { avatarPath: true },
 		});
 
 		if (!circle) {
@@ -149,28 +138,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		}
 
 		// Delete avatar from storage if exists
-		const parsePathFromUrl = (url?: string | null) => {
-			if (!url) return null;
+		if (circle.avatarPath) {
 			try {
-				const u = new URL(url);
-				const parts = u.pathname.split('/object/sign/');
-				if (parts.length === 2) {
-					const afterSign = parts[1];
-					const pathWithBucket = afterSign.split('?')[0];
-					const bucketAndPath = pathWithBucket.split('/');
-					bucketAndPath.shift();
-					return bucketAndPath.join('/');
-				}
-			} catch {
-				return null;
-			}
-			return null;
-		};
-
-		const existingPath = parsePathFromUrl(circle.avatarUrl);
-		if (existingPath) {
-			try {
-				await deleteImage(existingPath, 'circle-avatars');
+				await deleteImage(circle.avatarPath, 'avatars');
 			} catch (error) {
 				console.error('Failed to delete avatar from storage:', error);
 			}
@@ -180,6 +150,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		await prisma.circle.update({
 			where: { id: circleId },
 			data: {
+				avatarPath: null,
 				avatarUrl: null,
 			},
 		});

@@ -1,61 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Loader2, Package, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-const mockListings = [
-	{
-		id: 1,
-		title: 'Camping Tent',
-		circle: 'Beach House Friends',
-		postedBy: { name: 'Sarah', avatar: 'S' },
-		image: '/camping-tent.png',
-		availability: 'Available',
-	},
-	{
-		id: 2,
-		title: 'Board Games',
-		circle: 'Book Club',
-		postedBy: { name: 'Emma', avatar: 'E' },
-		image: '/diverse-board-game-gathering.png',
-		availability: 'Available',
-	},
-	{
-		id: 3,
-		title: 'Hiking Backpack',
-		circle: 'Hiking Club',
-		postedBy: { name: 'Mike', avatar: 'M' },
-		image: '/hiking-backpack.png',
-		availability: 'Lent Out',
-	},
-	{
-		id: 4,
-		title: 'Party Decorations',
-		circle: 'Party Planning',
-		postedBy: { name: 'Alex', avatar: 'A' },
-		image: '/party-decorations.jpg',
-		availability: 'Available',
-	},
-	{
-		id: 5,
-		title: 'Projector',
-		circle: 'Beach House Friends',
-		postedBy: { name: 'John', avatar: 'J' },
-		image: '/home-theater-projector.png',
-		availability: 'Available',
-	},
-	{
-		id: 6,
-		title: 'Kayak',
-		circle: 'Hiking Club',
-		postedBy: { name: 'Lisa', avatar: 'L' },
-		image: '/single-person-kayak.png',
-		availability: 'Available',
-	},
-];
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
+import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 
 interface AllListingsPageProps {
 	onNavigate?: (page: string) => void;
@@ -63,73 +15,164 @@ interface AllListingsPageProps {
 
 export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
 	const [searchTerm, setSearchTerm] = useState('');
+	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
-	const filteredListings = mockListings.filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+	// Fetch all items across user's circles
+	const { data: items = [], isLoading, error } = useGetAllItemsQuery();
+
+	// Filter items based on search
+	const filteredItems = items.filter(
+		item =>
+			searchTerm === '' ||
+			item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+			item.circles.some(circle => circle.name.toLowerCase().includes(searchTerm.toLowerCase())),
+	);
 
 	return (
-		<div className="p-8">
-			<h1 className="text-4xl font-bold text-foreground mb-2">All Listings</h1>
-			<p className="text-muted-foreground mb-8">Browse items from all your circles</p>
+		<div className="p-4 sm:p-6 lg:p-8">
+			{/* Header */}
+			<div className="mb-6">
+				<h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">All Listings</h1>
+				<p className="text-muted-foreground">Browse all items shared across your circles</p>
+			</div>
 
-			<div className="flex gap-4 mb-8">
-				<div className="flex-1 relative">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+			{/* Search Bar */}
+			<div className="mb-6">
+				<div className="relative">
+					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
-						placeholder="Search items..."
+						placeholder="Search items, circles, or tags..."
 						value={searchTerm}
 						onChange={e => setSearchTerm(e.target.value)}
-						className="pl-10"
+						className="pl-9"
 					/>
 				</div>
-				<Button variant="outline" className="gap-2 bg-transparent">
-					<Filter className="w-4 h-4" />
-					Filters
-				</Button>
+				{filteredItems.length > 0 && (
+					<p className="text-sm text-muted-foreground mt-2">
+						Showing {filteredItems.length} of {items.length} items
+					</p>
+				)}
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{filteredListings.map(item => (
-					<div
-						key={item.id}
-						className="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-					>
-						<div className="h-40 bg-muted overflow-hidden">
-							<img
-								src={item.image || '/placeholder.svg'}
-								alt={item.title}
-								className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-							/>
+			{/* Loading State */}
+			{isLoading && (
+				<div className="flex flex-col items-center justify-center py-12">
+					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+					<p className="text-sm text-muted-foreground">Loading items...</p>
+				</div>
+			)}
+
+			{/* Error State */}
+			{error && (
+				<Card className="border-destructive/50 bg-destructive/10">
+					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/20">
+							<X className="h-7 w-7 text-destructive" />
 						</div>
-						<div className="p-4">
-							<div className="flex items-start justify-between mb-2">
-								<h3 className="font-semibold text-card-foreground group-hover:text-primary transition-colors">
-									{item.title}
-								</h3>
-							</div>
-							<p className="text-xs text-muted-foreground mb-3">{item.circle}</p>
-							<div className="flex items-center justify-between pt-3 border-t border-border">
-								<div className="flex items-center gap-2">
-									<Avatar className="w-6 h-6">
-										<AvatarFallback className="text-xs bg-primary text-primary-foreground">
-											{item.postedBy.avatar}
-										</AvatarFallback>
-									</Avatar>
-									<span className="text-sm text-muted-foreground">{item.postedBy.name}</span>
+						<div>
+							<p className="font-medium text-foreground mb-1">Failed to load items</p>
+							<p className="text-sm text-muted-foreground">Please try refreshing the page.</p>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Empty State */}
+			{!isLoading && !error && items.length === 0 && (
+				<Card className="border-dashed border-border/70 bg-card">
+					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+							<Package className="h-7 w-7 text-primary" />
+						</div>
+						<div>
+							<p className="font-medium text-foreground mb-1">No items yet</p>
+							<p className="text-sm text-muted-foreground">
+								Items shared in your circles will appear here.
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* No Results */}
+			{!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (
+				<Card className="border-dashed border-border/70 bg-card">
+					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+							<Search className="h-7 w-7 text-muted-foreground" />
+						</div>
+						<div>
+							<p className="font-medium text-foreground mb-1">No items found</p>
+							<p className="text-sm text-muted-foreground">Try a different search term</p>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Items List */}
+			{!isLoading && !error && filteredItems.length > 0 && (
+				<div className="space-y-3">
+					{filteredItems.map(item => (
+						<Card
+							key={item.id}
+							className="group hover:border-primary/50 transition-all cursor-pointer"
+							onClick={() => setSelectedItem(item)}
+						>
+							<CardContent className="flex items-center gap-4 p-4">
+								{/* Item Image */}
+								<div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+									<img
+										src={item.imageUrl}
+										alt={item.name}
+										className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+									/>
 								</div>
-								<span
-									className={`text-xs font-medium px-2 py-1 rounded ${
-										item.availability === 'Available'
-											? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-											: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-									}`}
-								>
-									{item.availability}
-								</span>
-							</div>
-						</div>
-					</div>
-				))}
-			</div>
+
+								{/* Item Info */}
+								<div className="flex-1 min-w-0">
+									<div className="flex items-start justify-between gap-2 mb-1">
+										<h3 className="font-semibold text-foreground truncate">{item.name}</h3>
+										{item.isOwner && (
+											<Badge variant="secondary" className="text-xs flex-shrink-0">
+												Your Item
+											</Badge>
+										)}
+									</div>
+
+									{item.description && (
+										<p className="text-sm text-muted-foreground line-clamp-1 mb-2">
+											{item.description}
+										</p>
+									)}
+
+									<div className="flex items-center gap-3 text-sm text-muted-foreground">
+										<div className="flex items-center gap-1.5">
+											<Avatar className="h-4 w-4">
+												<AvatarImage src={item.owner.image || undefined} />
+												<AvatarFallback className="text-[8px]">
+													{item.owner.name?.[0]?.toUpperCase() || '?'}
+												</AvatarFallback>
+											</Avatar>
+											<span className="truncate">{item.owner.name || 'Unknown'}</span>
+										</div>
+										{item.circles.length > 0 && (
+											<>
+												<span>•</span>
+												<span className="truncate">{item.circles[0].name}</span>
+											</>
+										)}
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
+
+			{/* Item Details Modal */}
+			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</div>
 	);
 }
