@@ -51,20 +51,12 @@ Be practical and focus on what makes this item useful for borrowing/sharing.`,
 // ============ VOYAGE MULTIMODAL EMBEDDINGS ============
 // Uses VOYAGE_API_KEY from env
 
-const VOYAGE_API_URL = 'https://api.voyageai.com/v1/multimodalembeddings';
+import { VoyageAIClient } from 'voyageai';
 
-interface VoyageEmbeddingResponse {
-	object: string;
-	data: Array<{
-		object: string;
-		embedding: number[];
-		index: number;
-	}>;
-	model: string;
-	usage: {
-		total_tokens: number;
-	};
-}
+// Initialize Voyage AI client
+const voyageClient = new VoyageAIClient({
+	apiKey: process.env.VOYAGE_API_KEY,
+});
 
 /**
  * Generate an embedding for an image using Voyage AI multimodal model
@@ -72,25 +64,25 @@ interface VoyageEmbeddingResponse {
  * @returns 1024-dimensional embedding vector
  */
 export async function generateImageEmbedding(imageUrl: string): Promise<number[]> {
-	const response = await fetch(VOYAGE_API_URL, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
+	try {
+		const result = await voyageClient.multimodalEmbed({
+			inputs: [
+				{
+					content: [{ type: 'image_url', imageUrl: imageUrl }],
+				},
+			],
 			model: 'voyage-multimodal-3',
-			inputs: [[{ type: 'image_url', image_url: imageUrl }]],
-		}),
-	});
+		});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Voyage AI embedding failed: ${response.status} - ${errorText}`);
+		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
+			throw new Error('No embedding data returned from Voyage AI');
+		}
+
+		return result.data[0].embedding;
+	} catch (error) {
+		console.error('Voyage AI image embedding error:', error);
+		throw new Error(`Voyage AI embedding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
 	}
-
-	const data: VoyageEmbeddingResponse = await response.json();
-	return data.data[0].embedding; // 1024-dimensional vector
 }
 
 /**
@@ -100,25 +92,25 @@ export async function generateImageEmbedding(imageUrl: string): Promise<number[]
  * @returns 1024-dimensional embedding vector
  */
 export async function generateTextEmbedding(text: string): Promise<number[]> {
-	const response = await fetch(VOYAGE_API_URL, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
+	try {
+		const result = await voyageClient.multimodalEmbed({
+			inputs: [
+				{
+					content: [{ type: 'text', text }],
+				},
+			],
 			model: 'voyage-multimodal-3',
-			inputs: [[{ type: 'text', text }]],
-		}),
-	});
+		});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Voyage AI embedding failed: ${response.status} - ${errorText}`);
+		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
+			throw new Error('No embedding data returned from Voyage AI');
+		}
+
+		return result.data[0].embedding;
+	} catch (error) {
+		console.error('Voyage AI text embedding error:', error);
+		throw new Error(`Voyage AI embedding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
 	}
-
-	const data: VoyageEmbeddingResponse = await response.json();
-	return data.data[0].embedding; // 1024-dimensional vector (same space as images!)
 }
 
 /**
@@ -129,28 +121,26 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
  * @returns 1024-dimensional embedding vector
  */
 export async function generateMultimodalEmbedding(imageUrl: string, text: string): Promise<number[]> {
-	const response = await fetch(VOYAGE_API_URL, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			model: 'voyage-multimodal-3',
+	try {
+		const result = await voyageClient.multimodalEmbed({
 			inputs: [
-				[
-					{ type: 'image_url', image_url: imageUrl },
-					{ type: 'text', text },
-				],
+				{
+					content: [
+						{ type: 'image_url', imageUrl: imageUrl },
+						{ type: 'text', text },
+					],
+				},
 			],
-		}),
-	});
+			model: 'voyage-multimodal-3',
+		});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Voyage AI embedding failed: ${response.status} - ${errorText}`);
+		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
+			throw new Error('No embedding data returned from Voyage AI');
+		}
+
+		return result.data[0].embedding;
+	} catch (error) {
+		console.error('Voyage AI multimodal embedding error:', error);
+		throw new Error(`Voyage AI embedding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
 	}
-
-	const data: VoyageEmbeddingResponse = await response.json();
-	return data.data[0].embedding;
 }

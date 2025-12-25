@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, X, Loader2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,8 @@ import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
+import { useGetAllItemsQuery, useSearchItemsMutation, Item } from '@/lib/redux/api/itemsApi';
+import { PageHeader, PageShell } from '@/components/ui/page';
 
 export function BrowseListingsPage() {
 	const [searchQuery, setSearchQuery] = useState('');
@@ -19,31 +20,40 @@ export function BrowseListingsPage() {
 	// Fetch all items across user's circles
 	const { data: items = [], isLoading, error } = useGetAllItemsQuery();
 
-	// Extract unique categories from items
+	// Semantic search mutation
+	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError }] =
+		useSearchItemsMutation();
+
+	// Debounced semantic search - only trigger when user stops typing
+	useEffect(() => {
+		if (searchQuery.length >= 3) {
+			const timer = setTimeout(() => {
+				searchItems({ query: searchQuery, limit: 50 });
+			}, 400);
+			return () => clearTimeout(timer);
+		}
+	}, [searchQuery, searchItems]);
+
+	// Determine which items to display
+	const displayItems = searchQuery.length >= 3 && searchResults ? searchResults : items;
+
+	// Extract unique categories from display items
 	const categories = useMemo(() => {
 		const cats = new Set<string>();
-		items.forEach(item => {
+		displayItems.forEach(item => {
 			item.categories.forEach(cat => cats.add(cat));
 		});
 		return ['All Categories', ...Array.from(cats).sort()];
-	}, [items]);
+	}, [displayItems]);
 
-	// Filter items based on search and category
+	// Filter items based on category (search is handled by backend)
 	const filteredItems = useMemo(() => {
-		return items.filter(item => {
-			// Search filter
-			const matchesSearch =
-				searchQuery === '' ||
-				item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-
+		return displayItems.filter(item => {
 			// Category filter
 			const matchesCategory = selectedCategory === 'All Categories' || item.categories.includes(selectedCategory);
-
-			return matchesSearch && matchesCategory;
+			return matchesCategory;
 		});
-	}, [items, searchQuery, selectedCategory]);
+	}, [displayItems, selectedCategory]);
 
 	const handleResetFilters = () => {
 		setSearchQuery('');
@@ -52,16 +62,18 @@ export function BrowseListingsPage() {
 
 	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories';
 
+	// Combined loading state
+	const isLoadingData = isLoading || (searchQuery.length >= 3 && isSearching);
+
+	// Combined error state
+	const hasError = error || searchError;
+
 	return (
-		<div className="p-4 sm:p-6 lg:p-8">
-			{/* Header */}
-			<div className="mb-6">
-				<h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Browse Items</h1>
-				<p className="text-muted-foreground">Discover items shared across all your circles</p>
-			</div>
+		<PageShell className="space-y-6">
+			<PageHeader title="Browse Items" description="Discover items shared across all your circles" />
 
 			{/* Search and Filter Bar */}
-			<div className="mb-6 flex flex-col sm:flex-row gap-3">
+			<div className="flex flex-col gap-3 sm:flex-row">
 				{/* Search Input */}
 				<div className="relative flex-1">
 					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -100,7 +112,7 @@ export function BrowseListingsPage() {
 
 				{/* Reset Filters */}
 				{hasActiveFilters && (
-					<Button variant="outline" onClick={handleResetFilters} className="gap-2">
+					<Button variant="outline" onClick={handleResetFilters} className="gap-2 sm:self-start">
 						<X className="h-4 w-4" />
 						Clear
 					</Button>
@@ -108,29 +120,30 @@ export function BrowseListingsPage() {
 			</div>
 
 			{/* Results Count */}
-			<div className="mb-4 flex items-center justify-between">
-				<p className="text-sm text-muted-foreground">
-					{isLoading ? (
-						'Loading items...'
-					) : (
-						<>
-							{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
-							{hasActiveFilters && ` (filtered from ${items.length} total)`}
-						</>
-					)}
-				</p>
+			<div className="flex items-center justify-between text-sm text-muted-foreground">
+				{isLoadingData ? (
+					searchQuery.length >= 3 && isSearching ? 'Searching...' : 'Loading items...'
+				) : (
+					<>
+						{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
+						{searchQuery.length >= 3 && searchResults && ' (semantic search)'}
+						{hasActiveFilters && !searchResults && ` (filtered from ${items.length} total)`}
+					</>
+				)}
 			</div>
 
 			{/* Loading State */}
-			{isLoading && (
+			{isLoadingData && (
 				<div className="flex flex-col items-center justify-center py-12">
 					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-					<p className="text-sm text-muted-foreground">Loading items...</p>
+					<p className="text-sm text-muted-foreground">
+						{searchQuery.length >= 3 && isSearching ? 'Searching with AI...' : 'Loading items...'}
+					</p>
 				</div>
 			)}
 
 			{/* Error State */}
-			{error && (
+			{hasError && (
 				<Card className="border-destructive/50 bg-destructive/10">
 					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/20">
@@ -145,7 +158,7 @@ export function BrowseListingsPage() {
 			)}
 
 			{/* Empty State - No Items */}
-			{!isLoading && !error && items.length === 0 && (
+			{!isLoadingData && !hasError && items.length === 0 && (
 				<Card className="border-dashed border-border/70 bg-card">
 					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -162,7 +175,7 @@ export function BrowseListingsPage() {
 			)}
 
 			{/* Empty State - No Results */}
-			{!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (
+			{!isLoadingData && !hasError && displayItems.length > 0 && filteredItems.length === 0 && (
 				<Card className="border-dashed border-border/70 bg-card">
 					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
@@ -180,7 +193,7 @@ export function BrowseListingsPage() {
 			)}
 
 			{/* Items Grid */}
-			{!isLoading && !error && filteredItems.length > 0 && (
+			{!isLoadingData && !hasError && filteredItems.length > 0 && (
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 					{filteredItems.map(item => (
 						<Card
@@ -252,6 +265,6 @@ export function BrowseListingsPage() {
 
 			{/* Item Details Modal */}
 			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
-		</div>
+		</PageShell>
 	);
 }
