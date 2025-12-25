@@ -106,7 +106,7 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Create New Listing</DialogTitle>
 					<DialogDescription>Share an item with your circles</DialogDescription>

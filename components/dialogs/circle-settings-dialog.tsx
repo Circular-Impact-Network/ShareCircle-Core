@@ -434,7 +434,7 @@ export function CircleSettingsDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl h-[50vh] min-h-[50vh] max-h-[50vh] overflow-hidden flex flex-col justify-between">
+			<DialogContent className="max-w-2xl h-[50dvh] min-h-[50dvh] max-h-[50dvh] overflow-hidden flex flex-col justify-between">
 				<DialogHeader>
 					<DialogTitle>Circle Settings</DialogTitle>
 					<DialogDescription>Manage your circle&apos;s settings, members, and more.</DialogDescription>

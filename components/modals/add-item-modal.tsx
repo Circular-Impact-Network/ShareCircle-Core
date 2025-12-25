@@ -399,7 +399,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
-			<DialogContent className="sm:max-w-lg h-[90vh] max-h-[90vh] flex flex-col p-0">
+			<DialogContent className="sm:max-w-lg h-[90dvh] max-h-[90dvh] flex flex-col p-0">
 				<DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
 					<DialogTitle className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-primary" />
