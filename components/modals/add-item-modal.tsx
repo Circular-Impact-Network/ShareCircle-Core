@@ -60,6 +60,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
 	const [categories, setCategories] = useState<string[]>([]);
+	const [categoryInput, setCategoryInput] = useState('');
 	const [tags, setTags] = useState<string[]>([]);
 	const [tagInput, setTagInput] = useState('');
 	const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
@@ -118,6 +119,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setName('');
 		setDescription('');
 		setCategories([]);
+		setCategoryInput('');
 		setTags([]);
 		setTagInput('');
 		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
@@ -287,6 +289,26 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		}
 	};
 
+	// Category management
+	const addCategory = () => {
+		const trimmed = categoryInput.trim();
+		if (trimmed && !categories.includes(trimmed)) {
+			setCategories([...categories, trimmed]);
+			setCategoryInput('');
+		}
+	};
+
+	const removeCategory = (category: string) => {
+		setCategories(categories.filter(c => c !== category));
+	};
+
+	const handleCategoryKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			addCategory();
+		}
+	};
+
 	// Tag management
 	const addTag = () => {
 		const trimmed = tagInput.trim();
@@ -317,9 +339,17 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		});
 	};
 
-	const selectAllCircles = () => {
-		setSelectedCircleIds(circles.map(c => c.id));
+	const toggleSelectAllCircles = () => {
+		if (selectedCircleIds.length === circles.length) {
+			// Deselect all
+			setSelectedCircleIds([]);
+		} else {
+			// Select all
+			setSelectedCircleIds(circles.map(c => c.id));
+		}
 	};
+
+	const allCirclesSelected = circles.length > 0 && selectedCircleIds.length === circles.length;
 
 	// Save item
 	const handleSave = async () => {
@@ -369,8 +399,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
-			<DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
+			<DialogContent className="sm:max-w-lg h-[90vh] max-h-[90vh] flex flex-col p-0">
+				<DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
 					<DialogTitle className="flex items-center gap-2">
 						<Sparkles className="h-5 w-5 text-primary" />
 						Add New Item
@@ -383,6 +413,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						{state === 'saving' && 'Creating your item...'}
 					</DialogDescription>
 				</DialogHeader>
+
+				<div className="flex-1 overflow-y-auto px-6 py-4">{/* Scrollable content wrapper */}
 
 				{/* Capture State */}
 				{state === 'capture' && !showCamera && (
@@ -539,24 +571,31 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						</div>
 
 						{/* Categories */}
-						{categories.length > 0 && (
-							<div className="space-y-2">
-								<Label className="text-xs uppercase tracking-wide text-muted-foreground">Categories</Label>
-								<div className="flex flex-wrap gap-2">
-									{categories.map(category => (
-										<Badge key={category} variant="secondary" className="gap-1">
-											{category}
-											<button
-												onClick={() => setCategories(categories.filter(c => c !== category))}
-												className="ml-1 hover:text-destructive"
-											>
-												<X className="h-3 w-3" />
-											</button>
-										</Badge>
-									))}
-								</div>
+						<div className="space-y-2">
+							<Label className="text-xs uppercase tracking-wide text-muted-foreground">Categories</Label>
+							<div className="flex flex-wrap gap-2 mb-2">
+								{categories.map(category => (
+									<Badge key={category} variant="secondary" className="gap-1">
+										{category}
+										<button onClick={() => removeCategory(category)} className="ml-1 hover:text-destructive">
+											<X className="h-3 w-3" />
+										</button>
+									</Badge>
+								))}
 							</div>
-						)}
+							<div className="flex gap-2">
+								<Input
+									placeholder="Add a category..."
+									value={categoryInput}
+									onChange={e => setCategoryInput(e.target.value)}
+									onKeyDown={handleCategoryKeyDown}
+									className="flex-1"
+								/>
+								<Button variant="outline" onClick={addCategory} disabled={!categoryInput.trim()}>
+									Add
+								</Button>
+							</div>
+						</div>
 
 						{/* Tags */}
 						<div className="space-y-2">
@@ -586,15 +625,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						</div>
 
 						{/* Circle Selection */}
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label className="text-xs uppercase tracking-wide text-muted-foreground">Share with Circles *</Label>
-								{circles.length > 1 && (
-									<Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAllCircles}>
-										Select All
-									</Button>
-								)}
-							</div>
+						<div className="space-y-3">
+							<Label className="text-xs uppercase tracking-wide text-muted-foreground">Share with Circles *</Label>
 
 							{isLoadingCircles ? (
 								<div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
@@ -606,36 +638,73 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 									You need to join or create a circle first.
 								</div>
 							) : (
-								<div className="grid gap-2 max-h-32 overflow-y-auto">
-									{circles.map(circle => (
+								<>
+									{/* Select All Checkbox */}
+									{circles.length > 1 && (
 										<button
-											key={circle.id}
 											type="button"
-											onClick={() => toggleCircle(circle.id)}
-											className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-												selectedCircleIds.includes(circle.id)
-													? 'border-primary bg-primary/5'
-													: 'border-border hover:border-primary/50 hover:bg-muted/50'
-											}`}
+											onClick={toggleSelectAllCircles}
+											className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-all text-left w-full"
 										>
 											<div
-												className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-													selectedCircleIds.includes(circle.id)
+												className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+													allCirclesSelected
 														? 'border-primary bg-primary'
 														: 'border-muted-foreground'
 												}`}
 											>
-												{selectedCircleIds.includes(circle.id) && <Check className="h-3 w-3 text-white" />}
+												{allCirclesSelected && <Check className="h-3 w-3 text-white" />}
 											</div>
-											<span className="font-medium flex-1">{circle.name}</span>
+											<span className="font-medium text-sm">Select All Circles</span>
 										</button>
-									))}
-								</div>
+									)}
+
+									{/* Horizontal Scrollable Circle List */}
+									<div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+										{circles.map(circle => (
+											<button
+												key={circle.id}
+												type="button"
+												onClick={() => toggleCircle(circle.id)}
+												className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left flex-shrink-0 snap-start min-w-[200px] ${
+													selectedCircleIds.includes(circle.id)
+														? 'border-primary bg-primary/5'
+														: 'border-border hover:border-primary/50 hover:bg-muted/50'
+												}`}
+											>
+												<div
+													className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+														selectedCircleIds.includes(circle.id)
+															? 'border-primary bg-primary'
+															: 'border-muted-foreground'
+													}`}
+												>
+													{selectedCircleIds.includes(circle.id) && <Check className="h-3 w-3 text-white" />}
+												</div>
+												<span className="font-medium flex-1 truncate">{circle.name}</span>
+											</button>
+										))}
+									</div>
+								</>
 							)}
 						</div>
 
-						{/* Action Buttons */}
-						<div className="flex gap-3 pt-2">
+					</div>
+				)}
+
+				{/* Saving State */}
+				{state === 'saving' && (
+					<div className="py-12 flex flex-col items-center gap-4">
+						<Loader2 className="h-8 w-8 animate-spin text-primary" />
+						<p className="text-sm text-muted-foreground">Creating your item...</p>
+					</div>
+				)}
+				</div>{/* End of scrollable content wrapper */}
+
+				{/* Footer with Action Buttons - Always visible when in editing state */}
+				{state === 'editing' && (
+					<div className="flex-shrink-0 px-6 py-4 border-t bg-background">
+						<div className="flex gap-3">
 							<Button variant="outline" onClick={handleClose} className="flex-1" disabled={isSaving}>
 								Cancel
 							</Button>
@@ -657,14 +726,6 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 								)}
 							</Button>
 						</div>
-					</div>
-				)}
-
-				{/* Saving State */}
-				{state === 'saving' && (
-					<div className="py-12 flex flex-col items-center gap-4">
-						<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						<p className="text-sm text-muted-foreground">Creating your item...</p>
 					</div>
 				)}
 			</DialogContent>
