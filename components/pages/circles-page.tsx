@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader, PageShell } from '@/components/ui/page';
 
 interface CircleMemberPreview {
 	id: string;
@@ -170,57 +171,52 @@ export function CirclesPage({ onSelectCircle }: CirclesPageProps) {
 	};
 
 	return (
-		<div className="p-4 sm:p-6 lg:p-8">
-			{/* Header */}
-			<div className="mb-6 sm:mb-8">
-				<h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">My Circles</h1>
-				<p className="text-sm sm:text-base text-muted-foreground">
-					Join communities and share items with friends
-				</p>
-			</div>
-
-			{/* Actions */}
-			<div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
-				<div className="flex gap-2 sm:gap-4 flex-1">
-					<Button
-						onClick={() => setShowCreateModal(true)}
-						className="gap-2 flex-1 sm:flex-none shadow-md hover:shadow-lg transition-all duration-200"
-					>
-						<Plus className="w-4 h-4" />
-						<span className="hidden sm:inline">Create Circle</span>
-						<span className="sm:hidden">Create</span>
-					</Button>
-					<Button
-						onClick={() => setShowJoinModal(true)}
-						variant="outline"
-						className="gap-2 flex-1 sm:flex-none bg-transparent transition-all duration-200"
-					>
-						<Link2 className="w-4 h-4" />
-						<span className="hidden sm:inline">Join via Code</span>
-						<span className="sm:hidden">Join</span>
-					</Button>
-				</div>
-
-				{/* View Toggle */}
-				<div className="flex items-center gap-1 p-1 bg-muted rounded-lg self-end sm:self-auto">
-					<Button
-						variant={viewMode === 'grid' ? 'default' : 'ghost'}
-						size="sm"
-						onClick={() => setViewMode('grid')}
-						className="h-8 px-3"
-					>
-						<LayoutGrid className="w-4 h-4" />
-					</Button>
-					<Button
-						variant={viewMode === 'list' ? 'default' : 'ghost'}
-						size="sm"
-						onClick={() => setViewMode('list')}
-						className="h-8 px-3"
-					>
-						<List className="w-4 h-4" />
-					</Button>
-				</div>
-			</div>
+		<PageShell className="space-y-6 sm:space-y-8">
+			<PageHeader
+				title="My Circles"
+				description="Join communities and share items with friends"
+				actions={
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+						<div className="flex gap-2 sm:gap-3">
+							<Button
+								onClick={() => setShowCreateModal(true)}
+								className="flex-1 gap-2 shadow-md hover:shadow-lg transition-all duration-200 sm:flex-none"
+							>
+								<Plus className="w-4 h-4" />
+								<span className="hidden sm:inline">Create Circle</span>
+								<span className="sm:hidden">Create</span>
+							</Button>
+							<Button
+								onClick={() => setShowJoinModal(true)}
+								variant="outline"
+								className="flex-1 gap-2 bg-transparent transition-all duration-200 sm:flex-none"
+							>
+								<Link2 className="w-4 h-4" />
+								<span className="hidden sm:inline">Join via Code</span>
+								<span className="sm:hidden">Join</span>
+							</Button>
+						</div>
+						<div className="flex items-center gap-1 rounded-lg bg-muted p-1 sm:self-auto">
+							<Button
+								variant={viewMode === 'grid' ? 'default' : 'ghost'}
+								size="sm"
+								onClick={() => setViewMode('grid')}
+								className="h-8 px-3"
+							>
+								<LayoutGrid className="w-4 h-4" />
+							</Button>
+							<Button
+								variant={viewMode === 'list' ? 'default' : 'ghost'}
+								size="sm"
+								onClick={() => setViewMode('list')}
+								className="h-8 px-3"
+							>
+								<List className="w-4 h-4" />
+							</Button>
+						</div>
+					</div>
+				}
+			/>
 
 			{/* Loading State */}
 			{isLoading && (
@@ -388,6 +384,6 @@ export function CirclesPage({ onSelectCircle }: CirclesPageProps) {
 				onCircleCreated={handleCircleCreated}
 			/>
 			<JoinCircleModal open={showJoinModal} onOpenChange={setShowJoinModal} onJoinSuccess={handleJoinSuccess} />
-		</div>
+		</PageShell>
 	);
 }

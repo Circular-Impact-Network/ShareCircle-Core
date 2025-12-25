@@ -24,6 +24,7 @@ import {
 	selectUserBio,
 } from '@/lib/redux/selectors/userSelectors';
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
+import { PageHeader, PageShell } from '@/components/ui/page';
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
@@ -121,11 +122,8 @@ export function SettingsPage() {
 	};
 
 	return (
-		<div className="container max-w-4xl mx-auto p-4 md:p-8 space-y-8">
-			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-				<p className="text-muted-foreground mt-2">Manage your account settings and preferences.</p>
-			</div>
+		<PageShell className="max-w-5xl space-y-8">
+			<PageHeader title="Settings" description="Manage your account settings and preferences." />
 
 			<Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
 				<TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
@@ -338,6 +336,6 @@ export function SettingsPage() {
 					</Card>
 				</TabsContent>
 			</Tabs>
-		</div>
+		</PageShell>
 	);
 }

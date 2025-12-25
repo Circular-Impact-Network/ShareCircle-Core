@@ -163,6 +163,8 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		min-height: 100vh;
+		min-height: 100dvh;
 	}
 	h1 {
 		@apply text-3xl font-semibold tracking-tight;

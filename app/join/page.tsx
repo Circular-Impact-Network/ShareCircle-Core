@@ -78,7 +78,7 @@ function JoinPageContent() {
 	// Loading state while checking auth
 	if (status === 'loading') {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-background">
+			<div className="min-h-[100dvh] flex items-center justify-center bg-background">
 				<div className="text-center">
 					<Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
 					<p className="text-muted-foreground">Checking authentication...</p>
@@ -90,7 +90,7 @@ function JoinPageContent() {
 	// No code provided
 	if (!code) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-background p-4">
+			<div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
 				<div className="max-w-md w-full text-center">
 					<div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
 						<XCircle className="w-8 h-8 text-destructive" />
@@ -113,7 +113,7 @@ function JoinPageContent() {
 	// Joining in progress
 	if (isJoining) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-background">
+			<div className="min-h-[100dvh] flex items-center justify-center bg-background">
 				<div className="text-center">
 					<Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
 					<h1 className="text-xl font-semibold text-foreground mb-2">Joining Circle...</h1>
@@ -126,7 +126,7 @@ function JoinPageContent() {
 	// Join result - Success
 	if (joinResult?.success) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-background p-4">
+			<div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
 				<div className="max-w-md w-full text-center">
 					<div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
 						<CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -157,7 +157,7 @@ function JoinPageContent() {
 	// Join result - Error
 	if (joinResult && !joinResult.success) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-background p-4">
+			<div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
 				<div className="max-w-md w-full text-center">
 					<div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
 						<XCircle className="w-8 h-8 text-destructive" />
@@ -177,7 +177,7 @@ function JoinPageContent() {
 
 	// Default loading state
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-background">
+		<div className="min-h-[100dvh] flex items-center justify-center bg-background">
 			<div className="text-center">
 				<Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
 				<p className="text-muted-foreground">Processing invite...</p>
@@ -190,7 +190,7 @@ export default function JoinPage() {
 	return (
 		<Suspense
 			fallback={
-				<div className="min-h-screen flex items-center justify-center bg-background">
+				<div className="min-h-[100dvh] flex items-center justify-center bg-background">
 					<div className="text-center">
 						<Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
 						<p className="text-muted-foreground">Loading...</p>

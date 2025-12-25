@@ -5,6 +5,7 @@ import { Plus, MapPin, Users, TrendingUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { PageShell } from '@/components/ui/page';
 
 interface DashboardHomeProps {
 	onNavigate: (page: string) => void;
@@ -43,8 +44,8 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
 	];
 
 	return (
-		<div className="flex-1 overflow-auto bg-background">
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 lg:px-8">
+		<div className="flex-1 bg-background">
+			<PageShell className="flex flex-col gap-8">
 				<Card className="border-none bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 text-primary-foreground shadow-2xl">
 					<CardHeader className="space-y-2">
 						<CardTitle className="text-3xl font-bold lg:text-4xl">Welcome back, {userName}!</CardTitle>
@@ -139,7 +140,7 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
 						</CardContent>
 					</Card>
 				</div>
-			</div>
+			</PageShell>
 		</div>
 	);
 }

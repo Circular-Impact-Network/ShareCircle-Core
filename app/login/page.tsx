@@ -98,7 +98,7 @@ function LoginContent() {
 	};
 
 	return (
-		<div className="min-h-screen flex">
+		<div className="min-h-[100dvh] flex">
 			{/* Left side - Image/Brand */}
 			<div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/60 items-center justify-center p-8">
 				<div className="max-w-md">
@@ -289,7 +289,7 @@ export default function Login() {
 	return (
 		<Suspense
 			fallback={
-				<div className="min-h-screen flex items-center justify-center bg-background">
+				<div className="min-h-[100dvh] flex items-center justify-center bg-background">
 					<div className="text-center">
 						<p className="text-muted-foreground">Loading...</p>
 					</div>

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
+import { PageHeader, PageShell } from '@/components/ui/page';
 
 interface AllListingsPageProps {
 	onNavigate?: (page: string) => void;
@@ -31,15 +32,11 @@ export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
 	);
 
 	return (
-		<div className="p-4 sm:p-6 lg:p-8">
-			{/* Header */}
-			<div className="mb-6">
-				<h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">All Listings</h1>
-				<p className="text-muted-foreground">Browse all items shared across your circles</p>
-			</div>
+		<PageShell className="space-y-6">
+			<PageHeader title="All Listings" description="Browse all items shared across your circles" />
 
 			{/* Search Bar */}
-			<div className="mb-6">
+			<div className="space-y-2">
 				<div className="relative">
 					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
@@ -50,7 +47,7 @@ export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
 					/>
 				</div>
 				{filteredItems.length > 0 && (
-					<p className="text-sm text-muted-foreground mt-2">
+					<p className="text-sm text-muted-foreground">
 						Showing {filteredItems.length} of {items.length} items
 					</p>
 				)}
@@ -173,6 +170,6 @@ export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
 
 			{/* Item Details Modal */}
 			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
-		</div>
+		</PageShell>
 	);
 }

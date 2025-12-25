@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { useGetAllItemsQuery, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader, PageShell } from '@/components/ui/page';
 
 export function MyListingsPage() {
 	const [showAddItem, setShowAddItem] = useState(false);
@@ -54,19 +55,18 @@ export function MyListingsPage() {
 	};
 
 	return (
-		<div className="p-4 sm:p-6 lg:p-8">
-			{/* Header */}
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">My Listings</h1>
-					<p className="text-muted-foreground">Manage items you&apos;re sharing</p>
-				</div>
-				<Button onClick={() => setShowAddItem(true)} className="gap-2">
-					<Plus className="h-4 w-4" />
-					<span className="hidden sm:inline">Add Item</span>
-					<span className="sm:hidden">Add</span>
-				</Button>
-			</div>
+		<PageShell className="space-y-6">
+			<PageHeader
+				title="My Listings"
+				description="Manage items you&apos;re sharing"
+				actions={
+					<Button onClick={() => setShowAddItem(true)} className="gap-2">
+						<Plus className="h-4 w-4" />
+						<span className="hidden sm:inline">Add Item</span>
+						<span className="sm:hidden">Add</span>
+					</Button>
+				}
+			/>
 
 			{/* Tabs for different item states */}
 			<Tabs defaultValue="all" className="space-y-6">
@@ -271,6 +271,6 @@ export function MyListingsPage() {
 			{/* Modals */}
 			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} onItemCreated={() => refetch()} />
 			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
-		</div>
+		</PageShell>
 	);
 }

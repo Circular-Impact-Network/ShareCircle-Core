@@ -55,9 +55,9 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 	};
 
 	const SidebarContent = () => (
-		<>
+		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
-			<div className="p-6 border-b border-border flex items-center justify-between gap-3 px-4 py-3">
+			<div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
 				<div className="flex items-center gap-3">
 					<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
 						<span className="text-primary-foreground font-bold text-sm">SC</span>
@@ -101,7 +101,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
 			{/* User Profile Section */}
 			{(userName || userEmail) && (
-				<div className="px-4 py-3 border-t border-border">
+				<div className="border-t border-border px-4 py-3">
 					<div className="flex items-center gap-3">
 						<Avatar className="w-10 h-10 bg-primary">
 							<AvatarImage src={userImage || ''} />
@@ -119,15 +119,15 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 					</div>
 				</div>
 			)}
-		</>
+		</div>
 	);
 
 	return (
 		<>
-			{/* Desktop Sidebar */}
-			<div className="hidden lg:flex w-64 border-r border-border bg-card flex-col h-screen">
+			{/* Desktop Sidebar - Fixed position */}
+			<aside className="hidden lg:flex fixed left-0 top-0 w-64 h-[100dvh] border-r border-border bg-card flex-col z-40">
 				<SidebarContent />
-			</div>
+			</aside>
 
 			{/* Mobile Overlay */}
 			{isMobileSidebarOpen && (
@@ -139,7 +139,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
 			{/* Mobile Sidebar */}
 			<div
-				className={`fixed inset-y-0 left-0 w-64 border-r border-border bg-card flex flex-col h-screen z-50 transform transition-transform duration-300 lg:hidden ${
+				className={`fixed inset-y-0 left-0 w-64 border-r border-border bg-card flex flex-col min-h-[100dvh] max-h-[100dvh] z-50 transform transition-transform duration-300 lg:hidden ${
 					isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 				}`}
 			>

@@ -53,6 +53,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
 import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import { PageShell } from '@/components/ui/page';
 
 interface CircleDetailsPageProps {
 	circleId: string;
@@ -319,7 +320,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 	// Not found state
 	if (!circle) {
 		return (
-			<div className="p-4 sm:p-6 lg:p-8">
+			<PageShell className="space-y-4">
 				<Button onClick={onBack} variant="ghost" className="mb-4 gap-2">
 					<ArrowLeft className="h-4 w-4" />
 					Back to Circles
@@ -327,7 +328,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 				<Alert variant="destructive">
 					<AlertDescription>Circle not found or you don&apos;t have access.</AlertDescription>
 				</Alert>
-			</div>
+			</PageShell>
 		);
 	}
 
@@ -345,33 +346,31 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 	};
 
 	return (
-		<div className="p-4 sm:p-6 lg:p-8">
-			{/* Back Button */}
-			<Button onClick={onBack} variant="ghost" className="-ml-2 mb-4 gap-2 sm:mb-6">
-				<ArrowLeft className="h-4 w-4" />
-				<span className="hidden sm:inline">Back to Circles</span>
-				<span className="sm:hidden">Back</span>
-			</Button>
+		<PageShell className="space-y-6 sm:space-y-8">
+			<div className="flex flex-col gap-4">
+				{/* Back Button */}
+				<Button onClick={onBack} variant="ghost" className="w-fit gap-2">
+					<ArrowLeft className="h-4 w-4" />
+					<span className="hidden sm:inline">Back to Circles</span>
+					<span className="sm:hidden">Back</span>
+				</Button>
 
-			{/* Compact Circle Header */}
-			<div className="mb-6 sm:mb-8">
+				{/* Compact Circle Header */}
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					{/* Left: Avatar + Info */}
 					<div className="flex items-start gap-4">
 						{/* Circle Avatar */}
-						<div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 overflow-hidden">
+						<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 sm:h-20 sm:w-20">
 							{circle.avatarUrl ? (
 								<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
 							) : (
-								<Users className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+								<Users className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
 							)}
 						</div>
 
 						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-2 flex-wrap">
-								<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-									{circle.name}
-								</h1>
+							<div className="flex flex-wrap items-center gap-2">
+								<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
 								{isAdmin && (
 									<Badge
 										variant="secondary"
@@ -382,12 +381,10 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 									</Badge>
 								)}
 							</div>
-							<p className="text-sm sm:text-base text-muted-foreground mt-1 line-clamp-2">
-								{circle.description || 'No description'}
-							</p>
+							<p className="mt-1 line-clamp-2 text-base text-muted-foreground">{circle.description || 'No description'}</p>
 
 							{/* Inline Stats */}
-							<div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+							<div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
 								<span className="inline-flex items-center gap-1.5">
 									<Users className="h-4 w-4" />
 									{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'}
@@ -401,7 +398,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 					</div>
 
 					{/* Right: Action Buttons */}
-					<div className="flex gap-2 flex-shrink-0">
+					<div className="flex flex-shrink-0 gap-2">
 						{isAdmin && (
 							<Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSettings(true)}>
 								<Settings className="h-4 w-4" />
@@ -422,17 +419,17 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 
 				{/* Collapsible Invite Section */}
 				{showInviteSection && (
-					<Card className="mt-4 border-border/70 bg-muted/30">
+					<Card className="border-border/70 bg-muted/30">
 						<CardContent className="p-4">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 								{/* Invite Code */}
 								<div className="flex-1">
-									<div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+									<div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
 										<Link2 className="h-3 w-3" />
 										Invite Code
 									</div>
 									<div className="flex items-center gap-2">
-										<code className="font-mono text-lg sm:text-xl font-bold tracking-widest text-foreground">
+										<code className="font-mono text-lg font-bold tracking-widest text-foreground sm:text-xl">
 											{circle.inviteCode}
 										</code>
 										<Button
@@ -465,14 +462,14 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 									</div>
 								</div>
 
-								<Separator orientation="vertical" className="hidden sm:block h-12" />
+								<Separator orientation="vertical" className="hidden h-12 sm:block" />
 								<Separator className="sm:hidden" />
 
 								{/* Share Link */}
 								<div className="flex-1">
-									<div className="text-xs text-muted-foreground mb-1">Share Link</div>
+									<div className="mb-1 text-xs text-muted-foreground">Share Link</div>
 									<div className="flex items-center gap-2">
-										<code className="flex-1 text-sm text-primary truncate bg-muted/50 px-2 py-1 rounded">
+										<code className="flex-1 truncate rounded bg-muted/50 px-2 py-1 text-sm text-primary">
 											{getShareUrl()}
 										</code>
 										<Button
@@ -502,8 +499,8 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 			</div>
 
 			{/* Members Section - Horizontal Carousel on Desktop, Stack on Mobile */}
-			<div className="mb-6 sm:mb-8">
-				<div className="mb-4 flex items-center justify-between">
+			<div className="space-y-4 sm:space-y-6">
+				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<h2 className="text-xl font-semibold sm:text-2xl">Members</h2>
 						<Badge variant="outline" className="text-xs">
@@ -767,8 +764,8 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 			</div>
 
 			{/* Items Section */}
-			<div className="mb-8">
-				<div className="flex items-center justify-between mb-4">
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<h2 className="text-xl font-semibold sm:text-2xl">Shared Items</h2>
 						<Badge variant="outline" className="text-xs">
@@ -1053,6 +1050,6 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 					}}
 				/>
 			)}
-		</div>
+		</PageShell>
 	);
 }

@@ -57,7 +57,7 @@ function DashboardContent() {
 	// Show loading while checking authentication or during SSR
 	if (!mounted || status === 'loading' || status === 'unauthenticated') {
 		return (
-			<div className="flex h-screen items-center justify-center bg-background">
+			<div className="flex min-h-[100dvh] items-center justify-center bg-background">
 				<div className="text-center">
 					<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
 						<span className="text-primary-foreground font-bold text-sm">SC</span>
@@ -97,9 +97,9 @@ function DashboardContent() {
 	};
 
 	return (
-		<div className="flex h-screen bg-background overflow-hidden">
+		<div className="min-h-[100dvh] bg-background">
 			<Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
-			<main className="flex-1 overflow-auto">
+			<main className="lg:ml-64 min-h-[100dvh] overflow-auto">
 				{/* Mobile menu button */}
 				<Button
 					type="button"
@@ -120,7 +120,7 @@ export default function Dashboard() {
 	return (
 		<Suspense
 			fallback={
-				<div className="flex h-screen items-center justify-center bg-background">
+				<div className="flex min-h-[100dvh] items-center justify-center bg-background">
 					<div className="text-center">
 						<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
 							<span className="text-primary-foreground font-bold text-sm">SC</span>

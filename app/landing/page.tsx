@@ -5,7 +5,7 @@ import { ArrowRight, Share2, Lock, Users } from 'lucide-react';
 
 export default function Landing() {
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+		<div className="min-h-[100dvh] bg-gradient-to-br from-background via-background to-primary/5">
 			{/* Navigation */}
 			<nav className="border-b border-border/40 backdrop-blur-sm">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
