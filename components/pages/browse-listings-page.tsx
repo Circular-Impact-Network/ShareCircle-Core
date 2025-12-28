@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Search, Filter, X, Loader2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,64 +9,143 @@ import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetAllItemsQuery, useSearchItemsMutation, Item } from '@/lib/redux/api/itemsApi';
+import { useGetAllItemsQuery, useSearchItemsMutation, Item, GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { useToast } from '@/hooks/use-toast';
 
 export function BrowseListingsPage() {
+	const { toast } = useToast();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('All Categories');
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+	const [isSearchActive, setIsSearchActive] = useState(false);
+	const hasShownSearchErrorRef = useRef(false);
 
-	// Fetch all items across user's circles
-	const { data: items = [], isLoading, error } = useGetAllItemsQuery();
+	// Build filters for the query
+	const filters: GetItemsFilters = useMemo(() => ({
+		category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+	}), [selectedCategory]);
+
+	// Fetch all items across user's circles with category filter
+	const { data: items = [], isLoading, error, refetch } = useGetAllItemsQuery(filters);
 
 	// Semantic search mutation
-	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError }] =
+	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError, reset: resetSearch }] =
 		useSearchItemsMutation();
 
-	// Debounced semantic search - only trigger when user stops typing
+	// Show toast for errors instead of blocking the UI
 	useEffect(() => {
-		if (searchQuery.length >= 3) {
-			const timer = setTimeout(() => {
-				searchItems({ query: searchQuery, limit: 50 });
-			}, 400);
-			return () => clearTimeout(timer);
+		if (error && !hasShownSearchErrorRef.current) {
+			hasShownSearchErrorRef.current = true;
+			toast({
+				title: 'Unable to load items',
+				description: 'Please try again later.',
+				variant: 'destructive',
+			});
 		}
-	}, [searchQuery, searchItems]);
+	}, [error, toast]);
+
+	// Show toast for search errors but continue showing default items
+	useEffect(() => {
+		if (searchError) {
+			toast({
+				title: 'Search temporarily unavailable',
+				description: 'Showing default results instead.',
+				variant: 'default',
+			});
+			// Reset search state to show default items
+			setIsSearchActive(false);
+		}
+	}, [searchError, toast]);
+
+	// Execute semantic search
+	const executeSearch = useCallback(() => {
+		const trimmedQuery = searchQuery.trim();
+		if (trimmedQuery.length >= 2) {
+			setIsSearchActive(true);
+			searchItems({ 
+				query: trimmedQuery, 
+				category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+				limit: 50 
+			});
+		}
+	}, [searchQuery, selectedCategory, searchItems]);
+
+	// Handle search on Enter key press
+	const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			executeSearch();
+		}
+	}, [executeSearch]);
+
+	// Clear search and reset to default items
+	const clearSearch = useCallback(() => {
+		setSearchQuery('');
+		setIsSearchActive(false);
+		resetSearch();
+	}, [resetSearch]);
+
+	// Handle category change - refetch from backend
+	const handleCategoryChange = useCallback((category: string) => {
+		setSelectedCategory(category);
+		// Reset search when category changes
+		if (isSearchActive) {
+			setIsSearchActive(false);
+			resetSearch();
+		}
+		// Category filtering is now handled by the query, which will auto-refetch
+	}, [isSearchActive, resetSearch]);
 
 	// Determine which items to display
-	const displayItems = searchQuery.length >= 3 && searchResults ? searchResults : items;
+	const displayItems = useMemo(() => {
+		// If search is active and we have results, show search results
+		if (isSearchActive && searchResults && searchResults.length > 0) {
+			return searchResults;
+		}
+		// If search is active but no results, show empty (handled by empty state)
+		if (isSearchActive && searchResults && searchResults.length === 0) {
+			return [];
+		}
+		// Default: show all items (already filtered by category from backend)
+		return items;
+	}, [isSearchActive, searchResults, items]);
 
-	// Extract unique categories from display items
+	// Extract unique categories from ALL items (not filtered) for the dropdown
 	const categories = useMemo(() => {
 		const cats = new Set<string>();
-		displayItems.forEach(item => {
+		items.forEach(item => {
 			item.categories.forEach(cat => cats.add(cat));
 		});
 		return ['All Categories', ...Array.from(cats).sort()];
-	}, [displayItems]);
+	}, [items]);
 
-	// Filter items based on category (search is handled by backend)
-	const filteredItems = useMemo(() => {
-		return displayItems.filter(item => {
-			// Category filter
-			const matchesCategory = selectedCategory === 'All Categories' || item.categories.includes(selectedCategory);
-			return matchesCategory;
-		});
-	}, [displayItems, selectedCategory]);
-
-	const handleResetFilters = () => {
+	// Reset all filters
+	const handleResetFilters = useCallback(() => {
 		setSearchQuery('');
 		setSelectedCategory('All Categories');
-	};
+		setIsSearchActive(false);
+		resetSearch();
+	}, [resetSearch]);
 
-	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories';
+	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || isSearchActive;
 
 	// Combined loading state
-	const isLoadingData = isLoading || (searchQuery.length >= 3 && isSearching);
+	const isLoadingData = isLoading || isSearching;
 
-	// Combined error state
-	const hasError = error || searchError;
+	// Get display text for results count
+	const getResultsText = () => {
+		const count = displayItems.length;
+		const itemText = count === 1 ? 'item' : 'items';
+		
+		if (isSearchActive && searchResults) {
+			return `${count} ${itemText} found`;
+		}
+		if (selectedCategory !== 'All Categories') {
+			return `${count} ${itemText} in "${selectedCategory}"`;
+		}
+		return `${count} ${itemText}`;
+	};
 
 	return (
 		<PageShell className="space-y-6">
@@ -78,25 +157,41 @@ export function BrowseListingsPage() {
 				<div className="relative flex-1">
 					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
-						placeholder="Search items, tags, or descriptions..."
+						placeholder="Search items... (press Enter to search)"
 						value={searchQuery}
 						onChange={e => setSearchQuery(e.target.value)}
-						className="pl-9 pr-9"
+						onKeyDown={handleSearchKeyDown}
+						className="pl-9 pr-20"
 					/>
-					{searchQuery && (
+					<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+						{searchQuery && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-7 w-7 p-0"
+								onClick={clearSearch}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						)}
 						<Button
-							variant="ghost"
+							variant="secondary"
 							size="sm"
-							className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-							onClick={() => setSearchQuery('')}
+							className="h-7 px-2"
+							onClick={executeSearch}
+							disabled={searchQuery.trim().length < 2 || isSearching}
 						>
-							<X className="h-4 w-4" />
+							{isSearching ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								'Search'
+							)}
 						</Button>
-					)}
+					</div>
 				</div>
 
 				{/* Category Filter */}
-				<Select value={selectedCategory} onValueChange={setSelectedCategory}>
+				<Select value={selectedCategory} onValueChange={handleCategoryChange}>
 					<SelectTrigger className="w-full sm:w-[200px]">
 						<Filter className="h-4 w-4 mr-2" />
 						<SelectValue placeholder="Category" />
@@ -122,43 +217,25 @@ export function BrowseListingsPage() {
 			{/* Results Count */}
 			<div className="flex items-center justify-between text-sm text-muted-foreground">
 				{isLoadingData ? (
-					searchQuery.length >= 3 && isSearching ? 'Searching...' : 'Loading items...'
+					<div className="flex items-center gap-2">
+						<Loader2 className="h-4 w-4 animate-spin" />
+						{isSearching ? 'Searching...' : 'Loading items...'}
+					</div>
 				) : (
-					<>
-						{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
-						{searchQuery.length >= 3 && searchResults && ' (semantic search)'}
-						{hasActiveFilters && !searchResults && ` (filtered from ${items.length} total)`}
-					</>
+					<span>{getResultsText()}</span>
 				)}
 			</div>
 
 			{/* Loading State */}
-			{isLoadingData && (
+			{isLoading && (
 				<div className="flex flex-col items-center justify-center py-12">
 					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-					<p className="text-sm text-muted-foreground">
-						{searchQuery.length >= 3 && isSearching ? 'Searching with AI...' : 'Loading items...'}
-					</p>
+					<p className="text-sm text-muted-foreground">Loading items...</p>
 				</div>
 			)}
 
-			{/* Error State */}
-			{hasError && (
-				<Card className="border-destructive/50 bg-destructive/10">
-					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/20">
-							<X className="h-7 w-7 text-destructive" />
-						</div>
-						<div>
-							<p className="font-medium text-foreground mb-1">Failed to load items</p>
-							<p className="text-sm text-muted-foreground">Please try refreshing the page.</p>
-						</div>
-					</CardContent>
-				</Card>
-			)}
-
-			{/* Empty State - No Items */}
-			{!isLoadingData && !hasError && items.length === 0 && (
+			{/* Empty State - No Items at all */}
+			{!isLoadingData && items.length === 0 && !isSearchActive && (
 				<Card className="border-dashed border-border/70 bg-card">
 					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -174,18 +251,40 @@ export function BrowseListingsPage() {
 				</Card>
 			)}
 
-			{/* Empty State - No Results */}
-			{!isLoadingData && !hasError && displayItems.length > 0 && filteredItems.length === 0 && (
+			{/* Empty State - No Search Results */}
+			{!isLoadingData && isSearchActive && displayItems.length === 0 && (
 				<Card className="border-dashed border-border/70 bg-card">
 					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
 							<Search className="h-7 w-7 text-muted-foreground" />
 						</div>
 						<div>
-							<p className="font-medium text-foreground mb-1">No items found</p>
-							<p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
-							<Button variant="outline" onClick={handleResetFilters}>
-								Clear Filters
+							<p className="font-medium text-foreground mb-1">No matching items found</p>
+							<p className="text-sm text-muted-foreground mb-4">
+								Try different search terms or clear the search
+							</p>
+							<Button variant="outline" onClick={clearSearch}>
+								Clear Search
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Empty State - No Items in Category */}
+			{!isLoadingData && !isSearchActive && items.length === 0 && selectedCategory !== 'All Categories' && (
+				<Card className="border-dashed border-border/70 bg-card">
+					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+							<Filter className="h-7 w-7 text-muted-foreground" />
+						</div>
+						<div>
+							<p className="font-medium text-foreground mb-1">No items in this category</p>
+							<p className="text-sm text-muted-foreground mb-4">
+								Try selecting a different category
+							</p>
+							<Button variant="outline" onClick={() => setSelectedCategory('All Categories')}>
+								Show All Categories
 							</Button>
 						</div>
 					</CardContent>
@@ -193,9 +292,9 @@ export function BrowseListingsPage() {
 			)}
 
 			{/* Items Grid */}
-			{!isLoadingData && !hasError && filteredItems.length > 0 && (
+			{!isLoading && displayItems.length > 0 && (
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{filteredItems.map(item => (
+					{displayItems.map(item => (
 						<Card
 							key={item.id}
 							className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
@@ -251,7 +350,7 @@ export function BrowseListingsPage() {
 										</Avatar>
 										<span className="truncate">{item.owner.name || 'Unknown'}</span>
 									</div>
-									{item.circles.length > 0 && (
+									{item.circles && item.circles.length > 0 && (
 										<div className="text-xs text-muted-foreground truncate">
 											in {item.circles.map(c => c.name).join(', ')}
 										</div>

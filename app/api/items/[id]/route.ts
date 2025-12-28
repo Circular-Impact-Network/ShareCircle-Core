@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateImageEmbedding } from '@/lib/ai';
 
@@ -201,8 +202,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		// Update embedding if we have a new one
 		if (embedding) {
+			// Format embedding as PostgreSQL vector literal using Prisma.raw
+			const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
 			await prisma.$executeRaw`
-				UPDATE items SET embedding = ${embedding}::vector 
+				UPDATE items SET embedding = ${embeddingVector}
 				WHERE id = ${id}
 			`;
 		}

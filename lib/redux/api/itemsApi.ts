@@ -61,9 +61,17 @@ export interface UpdateItemRequest {
 	circleIds?: string[];
 }
 
+export interface GetItemsFilters {
+	category?: string;
+	tag?: string;
+	circleId?: string;
+}
+
 export interface SearchItemsRequest {
 	query?: string;
 	imageUrl?: string;
+	category?: string;
+	tag?: string;
 	circleIds?: string[];
 	limit?: number;
 	threshold?: number;
@@ -102,19 +110,35 @@ export const itemsApi = createApi({
 		// Get items for a circle
 		getCircleItems: builder.query<Item[], string>({
 			query: circleId => `/items?circleId=${circleId}`,
-			providesTags: (result, error, circleId) => [{ type: 'CircleItems', id: circleId }],
+			providesTags: (_result, _error, circleId) => [{ type: 'CircleItems', id: circleId }],
 		}),
 
-		// Get all items across user's circles
-		getAllItems: builder.query<Item[], void>({
-			query: () => '/items',
+		// Get all items across user's circles with optional filters
+		getAllItems: builder.query<Item[], GetItemsFilters | void>({
+			query: (filters = {}) => {
+				const params = new URLSearchParams();
+				if (filters && typeof filters === 'object') {
+					const { category, tag, circleId } = filters;
+					if (category && category !== 'All Categories') {
+						params.append('category', category);
+					}
+					if (tag) {
+						params.append('tag', tag);
+					}
+					if (circleId) {
+						params.append('circleId', circleId);
+					}
+				}
+				const queryString = params.toString();
+				return `/items${queryString ? `?${queryString}` : ''}`;
+			},
 			providesTags: ['Items'],
 		}),
 
 		// Get a single item
 		getItem: builder.query<Item, string>({
 			query: id => `/items/${id}`,
-			providesTags: (result, error, id) => [{ type: 'Items', id }],
+			providesTags: (_result, _error, id) => [{ type: 'Items', id }],
 		}),
 
 		// Create a new item
@@ -124,7 +148,7 @@ export const itemsApi = createApi({
 				method: 'POST',
 				body,
 			}),
-			invalidatesTags: (result, error, { circleIds }) => [
+			invalidatesTags: (_result, _error, { circleIds }) => [
 				'Items',
 				...circleIds.map(id => ({ type: 'CircleItems' as const, id })),
 			],
@@ -137,7 +161,7 @@ export const itemsApi = createApi({
 				method: 'PATCH',
 				body,
 			}),
-			invalidatesTags: (result, error, { id, circleIds }) => [
+			invalidatesTags: (_result, _error, { id, circleIds }) => [
 				{ type: 'Items', id },
 				'Items',
 				...(circleIds?.map(cid => ({ type: 'CircleItems' as const, id: cid })) || []),
@@ -153,7 +177,7 @@ export const itemsApi = createApi({
 			invalidatesTags: ['Items', 'CircleItems'],
 		}),
 
-		// Search items
+		// Search items with vector similarity
 		searchItems: builder.mutation<Item[], SearchItemsRequest>({
 			query: body => ({
 				url: '/items/search',
@@ -185,5 +209,3 @@ export const {
 	useSearchItemsMutation,
 	useCleanupImageMutation,
 } = itemsApi;
-
-
