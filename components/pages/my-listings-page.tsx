@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Loader2, Package, Trash2, Edit } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Loader2, Package, Trash2, Edit, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PageHeader, PageShell } from '@/components/ui/page';
 
 export function MyListingsPage() {
+	const router = useRouter();
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 	const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
@@ -124,14 +126,31 @@ export function MyListingsPage() {
 									{/* Item Image */}
 									<div
 										className="aspect-square relative overflow-hidden bg-muted cursor-pointer"
-										onClick={() => setSelectedItem(item)}
+										onClick={() => router.push(`/items/${item.id}`)}
 									>
 										<img
 											src={item.imageUrl}
 											alt={item.name}
-											className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+											className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
 										/>
+										{/* Your Item Badge - Left Side */}
+										<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm">
+											Your Item
+										</Badge>
 										<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+											{/* Open Image Button */}
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 bg-white rounded-full shadow-md"
+												onClick={e => {
+													e.stopPropagation();
+													window.open(item.imageUrl, '_blank');
+												}}
+											>
+												<ExternalLink className="h-4 w-4 text-black" />
+											</Button>
+											{/* Delete Button */}
 											<Button
 												variant="secondary"
 												size="icon"
@@ -150,7 +169,7 @@ export function MyListingsPage() {
 									<CardContent className="p-4">
 										<h3
 											className="font-semibold text-foreground truncate mb-1 cursor-pointer hover:text-primary"
-											onClick={() => setSelectedItem(item)}
+											onClick={() => router.push(`/items/${item.id}`)}
 										>
 											{item.name}
 										</h3>
