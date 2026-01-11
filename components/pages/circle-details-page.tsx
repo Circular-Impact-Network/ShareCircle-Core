@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
 	Copy,
 	Share2,
@@ -24,6 +25,7 @@ import {
 	Package,
 	Trash2,
 	Edit,
+	ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -57,7 +59,6 @@ import { PageShell } from '@/components/ui/page';
 
 interface CircleDetailsPageProps {
 	circleId: string;
-	onBack: () => void;
 }
 
 interface Member {
@@ -90,7 +91,8 @@ interface Circle {
 	members: Member[];
 }
 
-export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) {
+export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
+	const router = useRouter();
 	const { data: session } = useSession();
 	const [circle, setCircle] = useState<Circle | null>(null);
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
@@ -122,7 +124,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 						description: 'You are not a member of this circle.',
 						variant: 'destructive',
 					});
-					onBack();
+						router.push('/circles');
 					return;
 				}
 				throw new Error('Failed to fetch circle');
@@ -139,7 +141,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 		} finally {
 			setIsLoading(false);
 		}
-	}, [circleId, toast, onBack]);
+	}, [circleId, toast, router]);
 
 	useEffect(() => {
 		fetchCircle();
@@ -237,7 +239,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 						title: 'Left circle',
 						description: 'You have left this circle.',
 					});
-					onBack();
+						router.push('/circles');
 					return;
 				}
 
@@ -321,7 +323,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 	if (!circle) {
 		return (
 			<PageShell className="space-y-4">
-				<Button onClick={onBack} variant="ghost" className="mb-4 gap-2">
+				<Button onClick={() => router.push('/circles')} variant="ghost" className="mb-4 gap-2">
 					<ArrowLeft className="h-4 w-4" />
 					Back to Circles
 				</Button>
@@ -349,7 +351,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 		<PageShell className="space-y-6 sm:space-y-8">
 			<div className="flex flex-col gap-4">
 				{/* Back Button */}
-				<Button onClick={onBack} variant="ghost" className="w-fit gap-2">
+				<Button onClick={() => router.push('/circles')} variant="ghost" className="w-fit gap-2">
 					<ArrowLeft className="h-4 w-4" />
 					<span className="hidden sm:inline">Back to Circles</span>
 					<span className="sm:hidden">Back</span>
@@ -806,17 +808,34 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 							<Card
 								key={item.id}
 								className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
-								onClick={() => setSelectedItem(item)}
+								onClick={() => router.push(`/items/${item.id}`)}
 							>
 								{/* Item Image */}
 								<div className="aspect-square relative overflow-hidden bg-muted">
 									<img
 										src={item.imageUrl}
 										alt={item.name}
-										className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+										className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
 									/>
 									{item.isOwner && (
-										<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+										<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm">
+											Your Item
+										</Badge>
+									)}
+									<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+										{/* Open Image Button */}
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 bg-white rounded-full shadow-md"
+											onClick={e => {
+												e.stopPropagation();
+												window.open(item.imageUrl, '_blank');
+											}}
+										>
+											<ExternalLink className="h-4 w-4 text-black" />
+										</Button>
+										{item.isOwner && (
 											<Button
 												variant="secondary"
 												size="icon"
@@ -828,8 +847,8 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 											>
 												<Trash2 className="h-4 w-4 text-destructive" />
 											</Button>
-										</div>
-									)}
+										)}
+									</div>
 								</div>
 
 								{/* Item Details */}
@@ -1015,7 +1034,7 @@ export function CircleDetailsPage({ circleId, onBack }: CircleDetailsPageProps) 
 							title: 'Circle deleted',
 							description: 'Redirecting to circles list...',
 						});
-						onBack();
+							router.push('/circles');
 					}}
 					onMemberUpdated={member => {
 						setCircle(prev => {
