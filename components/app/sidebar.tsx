@@ -1,22 +1,28 @@
 'use client';
 
 import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
-import { toggleMobileSidebar, setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
+import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
 import { cn } from '@/lib/utils';
 
-interface SidebarProps {
-	currentPage: string;
-	onPageChange: (page: string) => void;
-}
+const navItems = [
+	{ id: 'home', label: 'Home', icon: Home, href: '/home' },
+	{ id: 'browse', label: 'Browse Items', icon: Search, href: '/browse' },
+	{ id: 'circles', label: 'Circles', icon: LayoutGrid, href: '/circles' },
+	{ id: 'listings', label: 'My Listings', icon: Plus, href: '/listings' },
+	{ id: 'messages', label: 'Messages', icon: MessageSquare, href: '/messages' },
+	{ id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+];
 
-export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
+export function Sidebar() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const dispatch = useAppDispatch();
 	const isMobileSidebarOpen = useAppSelector(state => state.ui.isMobileSidebarOpen);
 
@@ -24,15 +30,6 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 	const userImage = useAppSelector(selectUserImage);
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
-
-	const navItems = [
-		{ id: 'home', label: 'Home', icon: Home },
-		{ id: 'browse', label: 'Browse Items', icon: Search },
-		{ id: 'circles', label: 'Circles', icon: LayoutGrid },
-		{ id: 'my-listings', label: 'My Listings', icon: Plus },
-		{ id: 'messages', label: 'Messages', icon: MessageSquare },
-		{ id: 'settings', label: 'Settings', icon: Settings },
-	];
 
 	const handleLogout = async () => {
 		await signOut({ callbackUrl: '/landing' });
@@ -48,8 +45,15 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 			.slice(0, 2);
 	};
 
-	const handleNavClick = (pageId: string) => {
-		onPageChange(pageId);
+	const isActive = (href: string) => {
+		// Handle exact match for home, prefix match for others
+		if (href === '/home') {
+			return pathname === '/home' || pathname === '/';
+		}
+		return pathname.startsWith(href);
+	};
+
+	const handleNavClick = () => {
 		// Close mobile sidebar when navigating
 		dispatch(setMobileSidebarOpen(false));
 	};
@@ -58,12 +62,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
 			<div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
-				<div className="flex items-center gap-3">
+				<Link href="/home" className="flex items-center gap-3" onClick={handleNavClick}>
 					<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
 						<span className="text-primary-foreground font-bold text-sm">SC</span>
 					</div>
 					<span className="font-display font-semibold text-lg">ShareCircle</span>
-				</div>
+				</Link>
 				<Button
 					variant="ghost"
 					size="icon"
@@ -78,23 +82,22 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 			<nav className="flex-1 space-y-2 overflow-y-auto p-4">
 				{navItems.map(item => {
 					const Icon = item.icon;
-					const isActive = currentPage === item.id;
+					const active = isActive(item.href);
 					return (
-						<Button
+						<Link
 							key={item.id}
-							type="button"
-							variant={isActive ? 'default' : 'ghost'}
+							href={item.href}
+							onClick={handleNavClick}
 							className={cn(
-								'w-full justify-start gap-3 px-4 py-3 text-left font-medium transition-colors',
-								isActive
+								'flex w-full items-center justify-start gap-3 px-4 py-3 text-left font-medium transition-colors rounded-md',
+								active
 									? 'bg-primary text-primary-foreground shadow'
 									: 'text-foreground hover:bg-muted',
 							)}
-							onClick={() => handleNavClick(item.id)}
 						>
 							<Icon className="h-5 w-5" />
 							<span>{item.label}</span>
-						</Button>
+						</Link>
 					);
 				})}
 			</nav>
