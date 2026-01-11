@@ -25,7 +25,7 @@ function LoginContent() {
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+	const callbackUrl = searchParams.get('callbackUrl') || '/home';
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
