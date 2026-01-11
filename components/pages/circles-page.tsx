@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Link2, Users, Calendar, ArrowRight, LayoutGrid, List, Shield, Crown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,11 +38,8 @@ interface Circle {
 	memberPreviews: CircleMemberPreview[];
 }
 
-interface CirclesPageProps {
-	onSelectCircle: (id: string) => void;
-}
-
-export function CirclesPage({ onSelectCircle }: CirclesPageProps) {
+export function CirclesPage() {
+	const router = useRouter();
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showJoinModal, setShowJoinModal] = useState(false);
 	const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -256,7 +254,7 @@ export function CirclesPage({ onSelectCircle }: CirclesPageProps) {
 						<Card
 							key={circle.id}
 							className="group cursor-pointer border-border/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 flex flex-col h-[240px]"
-							onClick={() => onSelectCircle(circle.id)}
+							onClick={() => router.push(`/circles/${circle.id}`)}
 						>
 							<CardHeader className="pb-0 flex-shrink-0">
 								<div className="flex items-start justify-between gap-2">
@@ -320,7 +318,7 @@ export function CirclesPage({ onSelectCircle }: CirclesPageProps) {
 						<Card
 							key={circle.id}
 							className="group cursor-pointer border-border/70 transition-all hover:border-primary/40"
-							onClick={() => onSelectCircle(circle.id)}
+							onClick={() => router.push(`/circles/${circle.id}`)}
 						>
 							<CardContent className="flex flex-col gap-4 p-4 sm:p-5">
 								<div className="flex items-start gap-3 sm:gap-4">
