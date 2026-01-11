@@ -18,6 +18,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		const { id } = await params;
 		const userId = session.user.id;
 
+		// First check if the item exists at all
+		const itemExists = await prisma.item.findUnique({
+			where: { id },
+			select: { id: true },
+		});
+
+		if (!itemExists) {
+			return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+		}
+
 		// Get user's circles
 		const userCircles = await prisma.circleMember.findMany({
 			where: {
@@ -65,7 +75,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		});
 
 		if (!item) {
-			return NextResponse.json({ error: 'Item not found or not accessible' }, { status: 404 });
+			// Item exists but user doesn't have access (not a member of any circle the item is in)
+			return NextResponse.json({ 
+				error: 'Access denied', 
+				message: 'You are not a member of the circle(s) this item belongs to'
+			}, { status: 403 });
 		}
 
 		// Generate signed URL
