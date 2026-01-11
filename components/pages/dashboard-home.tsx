@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, MapPin, Users, TrendingUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/ui/page';
-
-interface DashboardHomeProps {
-	onNavigate: (page: string) => void;
-}
+import Link from 'next/link';
 
 const activityLog = [
 	{ action: 'Borrowed', item: 'Power Drill', from: 'Home Circle', date: '2 days ago' },
@@ -17,7 +15,8 @@ const activityLog = [
 	{ action: 'Returned', item: 'Ladder', to: 'Neighborhood Circle', date: '2 weeks ago' },
 ];
 
-export function DashboardHome({ onNavigate }: DashboardHomeProps) {
+export function DashboardHome() {
+	const router = useRouter();
 	const [userName, setUserName] = useState('User');
 
 	useEffect(() => {
@@ -54,16 +53,20 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-wrap gap-3">
-						<Button variant="secondary" className="gap-2" onClick={() => onNavigate('my-listings')}>
-							<Plus className="h-4 w-4" />
-							Create listing
+						<Button variant="secondary" className="gap-2" asChild>
+							<Link href="/listings">
+								<Plus className="h-4 w-4" />
+								Create listing
+							</Link>
 						</Button>
 						<Button
 							variant="outline"
 							className="bg-white/10 text-white hover:bg-white/20"
-							onClick={() => onNavigate('browse')}
+							asChild
 						>
-							Browse items
+							<Link href="/browse">
+								Browse items
+							</Link>
 						</Button>
 					</CardContent>
 				</Card>
@@ -119,10 +122,12 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
 								size="lg"
 								variant="secondary"
 								className="w-full"
-								onClick={() => onNavigate('my-listings')}
+								asChild
 							>
-								<Plus className="mr-2 h-4 w-4" />
-								Add listing
+								<Link href="/listings">
+									<Plus className="mr-2 h-4 w-4" />
+									Add listing
+								</Link>
 							</Button>
 						</CardContent>
 					</Card>
@@ -133,9 +138,11 @@ export function DashboardHome({ onNavigate }: DashboardHomeProps) {
 							<CardDescription>Find something new to borrow today</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<Button variant="outline" className="w-full gap-2" onClick={() => onNavigate('browse')}>
-								<Search className="h-4 w-4" />
-								Explore items
+							<Button variant="outline" className="w-full gap-2" asChild>
+								<Link href="/browse">
+									<Search className="h-4 w-4" />
+									Explore items
+								</Link>
 							</Button>
 						</CardContent>
 					</Card>
