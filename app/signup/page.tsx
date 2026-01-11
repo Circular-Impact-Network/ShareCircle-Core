@@ -27,7 +27,7 @@ function SignupContent() {
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+	const callbackUrl = searchParams.get('callbackUrl') || '/home';
 
 	const handleSignup = async (e: React.FormEvent) => {
 		e.preventDefault();
