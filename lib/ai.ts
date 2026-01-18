@@ -16,6 +16,23 @@ const itemAnalysisSchema = z.object({
 
 export type ItemAnalysis = z.infer<typeof itemAnalysisSchema>;
 
+// ============ ITEM DETECTION SCHEMA (Option 2) ============
+
+const itemDetectionSchema = z.object({
+	items: z
+		.array(
+			z.object({
+				name: z.string().describe('Short name of the detected item (2-5 words)'),
+				description: z.string().optional().describe('Brief description of the item'),
+				category: z.string().describe('Primary category (e.g., "Clothing", "Electronics", "Tools")'),
+				confidence: z.enum(['high', 'medium', 'low']).optional().describe('Confidence level of detection'),
+			}),
+		)
+		.describe('Array of all detected items in the image'),
+});
+
+export type ItemDetection = z.infer<typeof itemDetectionSchema>;
+
 /**
  * Analyze an item image using Google Gemini Vision
  * @param imageUrl - The URL of the image to analyze
@@ -81,13 +98,50 @@ Focus on items that match "${options.userHint}" and prioritize accuracy based on
 					{ type: 'image', image: imageUrl },
 					{
 						type: 'text',
-						text: `Analyze this item image for a sharing/lending app where people share items within their communities. Extract:
-- A clear, concise name (2-5 words)
-- A helpful description mentioning condition and key features (2-3 sentences)
-- Relevant broad categories (e.g., "Tools", "Outdoor", "Kitchen", "Sports", "Electronics", etc.)
-- Specific searchable tags that would help others find this item
+						text: promptText,
+					},
+				],
+			},
+		],
+	});
 
-Be practical and focus on what makes this item useful for borrowing/sharing.`,
+	return result.object;
+}
+
+/**
+ * Detect all items in an image using Google Gemini Vision
+ * This is used for Option 2 flow where we first detect all items, then let user select
+ * @param imageUrl - The URL of the image to analyze
+ * @returns Array of detected items with names, categories, and confidence levels
+ */
+export async function detectItems(imageUrl: string): Promise<ItemDetection> {
+	const result = await generateObject({
+		model: google('gemini-2.5-flash'),
+		schema: itemDetectionSchema,
+		messages: [
+			{
+				role: 'user',
+				content: [
+					{ type: 'image', image: imageUrl },
+					{
+						type: 'text',
+						text: `Analyze this image and identify ALL items present, especially clothing, apparel, dresses, and garments.
+
+CRITICAL INSTRUCTIONS:
+- Identify EVERY item in the image, including clothing, accessories, and apparel
+- Pay special attention to clothing items (dresses, shirts, pants, jackets, shoes, bags, jewelry, etc.)
+- Do NOT ignore or skip clothing items - they are often the main focus
+- List items in order of prominence/size (most prominent first)
+- Include items even if they are partially visible or in the background
+- For clothing items, note the type (dress, shirt, etc.) and any distinguishing features
+
+Return an array of all detected items with:
+- name: Short, clear name (2-5 words)
+- description: Brief description if helpful
+- category: Primary category (prioritize "Clothing" or "Apparel" for garments)
+- confidence: How confident you are about this detection
+
+Focus on being comprehensive - it's better to include more items than to miss important ones.`,
 					},
 				],
 			},
