@@ -18,10 +18,12 @@ import {
 	ImageIcon,
 	RefreshCw,
 	AlertCircle,
+	Plus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
 	useUploadItemImageMutation,
+	useUploadMediaMutation,
 	useAnalyzeImageMutation,
 	useDetectItemsMutation,
 	useCreateItemMutation,
@@ -79,8 +81,13 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [circles, setCircles] = useState<Circle[]>([]);
 	const [isLoadingCircles, setIsLoadingCircles] = useState(false);
 
+	// Supporting media state
+	const [supportingMedia, setSupportingMedia] = useState<Array<{ path: string; url: string; preview: string; type: string }>>([]);
+	const supportingMediaInputRef = useRef<HTMLInputElement>(null);
+
 	// RTK Query mutations
 	const [uploadImage] = useUploadItemImageMutation();
+	const [uploadMedia] = useUploadMediaMutation();
 	const [analyzeImage, { isLoading: isAnalyzing }] = useAnalyzeImageMutation();
 	const [detectItems, { isLoading: isDetecting }] = useDetectItemsMutation();
 	const [createItem, { isLoading: isSaving }] = useCreateItemMutation();
@@ -135,6 +142,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setTagInput('');
 		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
 		setCameraError(null);
+		setSupportingMedia([]);
 		// Reset Option 1 & 2 states
 		setUserHint('');
 		setDetectedItems([]);
@@ -444,6 +452,73 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	const allCirclesSelected = circles.length > 0 && selectedCircleIds.length === circles.length;
 
+	// Handle supporting media upload
+	const handleSupportingMediaUpload = async (files: FileList | null) => {
+		if (!files || files.length === 0) return;
+
+		const filesArray = Array.from(files);
+		const totalFiles = supportingMedia.length + filesArray.length;
+
+		if (totalFiles > 5) {
+			toast({
+				title: 'Too Many Files',
+				description: 'You can upload a maximum of 5 supporting media files.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		const maxSize = 5 * 1024 * 1024; // 5MB
+		const oversizedFiles = filesArray.filter(file => file.size > maxSize);
+		if (oversizedFiles.length > 0) {
+			toast({
+				title: 'File Too Large',
+				description: 'Each file must be less than 5MB.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		for (const file of filesArray) {
+			try {
+				const uploadResult = await uploadMedia(file).unwrap();
+				const preview = file.type.startsWith('video/')
+					? URL.createObjectURL(file)
+					: URL.createObjectURL(file);
+
+				setSupportingMedia(prev => [
+					...prev,
+					{
+						path: uploadResult.path,
+						url: uploadResult.url,
+						preview,
+						type: file.type,
+					},
+				]);
+			} catch (error) {
+				console.error('Failed to upload media:', error);
+				toast({
+					title: 'Upload Failed',
+					description: `Failed to upload ${file.name}. Please try again.`,
+					variant: 'destructive',
+				});
+			}
+		}
+	};
+
+	// Remove supporting media
+	const removeSupportingMedia = async (index: number) => {
+		const media = supportingMedia[index];
+		if (media) {
+			try {
+				await cleanupImage(media.path);
+			} catch (error) {
+				console.error('Failed to cleanup media:', error);
+			}
+			setSupportingMedia(prev => prev.filter((_, i) => i !== index));
+		}
+	};
+
 	// Save item
 	const handleSave = async () => {
 		if (!imagePath || !imageUrl || !name.trim() || selectedCircleIds.length === 0) {
@@ -463,6 +538,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				description: description.trim() || undefined,
 				imagePath,
 				imageUrl,
+				mediaPaths: supportingMedia.map(m => m.path),
 				categories,
 				tags,
 				circleIds: selectedCircleIds,
@@ -492,7 +568,10 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
-			<DialogContent className="sm:max-w-lg h-[90dvh] max-h-[90dvh] flex flex-col p-0">
+			<DialogContent 
+				className="sm:max-w-lg h-[90dvh] max-h-[90dvh] flex flex-col p-0"
+				onInteractOutside={(e) => e.preventDefault()}
+			>
 				<DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
@@ -717,37 +796,66 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				{/* Edit State */}
 				{state === 'editing' && (
 					<div className="space-y-5">
-						{/* Image Preview */}
-						<div className="flex gap-4">
-							<div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
-								{imagePreview ? (
-									<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-								) : (
-									<div className="w-full h-full bg-muted flex items-center justify-center">
-										<ImageIcon className="h-8 w-8 text-muted-foreground" />
+						{/* Image Preview and Supporting Media */}
+						<div className="flex flex-col gap-2">
+							<div className="overflow-x-auto -mx-6 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+								<div className="flex gap-2 items-start min-w-max">
+									{/* Main Image */}
+									<div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
+										{imagePreview ? (
+											<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+										) : (
+											<div className="w-full h-full bg-muted flex items-center justify-center">
+												<ImageIcon className="h-8 w-8 text-muted-foreground" />
+											</div>
+										)}
 									</div>
-								)}
-							</div>
-							<div className="flex-1 flex flex-col justify-center gap-2">
-								<Button variant="outline" size="sm" onClick={retryAnalysis} disabled={isAnalyzing} className="gap-2">
-									{isAnalyzing ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<RefreshCw className="h-4 w-4" />
+
+									{/* Supporting Media Items */}
+									{supportingMedia.map((media, index) => (
+										<div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
+											{media.type.startsWith('video/') ? (
+												<video
+													src={media.preview}
+													className="w-full h-full object-cover"
+													muted
+													playsInline
+												/>
+											) : (
+												<img src={media.preview} alt={`Media ${index + 1}`} className="w-full h-full object-cover" />
+											)}
+											<button
+												type="button"
+												onClick={() => removeSupportingMedia(index)}
+												className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background transition-colors"
+											>
+												<X className="w-3 h-3" />
+											</button>
+										</div>
+									))}
+
+									{/* Plus Icon Input */}
+									{supportingMedia.length < 5 && (
+										<div className="flex flex-col items-center gap-1 flex-shrink-0">
+											<input
+												ref={supportingMediaInputRef}
+												type="file"
+												accept="image/*,video/*"
+												multiple
+												onChange={(e) => handleSupportingMediaUpload(e.target.files)}
+												className="hidden"
+											/>
+											<button
+												type="button"
+												onClick={() => supportingMediaInputRef.current?.click()}
+												className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
+											>
+												<Plus className="w-6 h-6 text-muted-foreground" />
+											</button>
+											<span className="text-xs text-muted-foreground text-center whitespace-nowrap">(5 max, 5MB each)</span>
+										</div>
 									)}
-									Re-analyze with AI
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => {
-										if (imagePath) cleanupImage(imagePath);
-										resetState();
-									}}
-									className="text-muted-foreground hover:text-destructive"
-								>
-									Choose different image
-								</Button>
+								</div>
 							</div>
 						</div>
 
@@ -915,8 +1023,19 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				{state === 'editing' && (
 					<div className="flex-shrink-0 px-6 py-4 border-t bg-background">
 						<div className="flex gap-3">
-							<Button variant="outline" onClick={handleClose} className="flex-1" disabled={isSaving}>
-								Cancel
+							<Button 
+								variant="outline" 
+								onClick={() => {
+									if (imagePath) cleanupImage(imagePath);
+									supportingMedia.forEach(media => {
+										cleanupImage(media.path).catch(console.error);
+									});
+									resetState();
+								}} 
+								className="flex-1" 
+								disabled={isSaving}
+							>
+								Re-upload
 							</Button>
 							<Button
 								onClick={handleSave}
