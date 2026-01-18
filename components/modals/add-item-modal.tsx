@@ -580,7 +580,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						</div>
 						{/* Toggle Switch for Option 1/2 */}
 						{state === 'capture' && (
-							<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 mr-2">
 								<Label htmlFor="manual-mode" className="text-xs text-muted-foreground cursor-pointer">
 									Quick describe
 								</Label>
