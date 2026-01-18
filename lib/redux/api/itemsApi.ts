@@ -35,6 +35,23 @@ export interface ItemAnalysis {
 	tags: string[];
 }
 
+export interface DetectedItem {
+	name: string;
+	description?: string;
+	category: string;
+	confidence?: 'high' | 'medium' | 'low';
+}
+
+export interface ItemDetection {
+	items: DetectedItem[];
+}
+
+export interface AnalyzeImageRequest {
+	imageUrl: string;
+	selectedItem?: string;
+	userHint?: string;
+}
+
 export interface UploadImageResponse {
 	path: string;
 	url: string;
@@ -98,12 +115,25 @@ export const itemsApi = createApi({
 			},
 		}),
 
-		// Analyze image with AI
-		analyzeImage: builder.mutation<ItemAnalysis, string>({
+		// Detect items in image (Option 2 flow)
+		detectItems: builder.mutation<ItemDetection, string>({
 			query: imageUrl => ({
-				url: '/items/analyze',
+				url: '/items/detect',
 				method: 'POST',
 				body: { imageUrl },
+			}),
+		}),
+
+		// Analyze image with AI
+		analyzeImage: builder.mutation<ItemAnalysis, AnalyzeImageRequest>({
+			query: ({ imageUrl, selectedItem, userHint }) => ({
+				url: '/items/analyze',
+				method: 'POST',
+				body: {
+					imageUrl,
+					...(selectedItem && { selectedItem }),
+					...(userHint && { userHint }),
+				},
 			}),
 		}),
 
@@ -200,6 +230,7 @@ export const itemsApi = createApi({
 export const {
 	useUploadItemImageMutation,
 	useAnalyzeImageMutation,
+	useDetectItemsMutation,
 	useGetCircleItemsQuery,
 	useGetAllItemsQuery,
 	useGetItemQuery,
