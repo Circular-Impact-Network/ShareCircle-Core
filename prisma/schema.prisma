@@ -144,6 +144,7 @@ model Item {
   description String?  @db.Text
   categories  String[] @default([])
   tags        String[] @default([])
+  mediaPaths  String[] @default([]) @map("media_paths")
   // Note: embedding vector(1024) is handled via raw SQL, not in Prisma
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
