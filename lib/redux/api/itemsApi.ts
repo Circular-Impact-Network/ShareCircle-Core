@@ -18,6 +18,7 @@ export interface Item {
 	description: string | null;
 	imageUrl: string;
 	imagePath: string;
+	mediaUrls?: string[];
 	categories: string[];
 	tags: string[];
 	createdAt: string;
@@ -62,6 +63,7 @@ export interface CreateItemRequest {
 	description?: string;
 	imagePath: string;
 	imageUrl: string;
+	mediaPaths?: string[];
 	categories: string[];
 	tags: string[];
 	circleIds: string[];
@@ -73,6 +75,7 @@ export interface UpdateItemRequest {
 	description?: string;
 	imagePath?: string;
 	imageUrl?: string;
+	mediaPaths?: string[];
 	categories?: string[];
 	tags?: string[];
 	circleIds?: string[];
@@ -109,6 +112,19 @@ export const itemsApi = createApi({
 				formData.append('file', file);
 				return {
 					url: '/upload/image?bucket=items',
+					method: 'POST',
+					body: formData,
+				};
+			},
+		}),
+
+		// Upload supporting media (images/videos)
+		uploadMedia: builder.mutation<UploadImageResponse, File>({
+			query: file => {
+				const formData = new FormData();
+				formData.append('file', file);
+				return {
+					url: '/upload/image?bucket=media',
 					method: 'POST',
 					body: formData,
 				};
@@ -229,6 +245,7 @@ export const itemsApi = createApi({
 
 export const {
 	useUploadItemImageMutation,
+	useUploadMediaMutation,
 	useAnalyzeImageMutation,
 	useDetectItemsMutation,
 	useGetCircleItemsQuery,

@@ -109,16 +109,22 @@ export async function GET(req: NextRequest) {
 			},
 		});
 
-		// Generate signed URLs for item images
+		// Generate signed URLs for item images and media
 		const itemsWithUrls = await Promise.all(
 			items.map(async item => {
 				const imageUrl = await getSignedUrl(item.imagePath, 'items');
+				// Generate signed URLs for all media files (main image + supporting media)
+				const mediaUrls = await Promise.all([
+					imageUrl, // Main image is first
+					...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+				]);
 				return {
 					id: item.id,
 					name: item.name,
 					description: item.description,
 					imageUrl,
 					imagePath: item.imagePath,
+					mediaUrls,
 					categories: item.categories,
 					tags: item.tags,
 					createdAt: item.createdAt,
@@ -151,7 +157,7 @@ export async function POST(req: NextRequest) {
 
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds } = body;
+		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths } = body;
 
 		// Validate required fields
 		if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -194,6 +200,7 @@ export async function POST(req: NextRequest) {
 					imagePath,
 					categories: categories || [],
 					tags: tags || [],
+					mediaPaths: mediaPaths || [],
 					ownerId: userId,
 				},
 				include: {
@@ -223,11 +230,18 @@ export async function POST(req: NextRequest) {
 
 		// Fire-and-forget: Generate embedding in the background (NON-BLOCKING)
 		// This allows the response to return immediately while embedding is generated
+		// NOTE: Only the main image (imageUrl) is used for embedding, NOT supporting media files
 		if (imageUrl) {
 			generateAndStoreEmbedding(item.id, imageUrl).catch(err =>
 				console.error('Background embedding generation failed:', err)
 			);
 		}
+
+		// Generate signed URLs for all media files (main image + supporting media)
+		const mediaUrls = await Promise.all([
+			signedImageUrl, // Main image is first
+			...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+		]);
 
 		return NextResponse.json(
 			{
@@ -236,6 +250,7 @@ export async function POST(req: NextRequest) {
 				description: item.description,
 				imageUrl: signedImageUrl,
 				imagePath: item.imagePath,
+				mediaUrls,
 				categories: item.categories,
 				tags: item.tags,
 				createdAt: item.createdAt,

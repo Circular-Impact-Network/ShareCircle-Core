@@ -82,8 +82,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			}, { status: 403 });
 		}
 
-		// Generate signed URL
+		// Generate signed URL for main image
 		const imageUrl = await getSignedUrl(item.imagePath, 'items');
+		
+		// Generate signed URLs for all media files (main image + supporting media)
+		const mediaUrls = await Promise.all([
+			imageUrl, // Main image is first
+			...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+		]);
 
 		return NextResponse.json(
 			{
@@ -92,6 +98,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				description: item.description,
 				imageUrl,
 				imagePath: item.imagePath,
+				mediaUrls,
 				categories: item.categories,
 				tags: item.tags,
 				createdAt: item.createdAt,
@@ -123,12 +130,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const { id } = await params;
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds } = body;
+		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths } = body;
 
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
-			select: { ownerId: true, imagePath: true },
+			select: { ownerId: true, imagePath: true, mediaPaths: true },
 		});
 
 		if (!item) {
@@ -162,6 +169,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		}
 
 		// If image changed, generate new embedding
+		// NOTE: Only the main image (imageUrl) is used for embedding, NOT supporting media files
 		let embedding: number[] | null = null;
 		const imageChanged = imagePath && imagePath !== item.imagePath;
 		if (imageChanged && imageUrl) {
@@ -183,6 +191,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					...(imagePath !== undefined && { imagePath }),
 					...(categories !== undefined && { categories }),
 					...(tags !== undefined && { tags }),
+					...(mediaPaths !== undefined && { mediaPaths }),
 				},
 				include: {
 					owner: {
@@ -233,8 +242,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			}
 		}
 
+		// Delete old media files if mediaPaths changed
+		if (mediaPaths !== undefined && item.mediaPaths) {
+			const oldMediaPaths = item.mediaPaths.filter(path => !mediaPaths.includes(path));
+			for (const path of oldMediaPaths) {
+				try {
+					await deleteImage(path, 'media');
+				} catch (deleteError) {
+					console.error('Failed to delete old media file:', deleteError);
+				}
+			}
+		}
+
 		// Generate signed URL
 		const signedImageUrl = await getSignedUrl(updatedItem.imagePath, 'items');
+		
+		// Generate signed URLs for all media files (main image + supporting media)
+		const mediaUrls = await Promise.all([
+			signedImageUrl, // Main image is first
+			...((updatedItem.mediaPaths || []).map(path => getSignedUrl(path, 'media'))),
+		]);
 
 		return NextResponse.json(
 			{
@@ -243,6 +270,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				description: updatedItem.description,
 				imageUrl: signedImageUrl,
 				imagePath: updatedItem.imagePath,
+				mediaUrls,
 				categories: updatedItem.categories,
 				tags: updatedItem.tags,
 				createdAt: updatedItem.createdAt,
@@ -295,6 +323,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		} catch (deleteError) {
 			console.error('Failed to delete image:', deleteError);
 			// Item is already deleted from DB, so don't fail the request
+		}
+
+		// Delete all media files from storage
+		if (item.mediaPaths && item.mediaPaths.length > 0) {
+			for (const path of item.mediaPaths) {
+				try {
+					await deleteImage(path, 'media');
+				} catch (deleteError) {
+					console.error('Failed to delete media file:', deleteError);
+					// Continue deleting other files even if one fails
+				}
+			}
 		}
 
 		return NextResponse.json({ message: 'Item deleted successfully' }, { status: 200 });

@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
 
 // Allowed storage buckets
-const ALLOWED_BUCKETS = ['avatars', 'items'];
+const ALLOWED_BUCKETS = ['avatars', 'items', 'media'];
 
 export async function POST(req: NextRequest) {
 	try {
@@ -30,10 +30,19 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Validate file type
-		const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+		// For 'media' bucket, allow images and videos. For other buckets, only images.
+		const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+		const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+		const validTypes = bucket === 'media' 
+			? [...validImageTypes, ...validVideoTypes]
+			: validImageTypes;
+		
 		if (!validTypes.includes(file.type)) {
+			const allowedTypes = bucket === 'media' 
+				? 'JPEG, PNG, GIF, WebP, MP4, WebM, or QuickTime'
+				: 'JPEG, PNG, GIF, and WebP';
 			return NextResponse.json(
-				{ error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' },
+				{ error: `Invalid file type. Only ${allowedTypes} are allowed.` },
 				{ status: 400 },
 			);
 		}
