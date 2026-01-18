@@ -19,9 +19,58 @@ export type ItemAnalysis = z.infer<typeof itemAnalysisSchema>;
 /**
  * Analyze an item image using Google Gemini Vision
  * @param imageUrl - The URL of the image to analyze
+ * @param options - Optional parameters for focused analysis
+ * @param options.selectedItem - When provided, focus analysis on this specific item
+ * @param options.userHint - When provided, use this user-provided hint to guide analysis
  * @returns Extracted item details: name, description, categories, and tags
  */
-export async function analyzeImage(imageUrl: string): Promise<ItemAnalysis> {
+export async function analyzeImage(
+	imageUrl: string,
+	options?: { selectedItem?: string; userHint?: string },
+): Promise<ItemAnalysis> {
+	let promptText = `Analyze this item image for a sharing/lending app where people share items within their communities.
+
+IMPORTANT INSTRUCTIONS:
+- Look at ALL items in the image, especially clothing, apparel, dresses, and garments
+- If multiple items are present, identify the PRIMARY or MAIN item that the user wants to share
+- Pay special attention to clothing items (dresses, shirts, pants, jackets, shoes, accessories, etc.)
+- Do NOT ignore clothing items - they are often the main focus
+- If clothing is present, prioritize it unless another item is clearly the main subject
+
+Extract:
+- A clear, concise name (2-5 words) for the PRIMARY item
+- A helpful description mentioning condition and key features (2-3 sentences)
+- Relevant broad categories (e.g., "Clothing", "Apparel", "Tools", "Outdoor", "Kitchen", "Sports", "Electronics", etc.)
+- Specific searchable tags that would help others find this item
+
+Be practical and focus on what makes this item useful for borrowing/sharing.`;
+
+	// If user selected a specific item, focus on that
+	if (options?.selectedItem) {
+		promptText = `Analyze this image and focus specifically on the item: "${options.selectedItem}"
+
+This is the item the user wants to share. Extract details ONLY for this specific item:
+- A clear, concise name (2-5 words)
+- A helpful description mentioning condition and key features (2-3 sentences)
+- Relevant broad categories
+- Specific searchable tags
+
+Ignore other items in the image and focus entirely on "${options.selectedItem}".`;
+	}
+
+	// If user provided a hint, incorporate it
+	if (options?.userHint) {
+		promptText = `Analyze this item image for a sharing/lending app. The user describes it as: "${options.userHint}"
+
+Use this description to help identify and analyze the correct item. Extract:
+- A clear, concise name (2-5 words) that matches the user's description
+- A helpful description mentioning condition and key features (2-3 sentences)
+- Relevant broad categories
+- Specific searchable tags
+
+Focus on items that match "${options.userHint}" and prioritize accuracy based on the user's description.`;
+	}
+
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
 		schema: itemAnalysisSchema,
