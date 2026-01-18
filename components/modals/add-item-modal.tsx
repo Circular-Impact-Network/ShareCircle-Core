@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
 	Upload,
 	Camera,
@@ -22,11 +23,13 @@ import { useToast } from '@/hooks/use-toast';
 import {
 	useUploadItemImageMutation,
 	useAnalyzeImageMutation,
+	useDetectItemsMutation,
 	useCreateItemMutation,
 	useCleanupImageMutation,
+	type DetectedItem,
 } from '@/lib/redux/api/itemsApi';
 
-type ModalState = 'capture' | 'uploading' | 'analyzing' | 'editing' | 'saving';
+type ModalState = 'capture' | 'uploading' | 'detecting' | 'selecting' | 'analyzing' | 'editing' | 'saving';
 
 interface Circle {
 	id: string;
@@ -56,6 +59,13 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 	const [cameraError, setCameraError] = useState<string | null>(null);
 
+	// Option 1 & 2 flow states
+	const [manualMode, setManualMode] = useState(false); // Toggle for Option 1 vs Option 2
+	const [userHint, setUserHint] = useState(''); // Option 1: User-provided hint
+	const [detectedItems, setDetectedItems] = useState<DetectedItem[]>([]); // Option 2: Detected items
+	const [selectedItemName, setSelectedItemName] = useState<string | null>(null); // Option 2: Selected item
+	const [manualItemName, setManualItemName] = useState(''); // Option 2: Manual entry fallback
+
 	// Form state
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
@@ -72,6 +82,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	// RTK Query mutations
 	const [uploadImage] = useUploadItemImageMutation();
 	const [analyzeImage, { isLoading: isAnalyzing }] = useAnalyzeImageMutation();
+	const [detectItems, { isLoading: isDetecting }] = useDetectItemsMutation();
 	const [createItem, { isLoading: isSaving }] = useCreateItemMutation();
 	const [cleanupImage] = useCleanupImageMutation();
 
@@ -124,6 +135,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setTagInput('');
 		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
 		setCameraError(null);
+		// Reset Option 1 & 2 states
+		setUserHint('');
+		setDetectedItems([]);
+		setSelectedItemName(null);
+		setManualItemName('');
 
 		// Stop camera if running
 		if (cameraStream) {
@@ -158,7 +174,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		reader.readAsDataURL(file);
 
 		// Upload file
-		await uploadAndAnalyze(file);
+		await uploadAndProcess(file);
 	};
 
 	// Camera handlers
@@ -210,8 +226,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				// Create file from blob
 				const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-				// Upload and analyze
-				await uploadAndAnalyze(file);
+				// Upload and process
+				await uploadAndProcess(file);
 			},
 			'image/jpeg',
 			0.9,
@@ -226,8 +242,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setShowCamera(false);
 	};
 
-	// Upload and analyze image
-	const uploadAndAnalyze = async (file: File) => {
+	// Upload and process image - handles both Option 1 and Option 2 flows
+	const uploadAndProcess = async (file: File) => {
 		setState('uploading');
 
 		try {
@@ -236,24 +252,55 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			setImagePath(uploadResult.path);
 			setImageUrl(uploadResult.url);
 
-			// Analyze image
-			setState('analyzing');
-			try {
-				const analysis = await analyzeImage(uploadResult.url).unwrap();
-				setName(analysis.name);
-				setDescription(analysis.description);
-				setCategories(analysis.categories);
-				setTags(analysis.tags);
-			} catch (analysisError) {
-				console.error('AI analysis failed:', analysisError);
-				toast({
-					title: 'AI Analysis Failed',
-					description: 'Please fill in the details manually.',
-					variant: 'default',
-				});
+			if (manualMode) {
+				// Option 1 Flow: Upload → (Optional Hint) → Analyze
+				setState('analyzing');
+				try {
+					const analysis = await analyzeImage({
+						imageUrl: uploadResult.url,
+						userHint: userHint.trim() || undefined,
+					}).unwrap();
+					setName(analysis.name);
+					setDescription(analysis.description);
+					setCategories(analysis.categories);
+					setTags(analysis.tags);
+					setState('editing');
+				} catch (analysisError) {
+					console.error('AI analysis failed:', analysisError);
+					toast({
+						title: 'AI Analysis Failed',
+						description: 'Please fill in the details manually.',
+						variant: 'default',
+					});
+					setState('editing');
+				}
+			} else {
+				// Option 2 Flow: Upload → Detect → Select → Analyze
+				setState('detecting');
+				try {
+					const detection = await detectItems(uploadResult.url).unwrap();
+					if (detection.items && detection.items.length > 0) {
+						setDetectedItems(detection.items);
+						setState('selecting');
+					} else {
+						// No items detected, go to manual entry
+						toast({
+							title: 'No Items Detected',
+							description: 'Please enter the item name manually.',
+							variant: 'default',
+						});
+						setState('selecting');
+					}
+				} catch (detectionError) {
+					console.error('Item detection failed:', detectionError);
+					toast({
+						title: 'Detection Failed',
+						description: 'Please enter the item name manually.',
+						variant: 'default',
+					});
+					setState('selecting');
+				}
 			}
-
-			setState('editing');
 		} catch (error) {
 			console.error('Upload failed:', error);
 			toast({
@@ -266,13 +313,59 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		}
 	};
 
+	// Handle item selection in Option 2 flow
+	const handleItemSelect = async (itemName: string) => {
+		if (!imageUrl) return;
+
+		setSelectedItemName(itemName);
+		setState('analyzing');
+
+		try {
+			const analysis = await analyzeImage({
+				imageUrl,
+				selectedItem: itemName,
+			}).unwrap();
+			setName(analysis.name);
+			setDescription(analysis.description);
+			setCategories(analysis.categories);
+			setTags(analysis.tags);
+			setState('editing');
+		} catch (error) {
+			console.error('AI analysis failed:', error);
+			toast({
+				title: 'AI Analysis Failed',
+				description: 'Please fill in the details manually.',
+				variant: 'destructive',
+			});
+			setState('editing');
+		}
+	};
+
+	// Handle manual entry in Option 2 flow
+	const handleManualEntry = async () => {
+		if (!imageUrl || !manualItemName.trim()) {
+			toast({
+				title: 'Item Name Required',
+				description: 'Please enter an item name.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		await handleItemSelect(manualItemName.trim());
+	};
+
 	// Retry AI analysis
 	const retryAnalysis = async () => {
 		if (!imageUrl) return;
 
 		setState('analyzing');
 		try {
-			const analysis = await analyzeImage(imageUrl).unwrap();
+			const analysis = await analyzeImage({
+				imageUrl,
+				selectedItem: selectedItemName || undefined,
+				userHint: userHint.trim() || undefined,
+			}).unwrap();
 			setName(analysis.name);
 			setDescription(analysis.description);
 			setCategories(analysis.categories);
@@ -395,19 +488,37 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	};
 
 	// Check if we're in a loading state
-	const isLoading = state === 'uploading' || state === 'analyzing' || state === 'saving';
+	const isLoading = state === 'uploading' || state === 'detecting' || state === 'analyzing' || state === 'saving';
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
 			<DialogContent className="sm:max-w-lg h-[90dvh] max-h-[90dvh] flex flex-col p-0">
 				<DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
-					<DialogTitle className="flex items-center gap-2">
-						<Sparkles className="h-5 w-5 text-primary" />
-						Add New Item
-					</DialogTitle>
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<Sparkles className="h-5 w-5 text-primary" />
+							<DialogTitle>Add New Item</DialogTitle>
+						</div>
+						{/* Toggle Switch for Option 1/2 */}
+						{state === 'capture' && (
+							<div className="flex items-center gap-2">
+								<Label htmlFor="manual-mode" className="text-xs text-muted-foreground cursor-pointer">
+									Quick describe
+								</Label>
+								<Switch
+									id="manual-mode"
+									checked={manualMode}
+									onCheckedChange={setManualMode}
+									disabled={isLoading}
+								/>
+							</div>
+						)}
+					</div>
 					<DialogDescription>
 						{state === 'capture' && 'Upload or capture an image to get started'}
 						{state === 'uploading' && 'Uploading your image...'}
+						{state === 'detecting' && 'Detecting items in your image...'}
+						{state === 'selecting' && 'Select the item you want to share'}
 						{state === 'analyzing' && 'AI is analyzing your item...'}
 						{state === 'editing' && 'Review and edit the details'}
 						{state === 'saving' && 'Creating your item...'}
@@ -419,6 +530,25 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				{/* Capture State */}
 				{state === 'capture' && !showCamera && (
 					<div className="space-y-4">
+						{/* Option 1: Optional Text Input (when manualMode is ON) */}
+						{manualMode && (
+							<div className="space-y-2">
+								<Label htmlFor="item-hint" className="text-xs uppercase tracking-wide text-muted-foreground">
+									What is this item? <span className="text-muted-foreground/70">(optional)</span>
+								</Label>
+								<Input
+									id="item-hint"
+									placeholder="e.g., Blue summer dress"
+									value={userHint}
+									onChange={e => setUserHint(e.target.value)}
+									className="h-11"
+								/>
+								<p className="text-xs text-muted-foreground">
+									Help AI identify the correct item by describing it briefly.
+								</p>
+							</div>
+						)}
+
 						{/* File Upload */}
 						<input
 							ref={fileInputRef}
@@ -488,7 +618,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				)}
 
 				{/* Loading States */}
-				{(state === 'uploading' || state === 'analyzing') && (
+				{(state === 'uploading' || state === 'detecting' || state === 'analyzing') && (
 					<div className="py-12 flex flex-col items-center gap-4">
 						{imagePreview && (
 							<div className="w-32 h-32 rounded-lg overflow-hidden border border-border">
@@ -498,8 +628,88 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						<div className="flex flex-col items-center gap-2">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
 							<p className="text-sm text-muted-foreground">
-								{state === 'uploading' ? 'Uploading image...' : 'Analyzing with AI...'}
+								{state === 'uploading' && 'Uploading image...'}
+								{state === 'detecting' && 'Detecting items in image...'}
+								{state === 'analyzing' && 'Analyzing with AI...'}
 							</p>
+						</div>
+					</div>
+				)}
+
+				{/* Option 2: Item Selection State */}
+				{state === 'selecting' && (
+					<div className="space-y-4">
+						{/* Image Preview */}
+						{imagePreview && (
+							<div className="w-full rounded-lg overflow-hidden border border-border">
+								<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+							</div>
+						)}
+
+						{/* Detected Items Grid */}
+						{detectedItems.length > 0 && (
+							<div className="space-y-3">
+								<Label className="text-sm font-medium">We found these items:</Label>
+								<div className="grid grid-cols-2 gap-3">
+									{detectedItems.map((item, index) => (
+										<button
+											key={index}
+											type="button"
+											onClick={() => handleItemSelect(item.name)}
+											disabled={isAnalyzing}
+											className="p-4 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											<div className="font-medium text-sm mb-1">{item.name}</div>
+											{item.description && (
+												<div className="text-xs text-muted-foreground line-clamp-2">{item.description}</div>
+											)}
+											{item.category && (
+												<Badge variant="secondary" className="mt-2 text-xs">
+													{item.category}
+												</Badge>
+											)}
+										</button>
+									))}
+								</div>
+							</div>
+						)}
+
+						{/* Manual Entry Option */}
+						<div className="relative">
+							<div className="absolute inset-0 flex items-center">
+								<span className="w-full border-t" />
+							</div>
+							<div className="relative flex justify-center text-xs uppercase">
+								<span className="bg-background px-2 text-muted-foreground">or enter manually</span>
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Input
+								placeholder="Enter item name..."
+								value={manualItemName}
+								onChange={e => setManualItemName(e.target.value)}
+								onKeyDown={e => {
+									if (e.key === 'Enter' && manualItemName.trim()) {
+										handleManualEntry();
+									}
+								}}
+								className="h-11"
+							/>
+							<Button
+								onClick={handleManualEntry}
+								disabled={!manualItemName.trim() || isAnalyzing}
+								className="w-full"
+							>
+								{isAnalyzing ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin mr-2" />
+										Analyzing...
+									</>
+								) : (
+									'Continue'
+								)}
+							</Button>
 						</div>
 					</div>
 				)}
