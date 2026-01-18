@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ItemCard } from '@/components/cards/item-card';
 import { Item } from '@/lib/redux/api/itemsApi';
 
 interface ItemDetailsModalProps {
@@ -27,12 +28,9 @@ export function ItemDetailsModal({ item, onOpenChange }: ItemDetailsModalProps) 
 	return (
 		<Dialog open={!!item} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-lg overflow-hidden p-0">
-				{/* Item Image */}
-				<div className="relative h-64 w-full overflow-hidden bg-muted">
-					<img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-					{item.isOwner && (
-						<Badge className="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm">Your Item</Badge>
-					)}
+				{/* Item Image/Media Carousel */}
+				<div className="relative h-64 w-full overflow-hidden bg-muted group">
+					<ItemCard item={item} variant="detail" className="h-full rounded-none" />
 				</div>
 
 				<div className="space-y-5 px-6 pb-6 pt-4">

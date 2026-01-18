@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { ItemCard } from '@/components/cards/item-card';
 import { useGetItemQuery } from '@/lib/redux/api/itemsApi';
 import { PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
@@ -62,8 +63,9 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	};
 
 	const handleOpenImage = () => {
-		if (item?.imageUrl) {
-			window.open(item.imageUrl, '_blank');
+		if (item) {
+			const urlToOpen = item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : item.imageUrl;
+			window.open(urlToOpen, '_blank');
 		}
 	};
 
@@ -173,18 +175,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			<div className="grid gap-6 lg:grid-cols-2">
 				{/* Image Section */}
 				<div className="relative">
-					<div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-						<img 
-							src={item.imageUrl} 
-							alt={item.name} 
-							className="h-full w-full object-contain"
-						/>
-						{/* Your Item Badge - Left Side */}
-						{item.isOwner && (
-							<Badge className="absolute top-3 left-3 bg-primary/90 backdrop-blur-sm">
-								Your Item
-							</Badge>
-						)}
+					<div className="relative aspect-square overflow-hidden rounded-xl bg-muted group">
+						<ItemCard item={item} variant="detail" />
 					</div>
 					{/* Open Image Button */}
 					<Button 

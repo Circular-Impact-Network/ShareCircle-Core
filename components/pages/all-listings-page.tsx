@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { ItemCard } from '@/components/cards/item-card';
 import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { PageHeader, PageShell } from '@/components/ui/page';
@@ -118,14 +119,8 @@ export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
 							onClick={() => setSelectedItem(item)}
 						>
 							<CardContent className="flex items-center gap-4 p-4">
-								{/* Item Image */}
-								<div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-									<img
-										src={item.imageUrl}
-										alt={item.name}
-										className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-									/>
-								</div>
+								{/* Item Image/Media Carousel */}
+								<ItemCard item={item} variant="list" />
 
 								{/* Item Info */}
 								<div className="flex-1 min-w-0">

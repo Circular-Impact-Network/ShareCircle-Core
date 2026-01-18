@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, Loader2, Package, ExternalLink } from 'lucide-react';
+import { Search, Filter, X, Loader2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,7 @@ import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { ItemCard } from '@/components/cards/item-card';
 import { useGetAllItemsQuery, useSearchItemsMutation, Item, GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
@@ -302,31 +303,8 @@ export function BrowseListingsPage() {
 							className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
 							onClick={() => router.push(`/items/${item.id}`)}
 						>
-							{/* Item Image */}
-							<div className="aspect-square relative overflow-hidden bg-muted">
-								<img
-									src={item.imageUrl}
-									alt={item.name}
-									className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-								/>
-								{item.isOwner && (
-									<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm">
-										Your Item
-									</Badge>
-								)}
-								{/* Open Image Button */}
-								<Button
-									variant="ghost"
-									size="icon"
-									className="absolute top-2 right-2 h-8 w-8 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-									onClick={(e) => {
-										e.stopPropagation();
-										window.open(item.imageUrl, '_blank');
-									}}
-								>
-									<ExternalLink className="h-4 w-4 text-black" />
-								</Button>
-							</div>
+							{/* Item Image/Media Carousel */}
+							<ItemCard item={item} variant="grid" showActions />
 
 							{/* Item Details */}
 							<CardContent className="p-4">

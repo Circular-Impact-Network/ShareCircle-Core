@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Loader2, Package, Trash2, Edit, ExternalLink } from 'lucide-react';
+import { Plus, Loader2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ItemCard } from '@/components/cards/item-card';
 import { AddItemModal } from '@/components/modals/add-item-modal';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import {
@@ -123,47 +123,14 @@ export function MyListingsPage() {
 									key={item.id}
 									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all"
 								>
-									{/* Item Image */}
-									<div
-										className="aspect-square relative overflow-hidden bg-muted cursor-pointer"
+									{/* Item Image/Media Carousel */}
+									<ItemCard
+										item={item}
+										variant="grid"
+										showActions
+										onDelete={setItemToDelete}
 										onClick={() => router.push(`/items/${item.id}`)}
-									>
-										<img
-											src={item.imageUrl}
-											alt={item.name}
-											className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-										/>
-										{/* Your Item Badge - Left Side */}
-										<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm">
-											Your Item
-										</Badge>
-										<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-											{/* Open Image Button */}
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 bg-white rounded-full shadow-md"
-												onClick={e => {
-													e.stopPropagation();
-													window.open(item.imageUrl, '_blank');
-												}}
-											>
-												<ExternalLink className="h-4 w-4 text-black" />
-											</Button>
-											{/* Delete Button */}
-											<Button
-												variant="secondary"
-												size="icon"
-												className="h-8 w-8 bg-background/80 backdrop-blur-sm"
-												onClick={e => {
-													e.stopPropagation();
-													setItemToDelete(item);
-												}}
-											>
-												<Trash2 className="h-4 w-4 text-destructive" />
-											</Button>
-										</div>
-									</div>
+									/>
 
 									{/* Item Details */}
 									<CardContent className="p-4">
@@ -232,13 +199,7 @@ export function MyListingsPage() {
 									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
 									onClick={() => setSelectedItem(item)}
 								>
-									<div className="aspect-square relative overflow-hidden bg-muted">
-										<img
-											src={item.imageUrl}
-											alt={item.name}
-											className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-										/>
-									</div>
+									<ItemCard item={item} variant="grid" />
 									<CardContent className="p-4">
 										<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
 										{item.circles.length > 0 && (
