@@ -8,7 +8,6 @@ import {
 	Calendar, 
 	Tag, 
 	FolderOpen, 
-	ExternalLink, 
 	Copy, 
 	Check, 
 	Loader2,
@@ -59,13 +58,6 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				description: 'Please copy the URL manually.',
 				variant: 'destructive',
 			});
-		}
-	};
-
-	const handleOpenImage = () => {
-		if (item) {
-			const urlToOpen = item.mediaUrls && item.mediaUrls.length > 0 ? item.mediaUrls[0] : item.imageUrl;
-			window.open(urlToOpen, '_blank');
 		}
 	};
 
@@ -158,40 +150,28 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	}
 
 	return (
-		<PageShell className="space-y-6">
+		<PageShell className="space-y-4 sm:space-y-6">
 			{/* Header with Back Button and Share */}
 			<div className="flex items-center justify-between">
-				<Button onClick={handleBack} variant="ghost" className="gap-2">
+				<Button onClick={handleBack} variant="ghost" className="gap-2 -ml-2">
 					<ArrowLeft className="h-4 w-4" />
 					Back
 				</Button>
 				<Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
 					{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-					{copied ? 'Copied!' : 'Copy Link'}
+					{copied ? 'Copied!' : 'Share'}
 				</Button>
 			</div>
 
 			{/* Main Content */}
-			<div className="grid gap-6 lg:grid-cols-2">
+			<div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
 				{/* Image Section */}
-				<div className="relative">
-					<div className="relative aspect-square overflow-hidden rounded-xl bg-muted group">
-						<ItemCard item={item} variant="detail" />
-					</div>
-					{/* Open Image Button */}
-					<Button 
-						variant="outline" 
-						size="sm" 
-						className="mt-3 w-full gap-2"
-						onClick={handleOpenImage}
-					>
-						<ExternalLink className="h-4 w-4" />
-						Open Full Image
-					</Button>
+				<div className="relative aspect-[4/3] sm:aspect-square overflow-hidden rounded-xl bg-muted group">
+					<ItemCard item={item} variant="detail" className="aspect-auto h-full" />
 				</div>
 
 				{/* Details Section */}
-				<div className="space-y-6">
+				<div className="space-y-4 sm:space-y-6">
 					{/* Title and Description */}
 					<div>
 						<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{item.name}</h1>
@@ -257,39 +237,15 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					</div>
 
 					{/* Action Buttons */}
-					<div className="flex gap-3 pt-2">
-						<Button variant="outline" className="flex-1 gap-2 bg-transparent">
+					<div className="flex flex-col sm:flex-row gap-3 pt-2">
+						<Button variant="outline" className="w-full sm:flex-1 gap-2 bg-transparent">
 							<MessageCircle className="h-4 w-4" />
 							Contact
 						</Button>
-						<Button className="flex-1">
+						<Button className="w-full sm:flex-1">
 							Request to Borrow
 						</Button>
 					</div>
-
-					{/* Shareable Link Section */}
-					<Card className="bg-muted/30">
-						<CardContent className="p-4">
-							<p className="text-xs text-muted-foreground mb-2">Shareable Link</p>
-							<div className="flex items-center gap-2">
-								<code className="flex-1 truncate rounded bg-background px-2 py-1 text-xs">
-									{typeof window !== 'undefined' ? `${window.location.origin}/items/${itemId}` : `/items/${itemId}`}
-								</code>
-								<Button 
-									variant="secondary" 
-									size="sm" 
-									onClick={handleCopyLink}
-									className="shrink-0 gap-1"
-								>
-									{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-									{copied ? 'Copied' : 'Copy'}
-								</Button>
-							</div>
-							<p className="text-xs text-muted-foreground mt-2">
-								Only circle members can view this item.
-							</p>
-						</CardContent>
-					</Card>
 				</div>
 			</div>
 		</PageShell>
