@@ -13,14 +13,18 @@ export async function POST(req: NextRequest) {
 		}
 
 		const body = await req.json();
-		const { imageUrl } = body;
+		const { imageUrl, selectedItem, userHint } = body;
 
 		if (!imageUrl || typeof imageUrl !== 'string') {
 			return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
 		}
 
 		// Analyze the image using Gemini Vision
-		const analysis = await analyzeImage(imageUrl);
+		// Pass optional selectedItem (Option 2) or userHint (Option 1) if provided
+		const analysis = await analyzeImage(imageUrl, {
+			selectedItem: selectedItem || undefined,
+			userHint: userHint || undefined,
+		});
 
 		return NextResponse.json(analysis, { status: 200 });
 	} catch (error) {
