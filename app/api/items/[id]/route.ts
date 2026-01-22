@@ -301,7 +301,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
-			select: { ownerId: true, imagePath: true },
+			select: { ownerId: true, imagePath: true, mediaPaths: true },
 		});
 
 		if (!item) {
