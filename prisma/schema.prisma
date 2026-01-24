@@ -22,6 +22,21 @@ enum JoinType {
   LINK
 }
 
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum MessageType {
+  TEXT
+  SYSTEM
+}
+
+enum AttachmentType {
+  IMAGE
+  FILE
+}
+
 // User model with requested fields
 model User {
   id                String    @id @default(cuid())
@@ -49,6 +64,12 @@ model User {
 
   // Item relations
   items Item[]
+
+  // Chat relations
+  conversationsCreated   Conversation[]           @relation("ConversationCreator")
+  conversationMemberships ConversationParticipant[]
+  sentMessages           Message[]
+  messageReceipts        MessageReceipt[]
 
   @@map("users")
 }
@@ -172,4 +193,91 @@ model ItemCircle {
   @@index([circleId])
   @@index([itemId])
   @@map("item_circles")
+}
+
+model Conversation {
+  id            String            @id @default(cuid())
+  type          ConversationType  @default(DIRECT)
+  createdById   String            @map("created_by")
+  lastMessageAt DateTime?         @map("last_message_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  createdBy     User                      @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  participants  ConversationParticipant[]
+  messages      Message[]
+
+  @@index([createdById])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String    @map("conversation_id")
+  userId         String    @map("user_id")
+  pinnedAt       DateTime? @map("pinned_at")
+  archivedAt     DateTime? @map("archived_at")
+  mutedUntil     DateTime? @map("muted_until")
+  deletedAt      DateTime? @map("deleted_at")
+  lastReadAt     DateTime? @map("last_read_at")
+  joinedAt       DateTime  @default(now()) @map("joined_at")
+  leftAt         DateTime? @map("left_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@index([deletedAt])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String      @map("conversation_id")
+  senderId       String      @map("sender_id")
+  clientId       String?     @map("client_id")
+  body           String      @db.Text
+  messageType    MessageType @default(TEXT) @map("message_type")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  editedAt       DateTime?   @map("edited_at")
+
+  conversation Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  receipts     MessageReceipt[]
+  attachments  MessageAttachment[]
+
+  @@index([conversationId, createdAt])
+  @@unique([senderId, clientId])
+  @@map("messages")
+}
+
+model MessageReceipt {
+  id          String    @id @default(cuid())
+  messageId   String    @map("message_id")
+  userId      String    @map("user_id")
+  deliveredAt DateTime? @map("delivered_at")
+  readAt      DateTime? @map("read_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_receipts")
+}
+
+model MessageAttachment {
+  id        String         @id @default(cuid())
+  messageId String         @map("message_id")
+  type      AttachmentType @map("type")
+  url       String         @map("url")
+  metadata  Json?          @map("metadata")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_attachments")
 }
