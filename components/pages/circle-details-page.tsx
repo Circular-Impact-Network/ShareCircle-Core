@@ -26,6 +26,7 @@ import {
 	Trash2,
 	Edit,
 	ExternalLink,
+	MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -104,6 +105,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isRegeneratingCode, setIsRegeneratingCode] = useState(false);
+	const [isStartingChatId, setIsStartingChatId] = useState<string | null>(null);
 	const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 	const [memberAction, setMemberAction] = useState<'promote' | 'demote' | 'remove' | 'leave' | null>(null);
 	const [isProcessingMember, setIsProcessingMember] = useState(false);
@@ -188,6 +190,33 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 			});
 		} finally {
 			setIsRegeneratingCode(false);
+		}
+	};
+
+	const handleStartChat = async (otherUserId: string) => {
+		if (!otherUserId) return;
+		setIsStartingChatId(otherUserId);
+		try {
+			const response = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId }),
+			});
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to start chat');
+			}
+			const data = await response.json();
+			router.push(`/messages/${data.id}`);
+		} catch (error) {
+			console.error('Start chat error:', error);
+			toast({
+				title: 'Unable to start chat',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setIsStartingChatId(null);
 		}
 	};
 
@@ -574,6 +603,22 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 											)}
 										</div>
 										<p className="text-xs text-muted-foreground">{formatDate(member.joinedAt)}</p>
+										{!isCurrentUser && (
+											<Button
+												variant="outline"
+												size="sm"
+												className="mt-2 w-full gap-2"
+												onClick={() => handleStartChat(member.userId)}
+												disabled={isStartingChatId === member.userId}
+											>
+												{isStartingChatId === member.userId ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<MessageCircle className="h-4 w-4" />
+												)}
+												Chat
+											</Button>
+										)}
 									</div>
 
 									{(canManage || isCurrentUser) && (
@@ -675,6 +720,22 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 											)}
 										</div>
 										<p className="text-xs text-muted-foreground">{formatDate(member.joinedAt)}</p>
+										{!isCurrentUser && (
+											<Button
+												variant="outline"
+												size="sm"
+												className="mt-2 w-full gap-2"
+												onClick={() => handleStartChat(member.userId)}
+												disabled={isStartingChatId === member.userId}
+											>
+												{isStartingChatId === member.userId ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<MessageCircle className="h-4 w-4" />
+												)}
+												Chat
+											</Button>
+										)}
 									</div>
 
 									{(canManage || isCurrentUser) && (

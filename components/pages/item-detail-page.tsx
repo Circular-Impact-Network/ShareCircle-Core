@@ -32,6 +32,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const router = useRouter();
 	const { toast } = useToast();
 	const [copied, setCopied] = useState(false);
+	const [isStartingChat, setIsStartingChat] = useState(false);
 	const { data: item, isLoading, error } = useGetItemQuery(itemId);
 
 	const formatDate = (dateString: string) => {
@@ -66,6 +67,33 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			router.push('/listings');
 		} else {
 			router.push('/browse');
+		}
+	};
+
+	const handleStartChat = async () => {
+		if (!item?.owner?.id || item.isOwner) return;
+		setIsStartingChat(true);
+		try {
+			const response = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId: item.owner.id }),
+			});
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to start chat');
+			}
+			const data = await response.json();
+			router.push(`/messages/${data.id}`);
+		} catch (error) {
+			console.error('Start chat error:', error);
+			toast({
+				title: 'Unable to start chat',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setIsStartingChat(false);
 		}
 	};
 
@@ -238,9 +266,14 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 
 					{/* Action Buttons */}
 					<div className="flex flex-col sm:flex-row gap-3 pt-2">
-						<Button variant="outline" className="w-full sm:flex-1 gap-2 bg-transparent">
-							<MessageCircle className="h-4 w-4" />
-							Contact
+						<Button
+							variant="outline"
+							className="w-full sm:flex-1 gap-2 bg-transparent"
+							onClick={handleStartChat}
+							disabled={item.isOwner || isStartingChat}
+						>
+							{isStartingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+							{item.isOwner ? 'Your item' : 'Chat with owner'}
 						</Button>
 						<Button className="w-full sm:flex-1">
 							Request to Borrow

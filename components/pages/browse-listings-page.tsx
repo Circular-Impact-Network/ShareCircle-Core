@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, Loader2, Package } from 'lucide-react';
+import { Search, Filter, X, Loader2, Package, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,6 +23,7 @@ export function BrowseListingsPage() {
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const hasShownSearchErrorRef = useRef(false);
+	const [startingChatId, setStartingChatId] = useState<string | null>(null);
 
 	// Build filters for the query
 	const filters: GetItemsFilters = useMemo(() => ({
@@ -130,6 +131,36 @@ export function BrowseListingsPage() {
 		setIsSearchActive(false);
 		resetSearch();
 	}, [resetSearch]);
+
+	const handleStartChat = useCallback(
+		async (ownerId: string) => {
+			if (!ownerId) return;
+			setStartingChatId(ownerId);
+			try {
+				const response = await fetch('/api/messages/threads', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ otherUserId: ownerId }),
+				});
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.error || 'Failed to start chat');
+				}
+				const data = await response.json();
+				router.push(`/messages/${data.id}`);
+			} catch (error) {
+				console.error('Start chat error:', error);
+				toast({
+					title: 'Unable to start chat',
+					description: error instanceof Error ? error.message : 'Please try again.',
+					variant: 'destructive',
+				});
+			} finally {
+				setStartingChatId(null);
+			}
+		},
+		[router, toast],
+	);
 
 	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || isSearchActive;
 
@@ -346,6 +377,25 @@ export function BrowseListingsPage() {
 										<div className="text-xs text-muted-foreground truncate">
 											in {item.circles.map(c => c.name).join(', ')}
 										</div>
+									)}
+									{!item.isOwner && (
+										<Button
+											variant="outline"
+											size="sm"
+											className="w-full gap-2"
+											onClick={event => {
+												event.stopPropagation();
+												handleStartChat(item.owner.id);
+											}}
+											disabled={startingChatId === item.owner.id}
+										>
+											{startingChatId === item.owner.id ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : (
+												<MessageCircle className="h-4 w-4" />
+											)}
+											Chat with owner
+										</Button>
 									)}
 								</div>
 							</CardContent>
