@@ -37,6 +37,57 @@ enum AttachmentType {
   FILE
 }
 
+// Enums for Borrowing/Request Management
+enum ItemRequestStatus {
+  OPEN
+  FULFILLED
+  CANCELLED
+}
+
+enum BorrowRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+enum BorrowQueueStatus {
+  WAITING
+  READY
+  SKIPPED
+  CANCELLED
+}
+
+enum BorrowTransactionStatus {
+  ACTIVE
+  RETURN_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  // Item request notifications
+  ITEM_REQUEST_CREATED
+  ITEM_REQUEST_FULFILLED
+  // Borrow request notifications
+  BORROW_REQUEST_RECEIVED
+  BORROW_REQUEST_APPROVED
+  BORROW_REQUEST_DECLINED
+  // Queue notifications
+  QUEUE_POSITION_UPDATED
+  QUEUE_ITEM_READY
+  // Return notifications
+  RETURN_REQUESTED
+  RETURN_CONFIRMED
+  // Message notifications
+  NEW_MESSAGE
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
 // User model with requested fields
 model User {
   id                String    @id @default(cuid())
@@ -66,10 +117,19 @@ model User {
   items Item[]
 
   // Chat relations
-  conversationsCreated   Conversation[]           @relation("ConversationCreator")
+  conversationsCreated    Conversation[]            @relation("ConversationCreator")
   conversationMemberships ConversationParticipant[]
-  sentMessages           Message[]
-  messageReceipts        MessageReceipt[]
+  sentMessages            Message[]
+  messageReceipts         MessageReceipt[]
+
+  // Borrowing relations
+  itemRequests            ItemRequest[]
+  borrowRequestsAsRequester BorrowRequest[]         @relation("BorrowRequester")
+  borrowRequestsAsOwner   BorrowRequest[]           @relation("BorrowOwner")
+  borrowQueueEntries      BorrowQueue[]
+  borrowTransactionsAsBorrower BorrowTransaction[]  @relation("Borrower")
+  borrowTransactionsAsOwner BorrowTransaction[]     @relation("TransactionOwner")
+  notifications           Notification[]
 
   @@map("users")
 }
@@ -127,9 +187,10 @@ model Circle {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  createdBy User           @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members   CircleMember[]
-  items     ItemCircle[]
+  createdBy    User           @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  members      CircleMember[]
+  items        ItemCircle[]
+  itemRequests ItemRequest[]
 
   @@index([createdById])
   @@map("circles")
@@ -158,23 +219,28 @@ model CircleMember {
 
 // Item model for shared items
 model Item {
-  id          String   @id @default(cuid())
-  ownerId     String   @map("owner_id")
-  imagePath   String   @map("image_path")
-  name        String
-  description String?  @db.Text
-  categories  String[] @default([])
-  tags        String[] @default([])
-  mediaPaths  String[] @default([]) @map("media_paths")
+  id           String   @id @default(cuid())
+  ownerId      String   @map("owner_id")
+  imagePath    String   @map("image_path")
+  name         String
+  description  String?  @db.Text
+  categories   String[] @default([])
+  tags         String[] @default([])
+  mediaPaths   String[] @default([]) @map("media_paths")
+  isAvailable  Boolean  @default(true) @map("is_available")
   // Note: embedding vector(1024) is handled via raw SQL, not in Prisma
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  owner   User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  circles ItemCircle[]
+  owner              User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  circles            ItemCircle[]
+  borrowRequests     BorrowRequest[]
+  borrowQueue        BorrowQueue[]
+  borrowTransactions BorrowTransaction[]
 
   @@index([ownerId])
+  @@index([isAvailable])
   @@map("items")
 }
 
@@ -280,4 +346,123 @@ model MessageAttachment {
 
   @@index([messageId])
   @@map("message_attachments")
+}
+
+// Item Request - when user can't find an item they need
+model ItemRequest {
+  id          String            @id @default(cuid())
+  requesterId String            @map("requester_id")
+  circleId    String            @map("circle_id")
+  title       String
+  description String?           @db.Text
+  desiredFrom DateTime?         @map("desired_from")
+  desiredTo   DateTime?         @map("desired_to")
+  status      ItemRequestStatus @default(OPEN)
+  fulfilledBy String?           @map("fulfilled_by") // itemId that fulfilled this request
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  requester User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  circle    Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId])
+  @@index([circleId])
+  @@index([status])
+  @@map("item_requests")
+}
+
+// Borrow Request - request to borrow a specific item
+model BorrowRequest {
+  id          String              @id @default(cuid())
+  itemId      String              @map("item_id")
+  requesterId String              @map("requester_id")
+  ownerId     String              @map("owner_id")
+  message     String?             @db.Text
+  desiredFrom DateTime            @map("desired_from")
+  desiredTo   DateTime            @map("desired_to")
+  status      BorrowRequestStatus @default(PENDING)
+  declineNote String?             @map("decline_note") @db.Text
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  item        Item               @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requester   User               @relation("BorrowRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner       User               @relation("BorrowOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  transaction BorrowTransaction?
+
+  @@index([itemId])
+  @@index([requesterId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("borrow_requests")
+}
+
+// Borrow Queue - queue for items that are currently unavailable
+model BorrowQueue {
+  id          String            @id @default(cuid())
+  itemId      String            @map("item_id")
+  requesterId String            @map("requester_id")
+  position    Int
+  message     String?           @db.Text
+  desiredFrom DateTime?         @map("desired_from")
+  desiredTo   DateTime?         @map("desired_to")
+  status      BorrowQueueStatus @default(WAITING)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  item      Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requester User @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, requesterId])
+  @@index([itemId, position])
+  @@index([requesterId])
+  @@index([status])
+  @@map("borrow_queue")
+}
+
+// Borrow Transaction - active borrow record
+model BorrowTransaction {
+  id              String                   @id @default(cuid())
+  borrowRequestId String                   @unique @map("borrow_request_id")
+  itemId          String                   @map("item_id")
+  borrowerId      String                   @map("borrower_id")
+  ownerId         String                   @map("owner_id")
+  borrowedAt      DateTime                 @default(now()) @map("borrowed_at")
+  dueAt           DateTime                 @map("due_at")
+  returnedAt      DateTime?                @map("returned_at")
+  status          BorrowTransactionStatus  @default(ACTIVE)
+  returnNote      String?                  @map("return_note") @db.Text
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  borrowRequest BorrowRequest @relation(fields: [borrowRequestId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  borrower      User          @relation("Borrower", fields: [borrowerId], references: [id], onDelete: Cascade)
+  owner         User          @relation("TransactionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([borrowerId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("borrow_transactions")
+}
+
+// Notification model for alerts
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String             @map("user_id")
+  type      NotificationType
+  entityId  String?            @map("entity_id") // ID of related entity (request, transaction, etc.)
+  title     String
+  body      String             @db.Text
+  metadata  Json?              // Additional data for the notification
+  status    NotificationStatus @default(UNREAD)
+  createdAt DateTime           @default(now()) @map("created_at")
+  readAt    DateTime?          @map("read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
