@@ -86,6 +86,22 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 			}
 		}
 
+		// Broadcast to user's channel to update unread count in sidebar
+		try {
+			const userChannel = supabaseAdmin.channel(`user:${userId}:messages`);
+			await userChannel.send({
+				type: 'broadcast',
+				event: 'messages_read',
+				payload: {
+					conversationId,
+					readCount: unreadReceipts.length,
+				},
+			});
+			await supabaseAdmin.removeChannel(userChannel);
+		} catch (broadcastError) {
+			console.error('Failed to broadcast messages read event:', broadcastError);
+		}
+
 		return NextResponse.json({ success: true }, { status: 200 });
 	} catch (error) {
 		console.error('Read conversation error:', error);
