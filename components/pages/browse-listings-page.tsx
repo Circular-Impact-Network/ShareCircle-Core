@@ -2,16 +2,18 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, Loader2, Package, MessageCircle } from 'lucide-react';
+import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
 import { useGetAllItemsQuery, useSearchItemsMutation, Item, GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,6 +26,15 @@ export function BrowseListingsPage() {
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const hasShownSearchErrorRef = useRef(false);
 	const [startingChatId, setStartingChatId] = useState<string | null>(null);
+	
+	// Item request form state
+	const [showRequestForm, setShowRequestForm] = useState(false);
+	const [requestTitle, setRequestTitle] = useState('');
+	const [requestDescription, setRequestDescription] = useState('');
+	const [requestCircleId, setRequestCircleId] = useState('');
+	
+	// Item request mutation
+	const [createItemRequest, { isLoading: isCreatingRequest }] = useCreateItemRequestMutation();
 
 	// Build filters for the query
 	const filters: GetItemsFilters = useMemo(() => ({
@@ -123,6 +134,52 @@ export function BrowseListingsPage() {
 		});
 		return ['All Categories', ...Array.from(cats).sort()];
 	}, [items]);
+
+	// Extract unique circles from items for the request form
+	const userCircles = useMemo(() => {
+		const circleMap = new Map<string, { id: string; name: string }>();
+		items.forEach(item => {
+			item.circles.forEach(circle => {
+				if (!circleMap.has(circle.id)) {
+					circleMap.set(circle.id, circle);
+				}
+			});
+		});
+		return Array.from(circleMap.values());
+	}, [items]);
+
+	// Handle item request submission
+	const handleSubmitItemRequest = async () => {
+		if (!requestTitle.trim()) {
+			toast({ title: 'Please enter what you&apos;re looking for', variant: 'destructive' });
+			return;
+		}
+		if (!requestCircleId) {
+			toast({ title: 'Please select a circle', variant: 'destructive' });
+			return;
+		}
+		try {
+			await createItemRequest({
+				title: requestTitle.trim(),
+				description: requestDescription.trim() || undefined,
+				circleId: requestCircleId,
+			}).unwrap();
+			toast({ title: 'Request created!', description: 'Circle members will be notified.' });
+			setShowRequestForm(false);
+			setRequestTitle('');
+			setRequestDescription('');
+			setRequestCircleId('');
+		} catch (error) {
+			toast({ title: 'Failed to create request', variant: 'destructive' });
+		}
+	};
+
+	// Pre-fill request form with search query
+	useEffect(() => {
+		if (isSearchActive && displayItems.length === 0 && searchQuery) {
+			setRequestTitle(searchQuery);
+		}
+	}, [isSearchActive, displayItems.length, searchQuery]);
 
 	// Reset all filters
 	const handleResetFilters = useCallback(() => {
@@ -288,18 +345,78 @@ export function BrowseListingsPage() {
 			{/* Empty State - No Search Results */}
 			{!isLoadingData && isSearchActive && displayItems.length === 0 && (
 				<Card className="border-dashed border-border/70 bg-card">
-					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+					<CardContent className="flex flex-col items-center gap-4 text-center py-8">
 						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
 							<Search className="h-7 w-7 text-muted-foreground" />
 						</div>
 						<div>
 							<p className="font-medium text-foreground mb-1">No matching items found</p>
 							<p className="text-sm text-muted-foreground mb-4">
-								Try different search terms or clear the search
+								Can&apos;t find what you need? Request it from your circles!
 							</p>
-							<Button variant="outline" onClick={clearSearch}>
-								Clear Search
-							</Button>
+							{!showRequestForm ? (
+								<div className="flex gap-2 justify-center">
+									<Button variant="outline" onClick={clearSearch}>
+										Clear Search
+									</Button>
+									<Button onClick={() => setShowRequestForm(true)} className="gap-2">
+										<HandHelping className="h-4 w-4" />
+										Request Item
+									</Button>
+								</div>
+							) : (
+								<div className="w-full max-w-md text-left space-y-3 mt-4">
+									<Input
+										placeholder="What are you looking for?"
+										value={requestTitle}
+										onChange={e => setRequestTitle(e.target.value)}
+									/>
+									<Textarea
+										placeholder="Add any details (optional)"
+										value={requestDescription}
+										onChange={e => setRequestDescription(e.target.value)}
+										rows={2}
+									/>
+									<Select value={requestCircleId} onValueChange={setRequestCircleId}>
+										<SelectTrigger>
+											<SelectValue placeholder="Select a circle" />
+										</SelectTrigger>
+										<SelectContent>
+											{userCircles.map(circle => (
+												<SelectItem key={circle.id} value={circle.id}>
+													{circle.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<div className="flex gap-2">
+										<Button
+											variant="outline"
+											onClick={() => {
+												setShowRequestForm(false);
+												setRequestTitle('');
+												setRequestDescription('');
+												setRequestCircleId('');
+											}}
+											className="flex-1"
+										>
+											Cancel
+										</Button>
+										<Button
+											onClick={handleSubmitItemRequest}
+											disabled={isCreatingRequest || !requestTitle.trim() || !requestCircleId}
+											className="flex-1 gap-2"
+										>
+											{isCreatingRequest ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : (
+												<Send className="h-4 w-4" />
+											)}
+											Send Request
+										</Button>
+									</div>
+								</div>
+							)}
 						</div>
 					</CardContent>
 				</Card>
