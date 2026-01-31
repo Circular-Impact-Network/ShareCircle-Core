@@ -135,6 +135,7 @@ export async function GET(req: NextRequest) {
 						name: c.circle.name,
 					})),
 					isOwner: item.ownerId === userId,
+					isAvailable: item.isAvailable,
 				};
 			}),
 		);
