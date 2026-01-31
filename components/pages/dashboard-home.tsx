@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Plus, MapPin, Users, TrendingUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +15,15 @@ const activityLog = [
 ];
 
 export function DashboardHome() {
-	const router = useRouter();
 	const [userName, setUserName] = useState('User');
 
 	useEffect(() => {
 		const name = localStorage.getItem('sharecircle_user_name') || 'User';
-		setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+		// Use setTimeout to avoid calling setState synchronously in effect
+		const timer = setTimeout(() => {
+			setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+		}, 0);
+		return () => clearTimeout(timer);
 	}, []);
 
 	const stats = [

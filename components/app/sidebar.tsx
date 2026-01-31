@@ -1,7 +1,7 @@
 'use client';
 
 import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History, HandHelping } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,6 @@ const navItems = [
 ];
 
 export function Sidebar() {
-	const router = useRouter();
 	const pathname = usePathname();
 	const dispatch = useAppDispatch();
 	const isMobileSidebarOpen = useAppSelector(state => state.ui.isMobileSidebarOpen);
@@ -79,7 +78,7 @@ export function Sidebar() {
 		dispatch(setMobileSidebarOpen(false));
 	};
 
-	const SidebarContent = () => (
+	const sidebarContent = (
 		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
 			<div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
@@ -165,7 +164,7 @@ export function Sidebar() {
 		<>
 			{/* Desktop Sidebar - Fixed position */}
 			<aside className="hidden lg:flex fixed left-0 top-0 w-64 h-[100dvh] border-r border-border bg-card flex-col z-40">
-				<SidebarContent />
+				{sidebarContent}
 			</aside>
 
 			{/* Mobile Overlay */}
@@ -182,7 +181,7 @@ export function Sidebar() {
 					isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 				}`}
 			>
-				<SidebarContent />
+				{sidebarContent}
 			</div>
 		</>
 	);

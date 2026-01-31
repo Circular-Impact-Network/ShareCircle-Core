@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Share2, Phone, Mail, Loader2 } from 'lucide-react';
+import { Share2, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,7 +82,7 @@ function LoginContent() {
 			// Redirect to callbackUrl if present, otherwise dashboard
 			router.push(callbackUrl);
 			router.refresh();
-		} catch (err) {
+		} catch {
 			setError('Login failed. Please try again.');
 			setIsLoading(false);
 		}
@@ -92,7 +92,7 @@ function LoginContent() {
 		setIsGoogleLoading(true);
 		try {
 			await signIn('google', { callbackUrl });
-		} catch (error) {
+		} catch {
 			setIsGoogleLoading(false);
 		}
 	};
@@ -271,7 +271,7 @@ function LoginContent() {
 					</Button>
 
 					<p className="text-center text-muted-foreground mt-6">
-						Don't have an account?{' '}
+						Don&apos;t have an account?{' '}
 						<Link
 							href={callbackUrl ? `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/signup'}
 							className="text-primary font-semibold hover:underline"

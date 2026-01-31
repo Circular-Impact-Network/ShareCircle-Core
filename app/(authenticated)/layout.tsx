@@ -18,7 +18,7 @@ export default function AuthenticatedLayout({
 }) {
 	const router = useRouter();
 	const pathname = usePathname();
-	const { data: session, status } = useSession();
+	const { status } = useSession();
 	const [mounted, setMounted] = useState(false);
 	const dispatch = useAppDispatch();
 
@@ -26,7 +26,11 @@ export default function AuthenticatedLayout({
 	useUserSync();
 
 	useEffect(() => {
-		setMounted(true);
+		// Use setTimeout to avoid calling setState synchronously in effect
+		const timer = setTimeout(() => {
+			setMounted(true);
+		}, 0);
+		return () => clearTimeout(timer);
 	}, []);
 
 	useEffect(() => {

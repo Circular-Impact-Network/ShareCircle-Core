@@ -11,15 +11,18 @@ import {
 	Source_Serif_4 as V0_Font_Source_Serif_4,
 } from 'next/font/google';
 
-// Initialize fonts
+// Initialize fonts (kept for potential future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _plusJakartaSans = V0_Font_Plus_Jakarta_Sans({
 	subsets: ['latin'],
 	weight: ['200', '300', '400', '500', '600', '700', '800'],
 });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _geistMono = V0_Font_Geist_Mono({
 	subsets: ['latin'],
 	weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
 });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _sourceSerif_4 = V0_Font_Source_Serif_4({
 	subsets: ['latin'],
 	weight: ['200', '300', '400', '500', '600', '700', '800', '900'],

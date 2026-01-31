@@ -72,8 +72,8 @@ function AlertCard({
 	onMarkRead: (id: string) => void;
 }) {
 	const router = useRouter();
-	const Icon = getNotificationIcon(notification.type);
 	const isUnread = notification.status === 'UNREAD';
+	const IconComponent = getNotificationIcon(notification.type);
 
 	const handleClick = () => {
 		if (isUnread) {
@@ -104,7 +104,10 @@ function AlertCard({
 							isUnread ? 'bg-primary/10' : 'bg-muted'
 						)}
 					>
-						<Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} />
+						{(() => {
+							const Icon = IconComponent;
+							return Icon ? <Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} /> : null;
+						})()}
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2">

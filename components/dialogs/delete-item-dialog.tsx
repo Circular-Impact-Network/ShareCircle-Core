@@ -23,7 +23,7 @@ export function DeleteItemDialog({ isOpen, itemTitle, onConfirm, onCancel }: Del
 				<DialogHeader>
 					<DialogTitle>Delete Item</DialogTitle>
 					<DialogDescription>
-						Are you sure you want to delete "{itemTitle}"? This action cannot be undone.
+						Are you sure you want to delete &quot;{itemTitle}&quot;? This action cannot be undone.
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>

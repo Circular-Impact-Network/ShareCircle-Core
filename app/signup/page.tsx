@@ -112,7 +112,7 @@ function SignupContent() {
 
 			// Redirect to callbackUrl if present, otherwise dashboard
 			router.push(callbackUrl);
-		} catch (err) {
+		} catch {
 			setError('Signup failed. Please try again.');
 			setIsLoading(false);
 		}
@@ -122,7 +122,7 @@ function SignupContent() {
 		setIsGoogleLoading(true);
 		try {
 			await signIn('google', { callbackUrl });
-		} catch (error) {
+		} catch {
 			setIsGoogleLoading(false);
 		}
 	};

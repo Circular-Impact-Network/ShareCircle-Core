@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest) {
 		}
 
 		const body = await req.json();
-		const { name, bio, image, phoneNumber, countryCode } = body;
+		const { name, image, phoneNumber, countryCode } = body;
 
 		// Update user profile
 		const updatedUser = await prisma.user.update({

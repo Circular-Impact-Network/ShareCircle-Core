@@ -62,7 +62,7 @@ export function CreateListingModal({ open, onOpenChange, onSubmit, availableCirc
 
 			const data = await response.json();
 			setDescription(data.description);
-		} catch (err) {
+		} catch {
 			setError('Failed to generate description. Please write one manually.');
 		} finally {
 			setIsGenerating(false);

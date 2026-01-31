@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 		const itemId = req.nextUrl.searchParams.get('itemId');
 
 		// Build where clause based on type
-		let whereClause: {
+		const whereClause: {
 			requesterId?: string;
 			ownerId?: string;
 			OR?: Array<{ requesterId: string } | { ownerId: string }>;

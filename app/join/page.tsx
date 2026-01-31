@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 function JoinPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const { data: session, status } = useSession();
+	const { status } = useSession();
 	const [isJoining, setIsJoining] = useState(false);
 	const [joinResult, setJoinResult] = useState<{
 		success: boolean;
@@ -32,6 +32,7 @@ function JoinPageContent() {
 		if (status === 'authenticated' && code && !joinResult && !isJoining) {
 			handleJoin();
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [status, code]);
 
 	const handleJoin = async () => {

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { NotificationType, NotificationStatus } from '@prisma/client';
+import { NotificationType, NotificationStatus, Prisma } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,6 +15,16 @@ function getSupabaseClient() {
 
 interface CreateNotificationParams {
 	userId: string;
+	type: NotificationType;
+	entityId?: string;
+	title: string;
+	body: string;
+	metadata?: Record<string, unknown>;
+}
+
+interface NotifyCircleMembersParams {
+	circleId: string;
+	actorId: string;
 	type: NotificationType;
 	entityId?: string;
 	title: string;
@@ -40,7 +50,7 @@ export async function createNotification({
 			entityId,
 			title,
 			body,
-			metadata: metadata || {},
+			metadata: (metadata || {}) as Prisma.InputJsonValue,
 			status: NotificationStatus.UNREAD,
 		},
 	});
@@ -81,7 +91,7 @@ export async function notifyCircleMembers({
 	title,
 	body,
 	metadata,
-}: CreateNotificationParams & { circleId: string; actorId: string }) {
+}: NotifyCircleMembersParams) {
 	// Get all circle members except the actor
 	const members = await prisma.circleMember.findMany({
 		where: {

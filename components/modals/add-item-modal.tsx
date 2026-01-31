@@ -16,7 +16,6 @@ import {
 	X,
 	Check,
 	ImageIcon,
-	RefreshCw,
 	AlertCircle,
 	Plus,
 } from 'lucide-react';
@@ -89,7 +88,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [uploadImage] = useUploadItemImageMutation();
 	const [uploadMedia] = useUploadMediaMutation();
 	const [analyzeImage, { isLoading: isAnalyzing }] = useAnalyzeImageMutation();
-	const [detectItems, { isLoading: isDetecting }] = useDetectItemsMutation();
+	const [detectItems] = useDetectItemsMutation();
 	const [createItem, { isLoading: isSaving }] = useCreateItemMutation();
 	const [cleanupImage] = useCleanupImageMutation();
 
@@ -98,6 +97,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		if (open) {
 			fetchCircles();
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [open]);
 
 	const fetchCircles = async () => {
@@ -363,7 +363,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		await handleItemSelect(manualItemName.trim());
 	};
 
-	// Retry AI analysis
+	// Retry AI analysis (kept for potential future use)
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const retryAnalysis = async () => {
 		if (!imageUrl) return;
 

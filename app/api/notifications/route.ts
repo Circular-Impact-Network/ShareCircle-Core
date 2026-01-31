@@ -42,9 +42,9 @@ export async function GET(req: NextRequest) {
 		};
 
 		if (tab === 'alerts') {
-			whereClause.type = { in: ALERT_TYPES };
+			whereClause.type = { in: [...ALERT_TYPES] };
 		} else if (tab === 'requests') {
-			whereClause.type = { in: REQUEST_TYPES };
+			whereClause.type = { in: [...REQUEST_TYPES] };
 		}
 
 		if (status) {
@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
 				where: {
 					userId,
 					status: 'UNREAD',
-					...(tab === 'alerts' ? { type: { in: ALERT_TYPES } } : {}),
-					...(tab === 'requests' ? { type: { in: REQUEST_TYPES } } : {}),
+					...(tab === 'alerts' ? { type: { in: [...ALERT_TYPES] } } : {}),
+					...(tab === 'requests' ? { type: { in: [...REQUEST_TYPES] } } : {}),
 				},
 			}),
 		]);

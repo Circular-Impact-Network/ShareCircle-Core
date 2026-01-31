@@ -17,14 +17,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
 	const [theme, setTheme] = useState('light');
-	const [mounted, setMounted] = useState(false);
-
-	useEffect(() => {
-		const savedTheme = localStorage.getItem('sharecircle_theme') || 'light';
-		setTheme(savedTheme);
-		updateTheme(savedTheme);
-		setMounted(true);
-	}, []);
 
 	const updateTheme = (newTheme: string) => {
 		const htmlElement = document.documentElement;
@@ -34,6 +26,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 			htmlElement.classList.remove('dark');
 		}
 	};
+
+	useEffect(() => {
+		const savedTheme = localStorage.getItem('sharecircle_theme') || 'light';
+		// Use setTimeout to avoid calling setState synchronously in effect
+		const timer = setTimeout(() => {
+			setTheme(savedTheme);
+			updateTheme(savedTheme);
+		}, 0);
+		return () => clearTimeout(timer);
+	}, []);
 
 	const toggleTheme = () => {
 		const newTheme = theme === 'light' ? 'dark' : 'light';

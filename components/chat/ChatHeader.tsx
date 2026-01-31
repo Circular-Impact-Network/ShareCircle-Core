@@ -1,4 +1,4 @@
-import { BellOff, MoreVertical, Pin, Archive, Trash2 } from 'lucide-react';
+import { BellOff, MoreVertical, Pin, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
 	DropdownMenu,
@@ -27,10 +27,8 @@ export function ChatHeader({
 	isTyping,
 	isPinned,
 	isMuted,
-	isArchived,
 	onTogglePin,
 	onToggleMute,
-	onToggleArchive,
 	onDelete,
 }: ChatHeaderProps) {
 	return (

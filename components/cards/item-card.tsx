@@ -40,7 +40,7 @@ export function ItemCard({ item, variant = 'grid', showActions = false, onDelete
 		className,
 	);
 
-	const handleCardClick = (e: React.MouseEvent) => {
+	const handleCardClick = () => {
 		if (onClick) {
 			onClick(item);
 		}
