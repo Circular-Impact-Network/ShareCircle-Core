@@ -1,22 +1,28 @@
 'use client';
 
-import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X } from 'lucide-react';
+import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History, HandHelping } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
 import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
+import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
+import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
 import { cn } from '@/lib/utils';
 
 const navItems = [
 	{ id: 'home', label: 'Home', icon: Home, href: '/home' },
 	{ id: 'browse', label: 'Browse Items', icon: Search, href: '/browse' },
+	{ id: 'requests', label: 'Item Requests', icon: HandHelping, href: '/requests' },
 	{ id: 'circles', label: 'Circles', icon: LayoutGrid, href: '/circles' },
 	{ id: 'listings', label: 'My Listings', icon: Plus, href: '/listings' },
+	{ id: 'activity', label: 'My Activity', icon: History, href: '/activity' },
 	{ id: 'messages', label: 'Messages', icon: MessageSquare, href: '/messages' },
+	{ id: 'notifications', label: 'Notifications', icon: Bell, href: '/notifications' },
 	{ id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
@@ -30,6 +36,21 @@ export function Sidebar() {
 	const userImage = useAppSelector(selectUserImage);
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
+
+	// Get notification counts - fetch minimal data just to get counts
+	const { data: notificationsData } = useGetNotificationsQuery(
+		{ limit: 1 },
+		{ pollingInterval: 30000 } // Poll every 30 seconds as backup
+	);
+	
+	// Get unread message count
+	const { data: messagesData } = useGetUnreadMessageCountQuery(undefined, {
+		pollingInterval: 30000, // Poll every 30 seconds as backup
+	});
+	
+	// Use total unread count from API
+	const totalNotificationUnread = notificationsData?.unreadCount || 0;
+	const totalMessageUnread = messagesData?.unreadCount || 0;
 
 	const handleLogout = async () => {
 		await signOut({ callbackUrl: '/landing' });
@@ -83,6 +104,13 @@ export function Sidebar() {
 				{navItems.map(item => {
 					const Icon = item.icon;
 					const active = isActive(item.href);
+					// Determine unread count based on nav item
+					let unreadCount = 0;
+					if (item.id === 'notifications') {
+						unreadCount = totalNotificationUnread;
+					} else if (item.id === 'messages') {
+						unreadCount = totalMessageUnread;
+					}
 					return (
 						<Link
 							key={item.id}
@@ -96,7 +124,15 @@ export function Sidebar() {
 							)}
 						>
 							<Icon className="h-5 w-5" />
-							<span>{item.label}</span>
+							<span className="flex-1">{item.label}</span>
+							{unreadCount > 0 && (
+								<Badge
+									variant={active ? 'secondary' : 'destructive'}
+									className="h-5 min-w-[20px] px-1.5 text-xs"
+								>
+									{unreadCount > 99 ? '99+' : unreadCount}
+								</Badge>
+							)}
 						</Link>
 					);
 				})}
