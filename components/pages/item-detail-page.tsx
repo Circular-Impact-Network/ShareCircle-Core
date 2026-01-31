@@ -12,7 +12,11 @@ import {
 	Check, 
 	Loader2,
 	Lock,
-	X
+	X,
+	Clock,
+	Users,
+	CheckCircle2,
+	AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +24,24 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
-import { useGetItemQuery } from '@/lib/redux/api/itemsApi';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { useGetItemQuery, Item } from '@/lib/redux/api/itemsApi';
+import { 
+	useCreateBorrowRequestMutation, 
+	useGetBorrowRequestsQuery,
+	useGetQueueEntriesQuery,
+	useGetTransactionsQuery
+} from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +54,44 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const { toast } = useToast();
 	const [copied, setCopied] = useState(false);
 	const [isStartingChat, setIsStartingChat] = useState(false);
+	const [showBorrowModal, setShowBorrowModal] = useState(false);
+	const [borrowMessage, setBorrowMessage] = useState('');
+	const [desiredFrom, setDesiredFrom] = useState('');
+	const [desiredTo, setDesiredTo] = useState('');
+	
 	const { data: item, isLoading, error } = useGetItemQuery(itemId);
+	
+	// Get existing borrow requests and queue for this item
+	const { data: existingRequests = [] } = useGetBorrowRequestsQuery(
+		{ itemId, type: 'outgoing' },
+		{ skip: !itemId }
+	);
+	const { data: queueEntries = [] } = useGetQueueEntriesQuery(
+		{ itemId },
+		{ skip: !itemId }
+	);
+	// Get user's active transactions for this item
+	const { data: borrowerTransactions = [] } = useGetTransactionsQuery(
+		{ role: 'borrower', itemId },
+		{ skip: !itemId }
+	);
+	
+	// Borrow request mutation
+	const [createBorrowRequest, { isLoading: isCreatingRequest }] = useCreateBorrowRequestMutation();
+	
+	// Check if user already has a pending request
+	const hasPendingRequest = existingRequests.some(r => r.status === 'PENDING');
+	const isInQueue = queueEntries.some(q => q.status === 'WAITING' || q.status === 'READY');
+	const queuePosition = queueEntries.find(q => q.status === 'WAITING')?.position;
+	
+	// Check if user is currently borrowing this item
+	const activeTransaction = borrowerTransactions.find(
+		t => t.item.id === itemId && (t.status === 'ACTIVE' || t.status === 'RETURN_PENDING')
+	);
+	const isCurrentBorrower = !!activeTransaction;
+	
+	// Item with availability info (cast since API returns isAvailable)
+	const itemWithAvailability = item as (Item & { isAvailable?: boolean }) | undefined;
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString('en-US', {
@@ -96,6 +154,58 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			setIsStartingChat(false);
 		}
 	};
+
+	const handleBorrowRequest = async (joinQueue = false) => {
+		if (!desiredFrom || !desiredTo) {
+			toast({ title: 'Please select dates', variant: 'destructive' });
+			return;
+		}
+		try {
+			const result = await createBorrowRequest({
+				itemId,
+				message: borrowMessage.trim() || undefined,
+				desiredFrom,
+				desiredTo,
+				joinQueue,
+			}).unwrap();
+			
+			if (result.type === 'queue') {
+				toast({
+					title: 'Added to queue!',
+					description: 'You will be notified when the item is available.',
+				});
+			} else {
+				toast({
+					title: 'Request sent!',
+					description: 'The owner will review your request.',
+				});
+			}
+			setShowBorrowModal(false);
+			setBorrowMessage('');
+			setDesiredFrom('');
+			setDesiredTo('');
+		} catch (error: unknown) {
+			const errorMessage = error && typeof error === 'object' && 'data' in error
+				? (error.data as { error?: string })?.error
+				: 'Please try again.';
+			toast({
+				title: 'Failed to submit request',
+				description: errorMessage,
+				variant: 'destructive',
+			});
+		}
+	};
+
+	// Set default dates when modal opens
+	useEffect(() => {
+		if (showBorrowModal) {
+			const today = new Date();
+			const nextWeek = new Date(today);
+			nextWeek.setDate(nextWeek.getDate() + 7);
+			setDesiredFrom(today.toISOString().split('T')[0]);
+			setDesiredTo(nextWeek.toISOString().split('T')[0]);
+		}
+	}, [showBorrowModal]);
 
 	// Loading state
 	if (isLoading) {
@@ -264,6 +374,69 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 					</div>
 
+					{/* Availability Status */}
+					{!item.isOwner && (
+						<div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+							{isCurrentBorrower ? (
+								<>
+									<CheckCircle2 className="h-5 w-5 text-primary" />
+									<div>
+										<p className="text-sm font-medium text-primary">You&apos;re borrowing this</p>
+										<p className="text-xs text-muted-foreground">
+											{activeTransaction?.status === 'RETURN_PENDING' 
+												? 'Return pending confirmation'
+												: `Due ${new Date(activeTransaction!.dueAt).toLocaleDateString()}`
+											}
+										</p>
+									</div>
+								</>
+							) : itemWithAvailability?.isAvailable !== false ? (
+								<>
+									<CheckCircle2 className="h-5 w-5 text-green-500" />
+									<div>
+										<p className="text-sm font-medium text-green-700 dark:text-green-400">Available</p>
+										<p className="text-xs text-muted-foreground">Ready to borrow</p>
+									</div>
+								</>
+							) : (
+								<>
+									<AlertCircle className="h-5 w-5 text-amber-500" />
+									<div className="flex-1">
+										<p className="text-sm font-medium text-amber-700 dark:text-amber-400">Currently Borrowed</p>
+										<p className="text-xs text-muted-foreground">
+											{queueEntries.length > 0 
+												? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
+												: 'You can join the queue'
+											}
+										</p>
+									</div>
+								</>
+							)}
+						</div>
+					)}
+
+					{/* User's request status - only show if not currently borrowing */}
+					{!isCurrentBorrower && hasPendingRequest && (
+						<div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+							<Clock className="h-5 w-5 text-primary" />
+							<div>
+								<p className="text-sm font-medium">Request Pending</p>
+								<p className="text-xs text-muted-foreground">Waiting for owner approval</p>
+							</div>
+						</div>
+					)}
+					{!isCurrentBorrower && isInQueue && (
+						<div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+							<Users className="h-5 w-5 text-blue-500" />
+							<div>
+								<p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+									{queuePosition ? `#${queuePosition} in queue` : 'In queue'}
+								</p>
+								<p className="text-xs text-muted-foreground">You&apos;ll be notified when available</p>
+							</div>
+						</div>
+					)}
+
 					{/* Action Buttons */}
 					<div className="flex flex-col sm:flex-row gap-3 pt-2">
 						<Button
@@ -275,12 +448,92 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							{isStartingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
 							{item.isOwner ? 'Your item' : 'Chat with owner'}
 						</Button>
-						<Button className="w-full sm:flex-1">
-							Request to Borrow
-						</Button>
+						{!item.isOwner && !isCurrentBorrower && (
+							<Button 
+								className="w-full sm:flex-1"
+								onClick={() => setShowBorrowModal(true)}
+								disabled={hasPendingRequest || isInQueue}
+							>
+								{itemWithAvailability?.isAvailable !== false ? 'Request to Borrow' : 'Join Queue'}
+							</Button>
+						)}
+						{isCurrentBorrower && activeTransaction?.status === 'ACTIVE' && (
+							<Button 
+								variant="secondary"
+								className="w-full sm:flex-1"
+								onClick={() => router.push('/activity')}
+							>
+								View in My Activity
+							</Button>
+						)}
 					</div>
 				</div>
 			</div>
+
+			{/* Borrow Request Modal */}
+			<Dialog open={showBorrowModal} onOpenChange={setShowBorrowModal}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>
+							{itemWithAvailability?.isAvailable !== false ? 'Request to Borrow' : 'Join Queue'}
+						</DialogTitle>
+						<DialogDescription>
+							{itemWithAvailability?.isAvailable !== false 
+								? `Request to borrow "${item.name}" from ${item.owner.name || 'the owner'}`
+								: `This item is currently borrowed. Join the queue to be notified when it's available.`
+							}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4 py-4">
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="from-date">From</Label>
+								<Input
+									id="from-date"
+									type="date"
+									value={desiredFrom}
+									onChange={e => setDesiredFrom(e.target.value)}
+									min={new Date().toISOString().split('T')[0]}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="to-date">To</Label>
+								<Input
+									id="to-date"
+									type="date"
+									value={desiredTo}
+									onChange={e => setDesiredTo(e.target.value)}
+									min={desiredFrom || new Date().toISOString().split('T')[0]}
+								/>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="message">Message (optional)</Label>
+							<Textarea
+								id="message"
+								placeholder="Add a message to the owner..."
+								value={borrowMessage}
+								onChange={e => setBorrowMessage(e.target.value)}
+								rows={3}
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setShowBorrowModal(false)}>
+							Cancel
+						</Button>
+						<Button 
+							onClick={() => handleBorrowRequest(itemWithAvailability?.isAvailable === false)}
+							disabled={isCreatingRequest || !desiredFrom || !desiredTo}
+						>
+							{isCreatingRequest ? (
+								<Loader2 className="h-4 w-4 animate-spin mr-2" />
+							) : null}
+							{itemWithAvailability?.isAvailable !== false ? 'Send Request' : 'Join Queue'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</PageShell>
 	);
 }
