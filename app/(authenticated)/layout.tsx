@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/app/sidebar';
 import { useAppDispatch } from '@/lib/redux/hooks';
 import { toggleMobileSidebar } from '@/lib/redux/slices/uiSlice';
 import { useUserSync } from '@/hooks/useUserSync';
+import { NotificationsProvider } from '@/components/providers/notifications-provider';
 
 export default function AuthenticatedLayout({
 	children,
@@ -49,21 +50,23 @@ export default function AuthenticatedLayout({
 	}
 
 	return (
-		<div className="min-h-[100dvh] bg-background">
-			<Sidebar />
-			<main className="lg:ml-64 min-h-[100dvh] overflow-auto">
-				{/* Mobile menu button */}
-				<Button
-					type="button"
-					variant="outline"
-					size="icon"
-					onClick={() => dispatch(toggleMobileSidebar())}
-					className="fixed left-4 top-4 z-30 bg-card shadow-lg lg:hidden"
-				>
-					<Menu className="h-5 w-5" />
-				</Button>
-				{children}
-			</main>
-		</div>
+		<NotificationsProvider>
+			<div className="min-h-[100dvh] bg-background">
+				<Sidebar />
+				<main className="lg:ml-64 min-h-[100dvh] overflow-auto">
+					{/* Mobile menu button */}
+					<Button
+						type="button"
+						variant="outline"
+						size="icon"
+						onClick={() => dispatch(toggleMobileSidebar())}
+						className="fixed left-4 top-4 z-30 bg-card shadow-lg lg:hidden"
+					>
+						<Menu className="h-5 w-5" />
+					</Button>
+					{children}
+				</main>
+			</div>
+		</NotificationsProvider>
 	);
 }
