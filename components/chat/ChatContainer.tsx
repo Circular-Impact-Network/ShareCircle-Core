@@ -313,8 +313,8 @@ export function ChatContainer({
 	const isTyping = activeUser ? typingUserIds.includes(activeUser.id) : false;
 
 	return (
-		<PageShell className={cn('flex flex-col', fullBleed && 'max-w-none px-0 py-0 h-[100dvh] overflow-hidden')}>
-			<div className={cn('flex-shrink-0', fullBleed && 'px-4 pt-6 pb-4')}>
+		<PageShell className={cn('flex flex-col', fullBleed && 'max-w-none h-[100dvh] overflow-hidden')}>
+			<div className="flex-shrink-0">
 				<PageHeader title="Messages" description="Chat with people in your circles" />
 			</div>
 			<div
