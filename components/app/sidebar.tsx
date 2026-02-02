@@ -37,15 +37,12 @@ export function Sidebar() {
 	const userEmail = useAppSelector(selectUserEmail);
 
 	// Get notification counts - fetch minimal data just to get counts
-	const { data: notificationsData } = useGetNotificationsQuery(
-		{ limit: 1 },
-		{ pollingInterval: 30000 } // Poll every 30 seconds as backup
-	);
+	// Realtime updates are handled by NotificationsProvider which invalidates queries
+	const { data: notificationsData } = useGetNotificationsQuery({ limit: 1 });
 	
 	// Get unread message count
-	const { data: messagesData } = useGetUnreadMessageCountQuery(undefined, {
-		pollingInterval: 30000, // Poll every 30 seconds as backup
-	});
+	// Realtime updates are handled by NotificationsProvider which invalidates queries
+	const { data: messagesData } = useGetUnreadMessageCountQuery();
 	
 	// Use total unread count from API
 	const totalNotificationUnread = notificationsData?.unreadCount || 0;
