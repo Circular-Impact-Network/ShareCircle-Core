@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ChatContainer } from './ChatContainer';
 import { GlobalPresenceProvider } from '@/hooks/useGlobalPresence';
 
@@ -24,13 +24,16 @@ export function ChatThreadPage({ threadId }: ChatThreadPageProps) {
 
 	return (
 		<GlobalPresenceProvider userId={session?.user?.id || null}>
-			<div className="space-y-4">
-				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" onClick={() => router.push('/messages')}>
-						<ChevronLeft className="h-4 w-4" />
-						Back
-					</Button>
-				</div>
+			<div className="relative">
+				<Button
+					variant="ghost"
+					size="icon"
+					onClick={() => router.push('/messages')}
+					className="absolute left-4 top-4 z-10 bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
+				>
+					<ArrowLeft className="h-4 w-4" />
+					<span className="sr-only">Back to Messages</span>
+				</Button>
 				<ChatContainer initialThreadId={threadId} hideList fullBleed />
 			</div>
 		</GlobalPresenceProvider>

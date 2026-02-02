@@ -289,18 +289,6 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 
 	return (
 		<PageShell className="space-y-4 sm:space-y-6">
-			{/* Header with Back Button and Share */}
-			<div className="flex items-center justify-between">
-				<Button onClick={handleBack} variant="ghost" className="gap-2 -ml-2">
-					<ArrowLeft className="h-4 w-4" />
-					Back
-				</Button>
-				<Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2">
-					{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-					{copied ? 'Copied!' : 'Share'}
-				</Button>
-			</div>
-
 			{/* Main Content */}
 			<div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
 				{/* Image Section */}
@@ -311,8 +299,20 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				{/* Details Section */}
 				<div className="space-y-4 sm:space-y-6">
 					{/* Title and Description */}
-					<div>
-						<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{item.name}</h1>
+					<div className="space-y-2">
+						<div className="flex items-start justify-between gap-4">
+							<div className="flex items-center gap-3 min-w-0 flex-1">
+								<Button onClick={handleBack} variant="ghost" size="icon" className="shrink-0 -ml-2">
+									<ArrowLeft className="h-4 w-4" />
+									<span className="sr-only">Back</span>
+								</Button>
+								<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{item.name}</h1>
+							</div>
+							<Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2 shrink-0">
+								{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+								{copied ? 'Copied!' : 'Share'}
+							</Button>
+						</div>
 						{item.description && (
 							<p className="mt-2 text-muted-foreground leading-relaxed">
 								{item.description}

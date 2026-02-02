@@ -379,30 +379,26 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 	return (
 		<PageShell className="space-y-6 sm:space-y-8">
-			<div className="flex flex-col gap-4">
-				{/* Back Button */}
-				<Button onClick={() => router.push('/circles')} variant="ghost" className="w-fit gap-2">
-					<ArrowLeft className="h-4 w-4" />
-					<span className="hidden sm:inline">Back to Circles</span>
-					<span className="sm:hidden">Back</span>
-				</Button>
+			{/* Compact Circle Header */}
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				{/* Left: Avatar + Info */}
+				<div className="flex items-start gap-4">
+					{/* Circle Avatar */}
+					<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 sm:h-20 sm:w-20">
+						{circle.avatarUrl ? (
+							<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
+						) : (
+							<Users className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
+						)}
+					</div>
 
-				{/* Compact Circle Header */}
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					{/* Left: Avatar + Info */}
-					<div className="flex items-start gap-4">
-						{/* Circle Avatar */}
-						<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 sm:h-20 sm:w-20">
-							{circle.avatarUrl ? (
-								<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
-							) : (
-								<Users className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
-							)}
-						</div>
-
-						<div className="min-w-0 flex-1">
-							<div className="flex flex-wrap items-center gap-2">
-								<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
+					<div className="min-w-0 flex-1">
+						<div className="flex flex-wrap items-center gap-2">
+							<Button onClick={() => router.push('/circles')} variant="ghost" size="icon" className="shrink-0 -ml-2">
+								<ArrowLeft className="h-4 w-4" />
+								<span className="sr-only">Back to Circles</span>
+							</Button>
+							<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
 								{isAdmin && (
 									<Badge
 										variant="secondary"
@@ -528,7 +524,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						</CardContent>
 					</Card>
 				)}
-			</div>
 
 			{/* Members Section - Horizontal Carousel on Desktop, Stack on Mobile */}
 			<div className="space-y-4 sm:space-y-6">
