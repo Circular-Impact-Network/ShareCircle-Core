@@ -9,6 +9,8 @@
 		"lint": "eslint .",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
+		"test:unit": "vitest run",
+		"test:unit:watch": "vitest",
 		"postinstall": "prisma generate",
 		"db:generate": "prisma generate",
 		"db:migrate": "prisma migrate dev",
@@ -81,18 +83,25 @@
 	},
 	"devDependencies": {
 		"@tailwindcss/postcss": "^4.1.9",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@testing-library/user-event": "^14.6.1",
 		"@types/node": "^22",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
+		"@vitejs/plugin-react": "^4.7.0",
 		"eslint-config-next": "^16.1.4",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-react": "^7.37.5",
 		"eslint-plugin-react-hooks": "^7.0.1",
+		"happy-dom": "^20.3.7",
+		"jsdom": "^27.0.1",
 		"postcss": "^8.5",
 		"prettier": "^3.7.4",
 		"tailwindcss": "^4.1.9",
 		"tw-animate-css": "1.3.3",
 		"typescript": "^5",
-		"typescript-eslint": "^8.53.1"
+		"typescript-eslint": "^8.53.1",
+		"vitest": "^4.0.18"
 	}
 }
