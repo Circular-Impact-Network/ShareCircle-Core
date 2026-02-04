@@ -9,8 +9,13 @@
 		"lint": "eslint .",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
+		"test": "npm run test:unit && npm run test:e2e",
 		"test:unit": "vitest run",
 		"test:unit:watch": "vitest",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:headed": "playwright test --headed",
+		"test:e2e:report": "playwright show-report",
 		"postinstall": "prisma generate",
 		"db:generate": "prisma generate",
 		"db:migrate": "prisma migrate dev",
@@ -82,6 +87,7 @@
 		"zod": "3.25.76"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.58.0",
 		"@tailwindcss/postcss": "^4.1.9",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.2",
