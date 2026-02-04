@@ -142,6 +142,8 @@ vite.config.ts.timestamp-*
 
 # testing
 /coverage
+/test-results
+/.playwright
 
 # production
 /build
