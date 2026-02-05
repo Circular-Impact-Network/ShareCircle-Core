@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
+import { validatePassword, getPasswordRequirementsText } from '@/lib/password-validation';
 
 export async function POST(req: NextRequest) {
 	try {
@@ -31,9 +32,17 @@ export async function POST(req: NextRequest) {
 			}
 		}
 
-		// Validate password strength (minimum 6 characters)
-		if (password.length < 6) {
-			return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
+		// Validate password strength
+		const passwordValidation = validatePassword(password);
+		if (!passwordValidation.isValid) {
+			return NextResponse.json(
+				{ 
+					error: passwordValidation.errors[0], 
+					details: passwordValidation.errors,
+					requirements: getPasswordRequirementsText(),
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Check if user already exists
