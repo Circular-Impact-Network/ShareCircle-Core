@@ -83,30 +83,12 @@ export const authOptions: NextAuthOptions = {
 					};
 				}
 
-				// Phone login (Mock implementation for now as per plan)
-				// In a real app, we would verify OTP here
+				// Phone login is DISABLED for security reasons
+				// The mock implementation without OTP verification is insecure
+				// To re-enable, implement proper OTP verification first
 				if (credentials?.phone) {
-					// Check if user exists with this phone
-					// Note: Since phone_number is not unique in schema (it should be ideally), findFirst is used
-					// But for auth it really should be unique.
-					const user = await prisma.user.findFirst({
-						where: {
-							phone_number: credentials.phone,
-						},
-					});
-
-					if (user) {
-						return {
-							id: user.id,
-							email: user.email,
-							name: user.name,
-							image: user.image,
-						};
-					}
-
-					// If user doesn't exist, we might want to return null or handle signup
-					// For this task, we'll assume the user must exist or we return null
-					return null;
+					// Phone login disabled - requires OTP implementation
+					throw new Error('Phone login is temporarily disabled. Please use email/password or Google sign-in.');
 				}
 
 				return null;
