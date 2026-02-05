@@ -4,6 +4,28 @@ import { compare } from 'bcryptjs';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
+import { checkRateLimit, RATE_LIMITS } from './rate-limit';
+
+// Simple in-memory rate limit check for auth (can't use request headers in authorize)
+const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function checkAuthRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
+	const now = Date.now();
+	const windowMs = RATE_LIMITS.auth.windowSeconds * 1000;
+	const record = authRateLimitStore.get(identifier);
+
+	if (!record || now > record.resetTime) {
+		authRateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
+		return { allowed: true };
+	}
+
+	if (record.count >= RATE_LIMITS.auth.maxRequests) {
+		return { allowed: false, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+	}
+
+	record.count += 1;
+	return { allowed: true };
+}
 
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma),
@@ -28,6 +50,13 @@ export const authOptions: NextAuthOptions = {
 				code: { label: 'Code', type: 'text' }, // For OTP if we implement it later
 			},
 			async authorize(credentials) {
+				// Rate limit check for login attempts
+				const identifier = credentials?.email || credentials?.phone || 'unknown';
+				const rateLimit = checkAuthRateLimit(`login:${identifier}`);
+				if (!rateLimit.allowed) {
+					throw new Error(`Too many login attempts. Please try again in ${rateLimit.retryAfter} seconds.`);
+				}
+
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
 					const user = await prisma.user.findUnique({

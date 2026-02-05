@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
 	try {
+		// Rate limiting for auth endpoints to prevent abuse
+		const identifier = getClientIdentifier(req);
+		const rateLimitResult = checkRateLimit(identifier, 'auth-signup', RATE_LIMITS.auth);
+		if (!rateLimitResult.success) {
+			return rateLimitResponse(rateLimitResult);
+		}
+
 		const body = await req.json();
 		const { name, email, password, phoneNumber, countryCode } = body;
 
