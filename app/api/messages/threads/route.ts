@@ -52,68 +52,113 @@ export async function GET(req: NextRequest) {
 			],
 		});
 
-		const results = await Promise.all(
-			conversations.map(async conversation => {
-				const currentParticipant = conversation.participants.find(p => p.userId === userId);
-				if (!currentParticipant) {
-					return null;
-				}
+		// Filter conversations first before fetching additional data
+		const filteredConversations = conversations.filter(conversation => {
+			const currentParticipant = conversation.participants.find(p => p.userId === userId);
+			if (!currentParticipant) return false;
 
-				if (
-					currentParticipant.deletedAt &&
-					conversation.lastMessageAt &&
-					conversation.lastMessageAt <= currentParticipant.deletedAt
-				) {
-					return null;
-				}
+			if (
+				currentParticipant.deletedAt &&
+				conversation.lastMessageAt &&
+				conversation.lastMessageAt <= currentParticipant.deletedAt
+			) {
+				return false;
+			}
 
-				if (!showArchived && currentParticipant.archivedAt) {
-					return null;
-				}
+			if (!showArchived && currentParticipant.archivedAt) {
+				return false;
+			}
 
-				const otherParticipants = conversation.participants
-					.filter(p => p.userId !== userId)
-					.map(p => p.user);
+			const otherParticipants = conversation.participants.filter(p => p.userId !== userId);
+			const otherName = otherParticipants[0]?.user?.name?.toLowerCase() || '';
+			if (search && !otherName.includes(search)) {
+				return false;
+			}
 
-				const otherName = otherParticipants[0]?.name?.toLowerCase() || '';
-				if (search && !otherName.includes(search)) {
-					return null;
-				}
+			return true;
+		});
 
-				const lastMessage = conversation.messages[0] || null;
-				const unreadCount = await prisma.message.count({
-					where: {
-						conversationId: conversation.id,
-						senderId: { not: userId },
-						...(currentParticipant.lastReadAt
-							? { createdAt: { gt: currentParticipant.lastReadAt } }
-							: {}),
-					},
-				});
+		if (filteredConversations.length === 0) {
+			return NextResponse.json([], { status: 200 });
+		}
 
-				const canMessage =
-					conversation.type === 'DIRECT' && otherParticipants[0]?.id
-						? await canUsersChat(userId, otherParticipants[0].id)
-						: true;
+		// Build conditions for batch unread count query
+		const unreadConditions = filteredConversations.map(conversation => {
+			const currentParticipant = conversation.participants.find(p => p.userId === userId)!;
+			return {
+				conversationId: conversation.id,
+				senderId: { not: userId },
+				...(currentParticipant.lastReadAt
+					? { createdAt: { gt: currentParticipant.lastReadAt } }
+					: {}),
+			};
+		});
 
-				return {
-					id: conversation.id,
-					type: conversation.type,
-					lastMessageAt: conversation.lastMessageAt,
-					lastMessage,
-					participants: otherParticipants,
-					unreadCount,
-					pinnedAt: currentParticipant.pinnedAt,
-					archivedAt: currentParticipant.archivedAt,
-					mutedUntil: currentParticipant.mutedUntil,
-					deletedAt: currentParticipant.deletedAt,
-					lastReadAt: currentParticipant.lastReadAt,
-					canMessage,
-				};
-			}),
+		// Single batch query for all unread counts using groupBy
+		const unreadCounts = await prisma.message.groupBy({
+			by: ['conversationId'],
+			where: {
+				OR: unreadConditions,
+			},
+			_count: {
+				id: true,
+			},
+		});
+
+		// Create a map for quick lookup
+		const unreadCountMap = new Map(
+			unreadCounts.map(item => [item.conversationId, item._count.id])
 		);
 
-		return NextResponse.json(results.filter(Boolean), { status: 200 });
+		// Check canUsersChat in parallel for DIRECT conversations
+		const directConversations = filteredConversations.filter(c => c.type === 'DIRECT');
+		const otherUserIds = directConversations.map(c => {
+			const other = c.participants.find(p => p.userId !== userId);
+			return other?.user.id;
+		}).filter(Boolean) as string[];
+
+		// Batch check canUsersChat - only check unique user IDs
+		const uniqueOtherUserIds = [...new Set(otherUserIds)];
+		const canChatResults = await Promise.all(
+			uniqueOtherUserIds.map(async otherId => ({
+				userId: otherId,
+				canChat: await canUsersChat(userId, otherId),
+			}))
+		);
+		const canChatMap = new Map(canChatResults.map(r => [r.userId, r.canChat]));
+
+		// Build final results
+		const results = filteredConversations.map(conversation => {
+			const currentParticipant = conversation.participants.find(p => p.userId === userId)!;
+			const otherParticipants = conversation.participants
+				.filter(p => p.userId !== userId)
+				.map(p => p.user);
+
+			const lastMessage = conversation.messages[0] || null;
+			const unreadCount = unreadCountMap.get(conversation.id) || 0;
+
+			const canMessage =
+				conversation.type === 'DIRECT' && otherParticipants[0]?.id
+					? canChatMap.get(otherParticipants[0].id) ?? true
+					: true;
+
+			return {
+				id: conversation.id,
+				type: conversation.type,
+				lastMessageAt: conversation.lastMessageAt,
+				lastMessage,
+				participants: otherParticipants,
+				unreadCount,
+				pinnedAt: currentParticipant.pinnedAt,
+				archivedAt: currentParticipant.archivedAt,
+				mutedUntil: currentParticipant.mutedUntil,
+				deletedAt: currentParticipant.deletedAt,
+				lastReadAt: currentParticipant.lastReadAt,
+				canMessage,
+			};
+		});
+
+		return NextResponse.json(results, { status: 200 });
 	} catch (error) {
 		console.error('Get conversations error:', error);
 		return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 });
