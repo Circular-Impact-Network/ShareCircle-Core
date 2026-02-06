@@ -51,8 +51,9 @@ export async function GET(req: NextRequest) {
 			whereClause.status = status;
 		}
 
-		// Get notifications with count
-		const [notifications, total, unreadCount] = await Promise.all([
+		// Get notifications and all counts in a single parallel batch
+		// Optimized: alertsUnread + requestsUnread = total unreadCount when no tab filter
+		const [notifications, total, alertsUnread, requestsUnread] = await Promise.all([
 			prisma.notification.findMany({
 				where: whereClause,
 				orderBy: {
@@ -68,18 +69,6 @@ export async function GET(req: NextRequest) {
 				where: {
 					userId,
 					status: 'UNREAD',
-					...(tab === 'alerts' ? { type: { in: [...ALERT_TYPES] } } : {}),
-					...(tab === 'requests' ? { type: { in: [...REQUEST_TYPES] } } : {}),
-				},
-			}),
-		]);
-
-		// Get unread counts for both tabs
-		const [alertsUnread, requestsUnread] = await Promise.all([
-			prisma.notification.count({
-				where: {
-					userId,
-					status: 'UNREAD',
 					type: { in: [...ALERT_TYPES] },
 				},
 			}),
@@ -91,6 +80,17 @@ export async function GET(req: NextRequest) {
 				},
 			}),
 		]);
+
+		// Calculate unreadCount from tab-specific counts to avoid redundant query
+		let unreadCount: number;
+		if (tab === 'alerts') {
+			unreadCount = alertsUnread;
+		} else if (tab === 'requests') {
+			unreadCount = requestsUnread;
+		} else {
+			// When no tab filter, unreadCount is the sum of both
+			unreadCount = alertsUnread + requestsUnread;
+		}
 
 		return NextResponse.json(
 			{
