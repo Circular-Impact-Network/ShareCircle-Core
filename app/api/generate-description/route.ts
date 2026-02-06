@@ -1,7 +1,23 @@
 import { generateText } from 'ai';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
 	try {
+		// Authentication check
+		const session = await getServerSession(authOptions);
+		if (!session?.user?.id) {
+			return Response.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Rate limiting for AI endpoints
+		const identifier = getClientIdentifier(request, session.user.id);
+		const rateLimitResult = checkRateLimit(identifier, 'generate-description', RATE_LIMITS.ai);
+		if (!rateLimitResult.success) {
+			return rateLimitResponse(rateLimitResult);
+		}
+
 		const { itemTitle } = await request.json();
 
 		if (!itemTitle) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { detectItems } from '@/lib/ai';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 // POST /api/items/detect - Detect all items in an image (Option 2 flow)
 export async function POST(req: NextRequest) {
@@ -10,6 +11,13 @@ export async function POST(req: NextRequest) {
 
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Rate limiting for AI endpoints
+		const identifier = getClientIdentifier(req, session.user.id);
+		const rateLimitResult = checkRateLimit(identifier, 'items-detect', RATE_LIMITS.ai);
+		if (!rateLimitResult.success) {
+			return rateLimitResponse(rateLimitResult);
 		}
 
 		const body = await req.json();
