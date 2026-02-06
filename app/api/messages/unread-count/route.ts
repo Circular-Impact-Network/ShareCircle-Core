@@ -8,7 +8,7 @@ export async function GET() {
 		const { userId, response } = await getUserIdOrResponse();
 		if (!userId) return response!;
 
-		// Get all conversations the user is part of
+		// Get all conversations the user is part of with their read timestamps
 		const participants = await prisma.conversationParticipant.findMany({
 			where: {
 				userId,
@@ -21,26 +21,32 @@ export async function GET() {
 			},
 		});
 
-		// Count unread messages across all conversations
-		let totalUnread = 0;
-
-		for (const participant of participants) {
-			const unreadCount = await prisma.message.count({
-				where: {
-					conversationId: participant.conversationId,
-					senderId: { not: userId },
-					// Only count messages after lastReadAt
-					...(participant.lastReadAt
-						? { createdAt: { gt: participant.lastReadAt } }
-						: {}),
-					// Only count messages after deletedAt if set
-					...(participant.deletedAt
-						? { createdAt: { gt: participant.deletedAt } }
-						: {}),
-				},
-			});
-			totalUnread += unreadCount;
+		if (participants.length === 0) {
+			return NextResponse.json({ unreadCount: 0 }, { status: 200 });
 		}
+
+		// Build a single query to count all unread messages across conversations
+		// Using OR conditions for each conversation with its specific timestamp filter
+		const unreadConditions = participants.map(p => {
+			// Determine the effective cutoff time (later of lastReadAt and deletedAt)
+			const cutoffs: Date[] = [];
+			if (p.lastReadAt) cutoffs.push(p.lastReadAt);
+			if (p.deletedAt) cutoffs.push(p.deletedAt);
+			const effectiveCutoff = cutoffs.length > 0 ? new Date(Math.max(...cutoffs.map(d => d.getTime()))) : null;
+
+			return {
+				conversationId: p.conversationId,
+				senderId: { not: userId },
+				...(effectiveCutoff ? { createdAt: { gt: effectiveCutoff } } : {}),
+			};
+		});
+
+		// Single aggregated query instead of N queries
+		const totalUnread = await prisma.message.count({
+			where: {
+				OR: unreadConditions,
+			},
+		});
 
 		return NextResponse.json({ unreadCount: totalUnread }, { status: 200 });
 	} catch (error) {
