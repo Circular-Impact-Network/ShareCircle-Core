@@ -24,6 +24,11 @@ export async function POST(request: Request) {
 			return Response.json({ error: 'Item title is required' }, { status: 400 });
 		}
 
+		// Input validation - limit title length to prevent abuse
+		if (typeof itemTitle !== 'string' || itemTitle.length > 200) {
+			return Response.json({ error: 'Invalid item title' }, { status: 400 });
+		}
+
 		const { text } = await generateText({
 			model: 'openai/gpt-4o-mini',
 			prompt: `Generate a compelling, brief product description (2-3 sentences) for a sharing/lending app for an item called "${itemTitle}". 
