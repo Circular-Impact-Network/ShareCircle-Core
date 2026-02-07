@@ -125,35 +125,50 @@ export async function POST(req: NextRequest) {
 		});
 
 		// Create the item request
-		const itemRequest = await prisma.itemRequest.create({
-			data: {
-				title: title.trim(),
-				description: description?.trim() || null,
-				requesterId: userId,
-				circleId,
-				desiredFrom: desiredFrom ? new Date(desiredFrom) : null,
-				desiredTo: desiredTo ? new Date(desiredTo) : null,
-				status: ItemRequestStatus.OPEN,
-			},
-			include: {
-				requester: {
-					select: {
-						id: true,
-						name: true,
-						image: true,
+		let itemRequest;
+		try {
+			itemRequest = await prisma.itemRequest.create({
+				data: {
+					title: title.trim(),
+					description: description?.trim() || null,
+					requesterId: userId,
+					circleId,
+					desiredFrom: desiredFrom ? new Date(desiredFrom) : null,
+					desiredTo: desiredTo ? new Date(desiredTo) : null,
+					status: ItemRequestStatus.OPEN,
+				},
+				include: {
+					requester: {
+						select: {
+							id: true,
+							name: true,
+							image: true,
+						},
+					},
+					circle: {
+						select: {
+							id: true,
+							name: true,
+						},
 					},
 				},
-				circle: {
-					select: {
-						id: true,
-						name: true,
-					},
-				},
-			},
-		});
+			});
+		} catch (dbError) {
+			console.error('Database error creating item request:', dbError);
+			// Check for specific Prisma errors
+			if (dbError instanceof Error) {
+				if (dbError.message.includes('Unique constraint')) {
+					return NextResponse.json({ error: 'An item request with this title already exists in this circle' }, { status: 409 });
+				}
+				if (dbError.message.includes('Foreign key constraint')) {
+					return NextResponse.json({ error: 'Invalid circle or user' }, { status: 400 });
+				}
+			}
+			throw dbError; // Re-throw to be caught by outer catch
+		}
 
-		// Notify circle members about the new item request
-		await notifyCircleMembers({
+		// Notify circle members about the new item request (non-blocking)
+		notifyCircleMembers({
 			circleId,
 			actorId: userId,
 			type: NotificationType.ITEM_REQUEST_CREATED,
@@ -167,17 +182,43 @@ export async function POST(req: NextRequest) {
 				circleId,
 				circleName: circle?.name,
 			},
+		}).catch(err => {
+			console.error('Failed to notify circle members:', err);
+			// Don't fail the request if notification fails
 		});
 
-		// Broadcast to circle channel for realtime updates
-		await broadcastItemRequest({
+		// Broadcast to circle channel for realtime updates (non-blocking)
+		broadcastItemRequest({
 			circleId,
 			request: itemRequest,
+		}).catch(err => {
+			console.error('Failed to broadcast item request:', err);
+			// Don't fail the request if broadcast fails
 		});
 
 		return NextResponse.json(itemRequest, { status: 201 });
 	} catch (error) {
 		console.error('Create item request error:', error);
-		return NextResponse.json({ error: 'Failed to create item request' }, { status: 500 });
+		
+		// Provide more specific error messages
+		if (error instanceof Error) {
+			// Prisma errors
+			if (error.message.includes('Unique constraint')) {
+				return NextResponse.json({ error: 'An item request with this title already exists in this circle' }, { status: 409 });
+			}
+			if (error.message.includes('Foreign key constraint')) {
+				return NextResponse.json({ error: 'Invalid circle or user. Please refresh and try again.' }, { status: 400 });
+			}
+			if (error.message.includes('Record to create not found')) {
+				return NextResponse.json({ error: 'Circle not found. Please refresh and try again.' }, { status: 404 });
+			}
+			
+			// Return the error message if it's informative
+			return NextResponse.json({ 
+				error: error.message || 'Failed to create item request' 
+			}, { status: 500 });
+		}
+		
+		return NextResponse.json({ error: 'Failed to create item request. Please try again.' }, { status: 500 });
 	}
 }
