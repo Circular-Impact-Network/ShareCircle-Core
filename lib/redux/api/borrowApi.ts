@@ -149,7 +149,7 @@ export const borrowApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
-	tagTypes: ['ItemRequests', 'BorrowRequests', 'BorrowQueue', 'Transactions'],
+	tagTypes: ['ItemRequests', 'BorrowRequests', 'BorrowQueue', 'Transactions', 'Items'],
 	endpoints: builder => ({
 		// ===== Item Requests =====
 
@@ -229,7 +229,12 @@ export const borrowApi = createApi({
 				method: 'POST',
 				body,
 			}),
-			invalidatesTags: ['BorrowRequests', 'BorrowQueue'],
+			// Also invalidate Items to update availability status
+			invalidatesTags: (_result, _error, { itemId }) => [
+				'BorrowRequests',
+				'BorrowQueue',
+				{ type: 'Items' as const, id: itemId },
+			],
 		}),
 
 		// Approve/decline/cancel borrow request
@@ -239,10 +244,13 @@ export const borrowApi = createApi({
 				method: 'PATCH',
 				body,
 			}),
-			invalidatesTags: (_result, _error, { id }) => [
+			// Also invalidate Items to update availability when request is approved/declined
+			invalidatesTags: (result, _error, { id }) => [
 				{ type: 'BorrowRequests', id },
 				'BorrowRequests',
 				'Transactions',
+				// Invalidate the item if we have the result
+				...(result?.item?.id ? [{ type: 'Items' as const, id: result.item.id }] : ['Items' as const]),
 			],
 		}),
 

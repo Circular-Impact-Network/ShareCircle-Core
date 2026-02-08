@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
-import { useGetAllItemsQuery, useSearchItemsMutation, Item, GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import { useGetAllItemsQuery, useSearchItemsMutation, type Item, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
+import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,8 +42,11 @@ export function BrowseListingsPage() {
 		category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
 	}), [selectedCategory]);
 
-	// Fetch all items across user's circles with category filter
+	// Fetch filtered items (for display)
 	const { data: items = [], isLoading, error, refetch } = useGetAllItemsQuery(filters);
+	
+	// Fetch ALL items (unfiltered) for category extraction - this ensures dropdown always has all options
+	const { data: allItems = [] } = useGetAllItemsQuery();
 
 	// Semantic search mutation
 	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError, reset: resetSearch }] =
@@ -126,27 +130,18 @@ export function BrowseListingsPage() {
 		return items;
 	}, [isSearchActive, searchResults, items]);
 
-	// Extract unique categories from ALL items (not filtered) for the dropdown
+	// Extract unique categories from ALL items (unfiltered) for the dropdown
+	// This ensures the dropdown always shows all available categories
 	const categories = useMemo(() => {
 		const cats = new Set<string>();
-		items.forEach(item => {
+		allItems.forEach(item => {
 			item.categories.forEach(cat => cats.add(cat));
 		});
 		return ['All Categories', ...Array.from(cats).sort()];
-	}, [items]);
+	}, [allItems]);
 
-	// Extract unique circles from items for the request form
-	const userCircles = useMemo(() => {
-		const circleMap = new Map<string, { id: string; name: string }>();
-		items.forEach(item => {
-			item.circles.forEach(circle => {
-				if (!circleMap.has(circle.id)) {
-					circleMap.set(circle.id, circle);
-				}
-			});
-		});
-		return Array.from(circleMap.values());
-	}, [items]);
+	// Get user's circles (only circles the user is a member of)
+	const { data: userCircles = [] } = useGetCirclesQuery();
 
 	// Handle item request submission
 	const handleSubmitItemRequest = async () => {
@@ -170,7 +165,15 @@ export function BrowseListingsPage() {
 			setRequestDescription('');
 			setRequestCircleId('');
 		} catch (error) {
-			toast({ title: 'Failed to create request', variant: 'destructive' });
+			console.error('Create item request error:', error);
+			const errorMessage = error && typeof error === 'object' && 'data' in error
+				? (error.data as { error?: string })?.error || 'Failed to create request'
+				: 'Failed to create request. Please try again.';
+			toast({ 
+				title: 'Failed to create request', 
+				description: errorMessage,
+				variant: 'destructive' 
+			});
 		}
 	};
 

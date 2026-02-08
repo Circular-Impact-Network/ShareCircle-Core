@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Link2, Users, Calendar, ArrowRight, LayoutGrid, List, Shield, Crown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { useGetCirclesQuery, type Circle } from '@/lib/redux/api/circlesApi';
 
 interface CircleMemberPreview {
 	id: string;
@@ -20,60 +21,18 @@ interface CircleMemberPreview {
 	image: string | null;
 }
 
-interface Circle {
-	id: string;
-	name: string;
-	description: string | null;
-	inviteCode: string;
-	avatarUrl: string | null;
-	createdAt: string;
-	updatedAt: string;
-	createdBy: {
-		id: string;
-		name: string | null;
-		image: string | null;
-	};
-	membersCount: number;
-	userRole: 'ADMIN' | 'MEMBER' | null;
-	memberPreviews: CircleMemberPreview[];
-}
-
 export function CirclesPage() {
 	const router = useRouter();
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showJoinModal, setShowJoinModal] = useState(false);
 	const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-	const [circles, setCircles] = useState<Circle[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
 	const { toast } = useToast();
-
-	const fetchCircles = useCallback(async () => {
-		try {
-			setIsLoading(true);
-			const response = await fetch('/api/circles');
-			if (!response.ok) {
-				throw new Error('Failed to fetch circles');
-			}
-			const data = await response.json();
-			setCircles(data);
-		} catch (error) {
-			console.error('Error fetching circles:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to load circles. Please try again.',
-				variant: 'destructive',
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	}, [toast]);
-
-	useEffect(() => {
-		fetchCircles();
-	}, [fetchCircles]);
+	
+	// Use RTK Query for circles data
+	const { data: circles = [], isLoading, error } = useGetCirclesQuery();
 
 	const handleCircleCreated = (newCircle: Circle) => {
-		setCircles(prev => [newCircle, ...prev]);
+		// RTK Query will automatically refetch and update the cache
 		setShowCreateModal(false);
 		toast({
 			title: 'Circle created!',
@@ -82,14 +41,7 @@ export function CirclesPage() {
 	};
 
 	const handleJoinSuccess = (circle: Circle) => {
-		setCircles(prev => {
-			// Check if circle already exists (user rejoined)
-			const exists = prev.find(c => c.id === circle.id);
-			if (exists) {
-				return prev.map(c => (c.id === circle.id ? circle : c));
-			}
-			return [circle, ...prev];
-		});
+		// RTK Query will automatically refetch and update the cache
 		setShowJoinModal(false);
 		toast({
 			title: 'Success!',

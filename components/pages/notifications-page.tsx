@@ -246,7 +246,7 @@ export function NotificationsPage() {
 	} = useGetNotificationsQuery({ limit: 50 });
 
 	// Fetch actionable borrow requests (incoming pending + return pending)
-	const { data: incomingRequests = [], isLoading: requestsLoading } = useGetBorrowRequestsQuery({
+	const { data: incomingRequests = [], isLoading: requestsLoading, refetch: refetchRequests } = useGetBorrowRequestsQuery({
 		type: 'incoming',
 	});
 
@@ -294,9 +294,20 @@ export function NotificationsPage() {
 		try {
 			await updateBorrowRequest({ id, action: 'approve' }).unwrap();
 			toast({ title: 'Request approved!' });
+			// Manually refetch to ensure UI updates immediately
+			await refetchRequests();
+			// Ensure processingId is reset
+			setProcessingId(null);
 		} catch (error) {
-			toast({ title: 'Failed to approve request', variant: 'destructive' });
-		} finally {
+			console.error('Approve request error:', error);
+			const errorMessage = error && typeof error === 'object' && 'data' in error
+				? (error.data as { error?: string })?.error || 'Failed to approve request'
+				: 'Failed to approve request';
+			toast({ 
+				title: 'Failed to approve request', 
+				description: errorMessage,
+				variant: 'destructive' 
+			});
 			setProcessingId(null);
 		}
 	};
@@ -306,9 +317,19 @@ export function NotificationsPage() {
 		try {
 			await updateBorrowRequest({ id, action: 'decline' }).unwrap();
 			toast({ title: 'Request declined' });
+			// Manually refetch to ensure UI updates immediately
+			await refetchRequests();
+			setProcessingId(null);
 		} catch (error) {
-			toast({ title: 'Failed to decline request', variant: 'destructive' });
-		} finally {
+			console.error('Decline request error:', error);
+			const errorMessage = error && typeof error === 'object' && 'data' in error
+				? (error.data as { error?: string })?.error || 'Failed to decline request'
+				: 'Failed to decline request';
+			toast({ 
+				title: 'Failed to decline request',
+				description: errorMessage,
+				variant: 'destructive' 
+			});
 			setProcessingId(null);
 		}
 	};

@@ -21,6 +21,13 @@ type RealtimeNotificationsOptions = {
 
 export function useRealtimeNotifications({ userId, onNotification }: RealtimeNotificationsOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
+	
+	// Use ref to store callback to avoid re-subscription when callback changes
+	const onNotificationRef = useRef(onNotification);
+	
+	useEffect(() => {
+		onNotificationRef.current = onNotification;
+	}, [onNotification]);
 
 	useEffect(() => {
 		if (!userId) return;
@@ -34,14 +41,14 @@ export function useRealtimeNotifications({ userId, onNotification }: RealtimeNot
 		channel
 			.on('broadcast', { event: 'new_notification' }, payload => {
 				const notification = payload.payload as RealtimeNotification;
-				onNotification(notification);
+				onNotificationRef.current(notification);
 			})
 			.subscribe();
 
 		return () => {
 			channel.unsubscribe();
 		};
-	}, [userId, onNotification]);
+	}, [userId]); // Only re-subscribe when userId changes
 
 	// Function to broadcast a notification (for testing or local updates)
 	const broadcastNotification = useCallback(

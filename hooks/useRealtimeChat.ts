@@ -12,6 +12,24 @@ type RealtimeChatOptions = {
 
 export function useRealtimeChat({ conversationId, currentUserId, onMessage, onReceipt }: RealtimeChatOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
+	
+	// Use refs to store callbacks to avoid re-subscription when callbacks change
+	const onMessageRef = useRef(onMessage);
+	const onReceiptRef = useRef(onReceipt);
+	const currentUserIdRef = useRef(currentUserId);
+	
+	// Update refs when values change
+	useEffect(() => {
+		onMessageRef.current = onMessage;
+	}, [onMessage]);
+	
+	useEffect(() => {
+		onReceiptRef.current = onReceipt;
+	}, [onReceipt]);
+	
+	useEffect(() => {
+		currentUserIdRef.current = currentUserId;
+	}, [currentUserId]);
 
 	useEffect(() => {
 		if (!conversationId) return;
@@ -25,19 +43,19 @@ export function useRealtimeChat({ conversationId, currentUserId, onMessage, onRe
 			.on('broadcast', { event: 'new_message' }, payload => {
 				const message = payload.payload as ChatMessage;
 				// Skip messages from current user - they're handled optimistically
-				if (currentUserId && message.senderId === currentUserId) {
+				if (currentUserIdRef.current && message.senderId === currentUserIdRef.current) {
 					return;
 				}
-				onMessage(message);
+				onMessageRef.current(message);
 			})
 			.on('broadcast', { event: 'receipt_update' }, payload => {
 				const receipt = payload.payload as MessageReceipt;
-				onReceipt(receipt);
+				onReceiptRef.current(receipt);
 			})
 			.subscribe();
 
 		return () => {
 			channel.unsubscribe();
 		};
-	}, [conversationId, currentUserId, onMessage, onReceipt]);
+	}, [conversationId]); // Only re-subscribe when conversationId changes
 }

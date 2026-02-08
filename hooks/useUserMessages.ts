@@ -31,6 +31,13 @@ async function markAsDelivered(messageId: string) {
  */
 export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
+	
+	// Use ref to store callback to avoid re-subscription when callback changes
+	const onNewMessageRef = useRef(onNewMessage);
+	
+	useEffect(() => {
+		onNewMessageRef.current = onNewMessage;
+	}, [onNewMessage]);
 
 	useEffect(() => {
 		if (!userId) return;
@@ -44,7 +51,7 @@ export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions
 		channel
 			.on('broadcast', { event: 'new_message' }, payload => {
 				const message = payload.payload as ChatMessage;
-				onNewMessage(message);
+				onNewMessageRef.current(message);
 				// Mark the message as delivered (shows double grey tick to sender)
 				markAsDelivered(message.id);
 			})
@@ -53,5 +60,5 @@ export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions
 		return () => {
 			channel.unsubscribe();
 		};
-	}, [userId, onNewMessage]);
+	}, [userId]); // Only re-subscribe when userId changes
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { ExternalLink, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ export interface ItemCardProps {
 	className?: string;
 }
 
-export function ItemCard({ item, variant = 'grid', showActions = false, onDelete, onClick, className }: ItemCardProps) {
+export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showActions = false, onDelete, onClick, className }: ItemCardProps) {
 	// Determine if we should show carousel (always show if multiple images, or if detail variant)
 	const hasMultipleMedia = item.mediaUrls && item.mediaUrls.length > 1;
 	const shouldShowCarousel = hasMultipleMedia || variant === 'detail';
@@ -172,4 +173,4 @@ export function ItemCard({ item, variant = 'grid', showActions = false, onDelete
 			)}
 		</div>
 	);
-}
+});

@@ -169,6 +169,12 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				joinQueue,
 			}).unwrap();
 			
+			// Close modal and reset state immediately on success
+			setShowBorrowModal(false);
+			setBorrowMessage('');
+			setDesiredFrom('');
+			setDesiredTo('');
+			
 			if (result.type === 'queue') {
 				toast({
 					title: 'Added to queue!',
@@ -180,11 +186,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					description: 'The owner will review your request.',
 				});
 			}
-			setShowBorrowModal(false);
-			setBorrowMessage('');
-			setDesiredFrom('');
-			setDesiredTo('');
 		} catch (error: unknown) {
+			console.error('Borrow request error:', error);
 			const errorMessage = error && typeof error === 'object' && 'data' in error
 				? (error.data as { error?: string })?.error
 				: 'Please try again.';
@@ -193,6 +196,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				description: errorMessage,
 				variant: 'destructive',
 			});
+			// Don't close modal on error so user can retry
 		}
 	};
 

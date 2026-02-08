@@ -22,7 +22,7 @@ export default defineConfig({
 	webServer: {
 		command: 'npm run dev',
 		url: baseURL,
-		reuseExistingServer: !process.env.CI,
+		reuseExistingServer: true, // Allow reusing existing server for local development
 		timeout: 120_000,
 	},
 	projects: [

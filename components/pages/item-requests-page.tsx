@@ -35,6 +35,7 @@ import {
 	ItemRequest,
 } from '@/lib/redux/api/borrowApi';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
+import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -125,10 +126,8 @@ export function ItemRequestsPage() {
 	const { data: myRequests = [], isLoading: myLoading } = useGetItemRequestsQuery({ myRequests: true });
 	const { data: items = [] } = useGetAllItemsQuery();
 
-	// Extract circles from items
-	const circles = Array.from(
-		new Map(items.flatMap(item => item.circles).map(c => [c.id, c])).values()
-	);
+	// Get user's circles (only circles the user is a member of)
+	const { data: circles = [] } = useGetCirclesQuery();
 
 	// Mutations
 	const [createItemRequest, { isLoading: isCreating }] = useCreateItemRequestMutation();
@@ -154,7 +153,15 @@ export function ItemRequestsPage() {
 			setRequestDescription('');
 			setRequestCircleId('');
 		} catch (error) {
-			toast({ title: 'Failed to create request', variant: 'destructive' });
+			console.error('Create item request error:', error);
+			const errorMessage = error && typeof error === 'object' && 'data' in error
+				? (error.data as { error?: string })?.error || 'Failed to create request'
+				: 'Failed to create request. Please try again.';
+			toast({ 
+				title: 'Failed to create request', 
+				description: errorMessage,
+				variant: 'destructive' 
+			});
 		}
 	};
 

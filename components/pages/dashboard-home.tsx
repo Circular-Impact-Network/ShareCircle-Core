@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import {
 	Bell,
@@ -27,12 +27,7 @@ import {
 	useGetTransactionsQuery,
 } from '@/lib/redux/api/borrowApi';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
-
-type CircleSummary = {
-	id: string;
-	name: string;
-	membersCount: number;
-};
+import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 
 export function DashboardHome() {
 	const { data: session } = useSession();
@@ -50,52 +45,36 @@ export function DashboardHome() {
 		role: 'owner',
 	});
 	const { data: items = [], isLoading: isItemsLoading } = useGetAllItemsQuery();
-	const [circles, setCircles] = useState<CircleSummary[]>([]);
-	const [isCirclesLoading, setIsCirclesLoading] = useState(true);
-
-	useEffect(() => {
-		let isActive = true;
-
-		const fetchCircles = async () => {
-			try {
-				setIsCirclesLoading(true);
-				const response = await fetch('/api/circles');
-				if (!response.ok) {
-					throw new Error('Failed to fetch circles');
-				}
-				const data = (await response.json()) as CircleSummary[];
-				if (isActive) {
-					setCircles(Array.isArray(data) ? data : []);
-				}
-			} catch (error) {
-				console.error('Error fetching circles:', error);
-				if (isActive) {
-					setCircles([]);
-				}
-			} finally {
-				if (isActive) {
-					setIsCirclesLoading(false);
-				}
-			}
-		};
-
-		fetchCircles();
-		return () => {
-			isActive = false;
-		};
-	}, []);
+	const { data: circles = [], isLoading: isCirclesLoading } = useGetCirclesQuery();
 
 	const userName = user?.name || session?.user?.name || 'there';
 	const unreadNotifications = notificationsData?.unreadCount ?? 0;
 	const unreadMessages = unreadMessagesData?.unreadCount ?? 0;
-	const pendingRequests = incomingRequests.filter(request => request.status === 'PENDING');
-	const openItemRequests = itemRequests.filter(request => request.status === 'OPEN');
-	const myItems = items.filter(item => item.isOwner);
-	const activeBorrower = borrowerTransactions.filter(
-		transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
+	
+	// Memoize filtered arrays to prevent recalculation on every render
+	const pendingRequests = useMemo(
+		() => incomingRequests.filter(request => request.status === 'PENDING'),
+		[incomingRequests]
 	);
-	const activeOwner = ownerTransactions.filter(
-		transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
+	const openItemRequests = useMemo(
+		() => itemRequests.filter(request => request.status === 'OPEN'),
+		[itemRequests]
+	);
+	const myItems = useMemo(
+		() => items.filter(item => item.isOwner),
+		[items]
+	);
+	const activeBorrower = useMemo(
+		() => borrowerTransactions.filter(
+			transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
+		),
+		[borrowerTransactions]
+	);
+	const activeOwner = useMemo(
+		() => ownerTransactions.filter(
+			transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
+		),
+		[ownerTransactions]
 	);
 
 	const recentTransactions = useMemo(() => {
