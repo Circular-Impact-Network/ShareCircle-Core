@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { AlertCircle, Check, CheckCheck, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from './types';
@@ -8,6 +9,18 @@ type MessageBubbleProps = {
 	onRetry?: (message: ChatMessage) => void;
 	highlight?: string;
 };
+
+// Custom comparison function for memo - only re-render when relevant props change
+function arePropsEqual(prevProps: MessageBubbleProps, nextProps: MessageBubbleProps) {
+	return (
+		prevProps.message.id === nextProps.message.id &&
+		prevProps.message.body === nextProps.message.body &&
+		prevProps.message.localStatus === nextProps.message.localStatus &&
+		prevProps.message.receipts === nextProps.message.receipts &&
+		prevProps.isOwn === nextProps.isOwn &&
+		prevProps.highlight === nextProps.highlight
+	);
+}
 
 function getDeliveryState(message: ChatMessage) {
 	if (message.localStatus) {
@@ -40,7 +53,7 @@ function highlightText(text: string, query: string) {
 	);
 }
 
-export function MessageBubble({ message, isOwn, onRetry, highlight }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRetry, highlight }: MessageBubbleProps) {
 	const state = getDeliveryState(message);
 	const showRetry = state === 'failed';
 	return (
@@ -77,4 +90,4 @@ export function MessageBubble({ message, isOwn, onRetry, highlight }: MessageBub
 			</div>
 		</div>
 	);
-}
+}, arePropsEqual);
