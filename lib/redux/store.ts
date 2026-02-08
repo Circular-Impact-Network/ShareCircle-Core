@@ -6,6 +6,7 @@ import { itemsApi } from './api/itemsApi';
 import { borrowApi } from './api/borrowApi';
 import { notificationsApi } from './api/notificationsApi';
 import { messagesApi } from './api/messagesApi';
+import { circlesApi } from './api/circlesApi';
 
 export const store = configureStore({
 	reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
 		[borrowApi.reducerPath]: borrowApi.reducer,
 		[notificationsApi.reducerPath]: notificationsApi.reducer,
 		[messagesApi.reducerPath]: messagesApi.reducer,
+		[circlesApi.reducerPath]: circlesApi.reducer,
 	},
 	middleware: getDefaultMiddleware =>
 		getDefaultMiddleware().concat(
@@ -23,7 +25,8 @@ export const store = configureStore({
 			itemsApi.middleware,
 			borrowApi.middleware,
 			notificationsApi.middleware,
-			messagesApi.middleware
+			messagesApi.middleware,
+			circlesApi.middleware
 		),
 });
 
