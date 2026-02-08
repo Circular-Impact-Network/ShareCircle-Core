@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, Users } from 'lucide-react';
+import { useJoinCircleMutation } from '@/lib/redux/api/circlesApi';
 
 interface CircleMemberPreview {
 	id: string;
@@ -48,21 +49,22 @@ interface JoinCircleModalProps {
 }
 
 export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode }: JoinCircleModalProps) {
-	const [code, setCode] = useState(initialCode || '');
 	const [linkInput, setLinkInput] = useState('');
 	const [error, setError] = useState('');
 	const [joinedCircle, setJoinedCircle] = useState<Circle | null>(null);
 	const [activeTab, setActiveTab] = useState<'code' | 'link'>('code');
+	const [code, setCode] = useState(initialCode || '');
 	
 	// Use RTK Query mutation
 	const [joinCircle, { isLoading }] = useJoinCircleMutation();
 
-	// Update code when initialCode changes
+	// Update code if initialCode changes (only when modal opens with a code)
 	useEffect(() => {
-		if (initialCode) {
+		if (open && initialCode && initialCode !== code) {
 			setCode(initialCode);
 		}
-	}, [initialCode]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [open, initialCode]);
 
 	const extractCodeFromLink = (link: string): string | null => {
 		try {
@@ -105,10 +107,18 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 				code: codeToUse,
 				joinType,
 			}).unwrap();
-			setJoinedCircle(result);
-		} catch (err: any) {
+			// Ensure updatedAt and memberPreviews are properly set
+			const { ...circleData } = result;
+			setJoinedCircle({
+				...circleData,
+				updatedAt: circleData.updatedAt || circleData.createdAt,
+				memberPreviews: circleData.memberPreviews || [],
+			});
+		} catch (err) {
 			console.error('Error joining circle:', err);
-			const errorMessage = err?.data?.error || err?.message || 'Failed to join circle. Please check the code and try again.';
+			const errorMessage = (err as { data?: { error?: string }; message?: string })?.data?.error || 
+				(err as { message?: string })?.message || 
+				'Failed to join circle. Please check the code and try again.';
 			setError(errorMessage);
 		}
 	};

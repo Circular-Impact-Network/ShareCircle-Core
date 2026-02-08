@@ -6,7 +6,6 @@ import {
 	Package,
 	Plus,
 	Clock,
-	CheckCircle2,
 	Loader2,
 	Search,
 	Send,
@@ -31,7 +30,6 @@ import { PageHeader, PageShell } from '@/components/ui/page';
 import {
 	useGetItemRequestsQuery,
 	useCreateItemRequestMutation,
-	useUpdateItemRequestMutation,
 	ItemRequest,
 } from '@/lib/redux/api/borrowApi';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
@@ -124,7 +122,8 @@ export function ItemRequestsPage() {
 	// Fetch data
 	const { data: allRequests = [], isLoading: allLoading } = useGetItemRequestsQuery({});
 	const { data: myRequests = [], isLoading: myLoading } = useGetItemRequestsQuery({ myRequests: true });
-	const { data: items = [] } = useGetAllItemsQuery();
+	// Keep items query for potential future use
+	useGetAllItemsQuery();
 
 	// Get user's circles (only circles the user is a member of)
 	const { data: circles = [] } = useGetCirclesQuery();

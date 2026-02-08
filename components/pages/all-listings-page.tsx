@@ -11,11 +11,7 @@ import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { PageHeader, PageShell } from '@/components/ui/page';
 
-interface AllListingsPageProps {
-	onNavigate?: (page: string) => void;
-}
-
-export function AllListingsPage({ onNavigate }: AllListingsPageProps) {
+export function AllListingsPage() {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 

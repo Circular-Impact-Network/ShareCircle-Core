@@ -294,7 +294,7 @@ export function MyActivityPage() {
 		try {
 			await markAsReturned({ id: requestId }).unwrap();
 			toast({ title: 'Marked as returned', description: 'Waiting for owner confirmation.' });
-		} catch (error) {
+		} catch {
 			toast({ title: 'Failed to mark as returned', variant: 'destructive' });
 		} finally {
 			setProcessingId(null);

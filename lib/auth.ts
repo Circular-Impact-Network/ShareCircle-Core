@@ -4,7 +4,7 @@ import { compare } from 'bcryptjs';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
-import { checkRateLimit, RATE_LIMITS } from './rate-limit';
+import { RATE_LIMITS } from './rate-limit';
 
 // Simple in-memory rate limit check for auth (can't use request headers in authorize)
 const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -116,6 +116,7 @@ export const authOptions: NextAuthOptions = {
 
 			return token;
 		},
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		async signIn({ user, account, profile }) {
 			// Allow all sign-ins for Google OAuth and credentials
 			if (account?.provider === 'google') {

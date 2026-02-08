@@ -10,6 +10,7 @@ import { borrowApi } from '@/lib/redux/api/borrowApi';
 import { messagesApi } from '@/lib/redux/api/messagesApi';
 import { useAppDispatch } from '@/lib/redux/hooks';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface NotificationsContextType {
 	// Context can be extended if needed
 }

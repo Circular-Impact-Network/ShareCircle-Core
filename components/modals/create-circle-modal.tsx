@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -32,17 +32,7 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 	
 	// Use RTK Query mutation
-	const [createCircle, { isLoading, error: mutationError }] = useCreateCircleMutation();
-
-	// Handle mutation errors
-	useEffect(() => {
-		if (mutationError) {
-			const errorMessage = 'status' in mutationError 
-				? (mutationError.data as { error?: string })?.error || 'Failed to create circle'
-				: 'Failed to create circle. Please try again.';
-			setError(errorMessage);
-		}
-	}, [mutationError]);
+	const [createCircle, { isLoading }] = useCreateCircleMutation();
 
 	const handleCreate = async () => {
 		if (!name.trim()) {
@@ -64,8 +54,11 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 			}).unwrap();
 			setCreatedCircle(circle);
 		} catch (err) {
-			// Error is handled by useEffect above
 			console.error('Error creating circle:', err);
+			const errorMessage = err && typeof err === 'object' && 'data' in err
+				? (err as { data?: { error?: string } }).data?.error || 'Failed to create circle'
+				: 'Failed to create circle. Please try again.';
+			setError(errorMessage);
 		}
 	};
 

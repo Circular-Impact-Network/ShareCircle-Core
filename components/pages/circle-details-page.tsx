@@ -23,9 +23,6 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Package,
-	Trash2,
-	Edit,
-	ExternalLink,
 	MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,7 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
 import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
@@ -319,18 +316,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		});
 	};
 
-	const getJoinTypeLabel = (joinType: string) => {
-		switch (joinType) {
-			case 'CREATED':
-				return 'Creator';
-			case 'CODE':
-				return 'Joined via code';
-			case 'LINK':
-				return 'Joined via link';
-			default:
-				return joinType;
-		}
-	};
 
 	const getShareUrl = () => {
 		if (typeof window !== 'undefined' && circle) {

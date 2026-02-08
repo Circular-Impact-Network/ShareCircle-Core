@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Moon, User, Shield, Smartphone, Mail, Globe, Camera, Loader2, Upload } from 'lucide-react';
+import { Bell, Moon, Smartphone, Mail, Camera, Loader2 } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -51,15 +51,20 @@ export function SettingsPage() {
 	const [countryCode, setCountryCode] = useState('+91');
 	const [profileImage, setProfileImage] = useState('');
 
-	// Sync form state with Redux when data loads
+	// Initialize form state from Redux - use refs to track initialization
+	const initializedRef = useRef(false);
 	useEffect(() => {
-		if (userName !== null) setName(userName);
-		if (userBio !== null) setBio(userBio);
-		if (userEmail !== null) setEmail(userEmail);
-		if (userPhone !== null) setPhone(userPhone);
-		if (userCountryCode !== null) setCountryCode(userCountryCode);
-		if (userImage !== null) setProfileImage(userImage);
-	}, [userName, userBio, userEmail, userPhone, userCountryCode, userImage]);
+		if (!initializedRef.current) {
+			if (userName !== null) setName(userName);
+			if (userBio !== null) setBio(userBio);
+			if (userEmail !== null) setEmail(userEmail);
+			if (userPhone !== null) setPhone(userPhone);
+			if (userCountryCode !== null) setCountryCode(userCountryCode);
+			if (userImage !== null) setProfileImage(userImage);
+			initializedRef.current = true;
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];

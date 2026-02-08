@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
 import { useGetAllItemsQuery, useSearchItemsMutation, type Item, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
@@ -43,7 +43,7 @@ export function BrowseListingsPage() {
 	}), [selectedCategory]);
 
 	// Fetch filtered items (for display)
-	const { data: items = [], isLoading, error, refetch } = useGetAllItemsQuery(filters);
+	const { data: items = [], isLoading, error } = useGetAllItemsQuery(filters);
 	
 	// Fetch ALL items (unfiltered) for category extraction - this ensures dropdown always has all options
 	const { data: allItems = [] } = useGetAllItemsQuery();

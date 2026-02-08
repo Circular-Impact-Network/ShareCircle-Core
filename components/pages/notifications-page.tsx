@@ -71,21 +71,18 @@ function AlertCard({
 	notification: Notification;
 	onMarkRead: (id: string) => void;
 }) {
-	const router = useRouter();
 	const isUnread = notification.status === 'UNREAD';
-	const IconComponent = getNotificationIcon(notification.type);
 
 	const handleClick = () => {
 		if (isUnread) {
 			onMarkRead(notification.id);
 		}
-		// Navigate based on type
-		const metadata = notification.metadata as Record<string, unknown> | null;
-		if (metadata?.borrowRequestId) {
-			router.push(`/notifications?tab=requests`);
-		} else if (metadata?.itemId) {
-			router.push(`/items/${metadata.itemId}`);
-		}
+	};
+
+	// Render icon directly without storing component in a variable
+	const renderIcon = () => {
+		const Icon = getNotificationIcon(notification.type);
+		return Icon ? <Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} /> : null;
 	};
 
 	return (
@@ -104,10 +101,7 @@ function AlertCard({
 							isUnread ? 'bg-primary/10' : 'bg-muted'
 						)}
 					>
-						{(() => {
-							const Icon = IconComponent;
-							return Icon ? <Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} /> : null;
-						})()}
+						{renderIcon()}
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2">
@@ -234,7 +228,6 @@ function RequestCard({
 }
 
 export function NotificationsPage() {
-	const router = useRouter();
 	const { toast } = useToast();
 	const [activeTab, setActiveTab] = useState<TabType>('alerts');
 	const [processingId, setProcessingId] = useState<string | null>(null);
@@ -275,7 +268,7 @@ export function NotificationsPage() {
 		try {
 			await markAllAsRead().unwrap();
 			toast({ title: 'All notifications marked as read' });
-		} catch (error) {
+		} catch {
 			toast({ title: 'Failed to mark all as read', variant: 'destructive' });
 		}
 	};
@@ -284,7 +277,7 @@ export function NotificationsPage() {
 		try {
 			await clearNotifications().unwrap();
 			toast({ title: 'Notifications cleared' });
-		} catch (error) {
+		} catch {
 			toast({ title: 'Failed to clear notifications', variant: 'destructive' });
 		}
 	};
@@ -298,10 +291,10 @@ export function NotificationsPage() {
 			await refetchRequests();
 			// Ensure processingId is reset
 			setProcessingId(null);
-		} catch (error) {
-			console.error('Approve request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error || 'Failed to approve request'
+		} catch (err) {
+			console.error('Approve request error:', err);
+			const errorMessage = err && typeof err === 'object' && 'data' in err
+				? (err as { data?: { error?: string } }).data?.error || 'Failed to approve request'
 				: 'Failed to approve request';
 			toast({ 
 				title: 'Failed to approve request', 
@@ -320,10 +313,10 @@ export function NotificationsPage() {
 			// Manually refetch to ensure UI updates immediately
 			await refetchRequests();
 			setProcessingId(null);
-		} catch (error) {
-			console.error('Decline request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error || 'Failed to decline request'
+		} catch (err) {
+			console.error('Decline request error:', err);
+			const errorMessage = err && typeof err === 'object' && 'data' in err
+				? (err.data as { error?: string })?.error || 'Failed to decline request'
 				: 'Failed to decline request';
 			toast({ 
 				title: 'Failed to decline request',
@@ -339,7 +332,7 @@ export function NotificationsPage() {
 		try {
 			await confirmReturn(id).unwrap();
 			toast({ title: 'Return confirmed!' });
-		} catch (error) {
+		} catch {
 			toast({ title: 'Failed to confirm return', variant: 'destructive' });
 		} finally {
 			setProcessingId(null);

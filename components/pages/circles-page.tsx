@@ -29,7 +29,7 @@ export function CirclesPage() {
 	const { toast } = useToast();
 	
 	// Use RTK Query for circles data
-	const { data: circles = [], isLoading, error } = useGetCirclesQuery();
+	const { data: circles = [], isLoading } = useGetCirclesQuery();
 
 	const handleCircleCreated = (newCircle: Circle) => {
 		// RTK Query will automatically refetch and update the cache
@@ -230,7 +230,7 @@ export function CirclesPage() {
 							</CardHeader>
 							<CardContent className="flex flex-col flex-1 pt-4 justify-between">
 								<div className="flex items-center justify-between gap-4">
-									<MemberAvatars members={circle.memberPreviews} total={circle.membersCount} />
+									<MemberAvatars members={circle.memberPreviews || []} total={circle.membersCount} />
 									<span className="text-xs text-muted-foreground whitespace-nowrap">
 										{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'}
 									</span>
@@ -309,7 +309,7 @@ export function CirclesPage() {
 								<div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
 									<div className="flex items-center gap-3">
 										<MemberAvatars
-											members={circle.memberPreviews.slice(0, 4)}
+											members={(circle.memberPreviews || []).slice(0, 4)}
 											total={circle.membersCount}
 										/>
 										<span>{circle.membersCount} members</span>
