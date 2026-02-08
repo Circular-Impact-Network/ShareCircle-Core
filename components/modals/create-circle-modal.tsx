@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -16,30 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Copy, Check, PartyPopper } from 'lucide-react';
-
-interface CircleMemberPreview {
-	id: string;
-	name: string | null;
-	image: string | null;
-}
-
-interface Circle {
-	id: string;
-	name: string;
-	description: string | null;
-	inviteCode: string;
-	avatarUrl: string | null;
-	createdAt: string;
-	updatedAt: string;
-	createdBy: {
-		id: string;
-		name: string | null;
-		image: string | null;
-	};
-	membersCount: number;
-	userRole: 'ADMIN' | 'MEMBER' | null;
-	memberPreviews: CircleMemberPreview[];
-}
+import { useCreateCircleMutation, type Circle } from '@/lib/redux/api/circlesApi';
 
 interface CreateCircleModalProps {
 	open: boolean;
@@ -50,10 +27,22 @@ interface CreateCircleModalProps {
 export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: CreateCircleModalProps) {
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [createdCircle, setCreatedCircle] = useState<Circle | null>(null);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+	
+	// Use RTK Query mutation
+	const [createCircle, { isLoading, error: mutationError }] = useCreateCircleMutation();
+
+	// Handle mutation errors
+	useEffect(() => {
+		if (mutationError) {
+			const errorMessage = 'status' in mutationError 
+				? (mutationError.data as { error?: string })?.error || 'Failed to create circle'
+				: 'Failed to create circle. Please try again.';
+			setError(errorMessage);
+		}
+	}, [mutationError]);
 
 	const handleCreate = async () => {
 		if (!name.trim()) {
@@ -66,31 +55,17 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 			return;
 		}
 
-		setIsLoading(true);
 		setError('');
 
 		try {
-			const response = await fetch('/api/circles', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					name: name.trim(),
-					description: description.trim() || undefined,
-				}),
-			});
-
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || 'Failed to create circle');
-			}
-
-			const circle = await response.json();
+			const circle = await createCircle({
+				name: name.trim(),
+				description: description.trim() || undefined,
+			}).unwrap();
 			setCreatedCircle(circle);
 		} catch (err) {
+			// Error is handled by useEffect above
 			console.error('Error creating circle:', err);
-			setError(err instanceof Error ? err.message : 'Failed to create circle. Please try again.');
-		} finally {
-			setIsLoading(false);
 		}
 	};
 
