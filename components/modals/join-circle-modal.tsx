@@ -51,9 +51,11 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 	const [code, setCode] = useState(initialCode || '');
 	const [linkInput, setLinkInput] = useState('');
 	const [error, setError] = useState('');
-	const [isLoading, setIsLoading] = useState(false);
 	const [joinedCircle, setJoinedCircle] = useState<Circle | null>(null);
 	const [activeTab, setActiveTab] = useState<'code' | 'link'>('code');
+	
+	// Use RTK Query mutation
+	const [joinCircle, { isLoading }] = useJoinCircleMutation();
 
 	// Update code when initialCode changes
 	useEffect(() => {
@@ -96,33 +98,18 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 			return;
 		}
 
-		setIsLoading(true);
 		setError('');
 
 		try {
-			const response = await fetch('/api/circles/join', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					code: codeToUse,
-					joinType,
-				}),
-			});
-
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.error || 'Failed to join circle');
-			}
-
-			setJoinedCircle(data);
-		} catch (err) {
+			const result = await joinCircle({
+				code: codeToUse,
+				joinType,
+			}).unwrap();
+			setJoinedCircle(result);
+		} catch (err: any) {
 			console.error('Error joining circle:', err);
-			setError(
-				err instanceof Error ? err.message : 'Failed to join circle. Please check the code and try again.',
-			);
-		} finally {
-			setIsLoading(false);
+			const errorMessage = err?.data?.error || err?.message || 'Failed to join circle. Please check the code and try again.';
+			setError(errorMessage);
 		}
 	};
 
