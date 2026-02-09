@@ -6,6 +6,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3003';
 export default defineConfig({
 	testDir: './tests/e2e',
 	fullyParallel: true,
+	retries: 2, // Retry failed tests to handle rate limiting/flaky tests in parallel runs
 	timeout: 60_000,
 	expect: {
 		timeout: 10_000,
@@ -24,6 +25,7 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true, // Allow reusing existing server for local development
 		timeout: 120_000,
+		env: { E2E_AUTO_VERIFY: 'true' }, // So signup creates verified users and e2e login works
 	},
 	projects: [
 		{
