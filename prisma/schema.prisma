@@ -1,8 +1,7 @@
 // Prisma schema for ShareCircle
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -10,7 +9,7 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-
+        
 // Enums for Circle Management
 enum MemberRole {
   ADMIN
@@ -181,6 +180,7 @@ model Circle {
   name        String
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
+  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '7 days'")) @map("invite_expires_at")
   avatarUrl   String?  @map("avatar_url")
   avatarPath  String?  @map("avatar_path")
   createdById String   @map("created_by")
@@ -229,7 +229,8 @@ model Item {
   tags         String[] @default([])
   mediaPaths   String[] @default([]) @map("media_paths")
   isAvailable  Boolean  @default(true) @map("is_available")
-  // Note: embedding vector(1024) is handled via raw SQL, not in Prisma
+  // Vector embeddings stored via raw SQL (pgvector)
+  embedding    Unsupported("vector(1024)")?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
