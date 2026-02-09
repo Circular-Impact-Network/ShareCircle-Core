@@ -21,7 +21,8 @@
 		"db:migrate": "prisma migrate dev",
 		"db:push": "prisma db push",
 		"db:studio": "prisma studio",
-		"db:seed": "prisma db seed"
+		"db:seed": "prisma db seed",
+		"backfill:embeddings": "DOTENV_CONFIG_PATH=.env.local tsx scripts/backfill-item-embeddings.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/google": "^2.0.51",
@@ -66,8 +67,10 @@
 		"clsx": "^2.1.1",
 		"cmdk": "1.0.4",
 		"date-fns": "4.1.0",
+		"dotenv": "^17.2.4",
 		"embla-carousel-react": "8.5.1",
 		"input-otp": "1.4.1",
+		"irismail": "^1.0.0",
 		"lucide-react": "^0.454.0",
 		"next": "16.0.10",
 		"next-auth": "^4.24.13",
@@ -76,6 +79,7 @@
 		"react": "19.2.0",
 		"react-day-picker": "9.8.0",
 		"react-dom": "19.2.0",
+		"react-dropzone": "^14.4.0",
 		"react-hook-form": "^7.60.0",
 		"react-redux": "^9.2.0",
 		"react-resizable-panels": "^2.1.7",
@@ -105,6 +109,7 @@
 		"postcss": "^8.5",
 		"prettier": "^3.7.4",
 		"tailwindcss": "^4.1.9",
+		"tsx": "^4.21.0",
 		"tw-animate-css": "1.3.3",
 		"typescript": "^5",
 		"typescript-eslint": "^8.53.1",
