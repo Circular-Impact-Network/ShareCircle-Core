@@ -5,6 +5,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
 import { RATE_LIMITS } from './rate-limit';
+import { getOtpIdentifier, hashOtp, normalizeEmail, timingSafeEqualHex } from './otp';
 
 // Simple in-memory rate limit check for auth (can't use request headers in authorize)
 const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -57,6 +58,68 @@ export const authOptions: NextAuthOptions = {
 					throw new Error(`Too many login attempts. Please try again in ${rateLimit.retryAfter} seconds.`);
 				}
 
+				// Email + OTP login
+				if (credentials?.email && credentials?.code) {
+					const normalizedEmail = normalizeEmail(credentials.email);
+					const otpIdentifier = getOtpIdentifier(normalizedEmail, 'login_otp');
+					const verificationToken = await prisma.verificationToken.findFirst({
+						where: { identifier: otpIdentifier },
+					});
+
+					if (!verificationToken) {
+						throw new Error('Invalid or expired code. Please request a new one.');
+					}
+
+					if (new Date() > verificationToken.expires) {
+						await prisma.verificationToken.delete({
+							where: {
+								identifier_token: {
+									identifier: otpIdentifier,
+									token: verificationToken.token,
+								},
+							},
+						});
+						throw new Error('Code expired. Please request a new one.');
+					}
+
+					const expected = hashOtp(credentials.code, normalizedEmail, 'login_otp');
+					const matches =
+						verificationToken.token.length <= 8
+							? verificationToken.token === credentials.code
+							: timingSafeEqualHex(verificationToken.token, expected);
+					if (!matches) {
+						throw new Error('Invalid code. Please try again.');
+					}
+
+					const user = await prisma.user.findUnique({
+						where: { email: normalizedEmail },
+					});
+
+					if (!user) {
+						throw new Error('No account found for this email.');
+					}
+
+					if (!user.emailVerified) {
+						throw new Error('Email not verified. Please verify your email.');
+					}
+
+					await prisma.verificationToken.delete({
+						where: {
+							identifier_token: {
+								identifier: otpIdentifier,
+								token: verificationToken.token,
+							},
+						},
+					});
+
+					return {
+						id: user.id,
+						email: user.email,
+						name: user.name,
+						image: user.image,
+					};
+				}
+
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
 					const user = await prisma.user.findUnique({
@@ -67,6 +130,10 @@ export const authOptions: NextAuthOptions = {
 
 					if (!user || !user.hashed_password) {
 						return null;
+					}
+
+					if (!user.emailVerified) {
+						throw new Error('Email not verified. Please verify your email.');
 					}
 
 					const isPasswordValid = await compare(credentials.password, user.hashed_password);
@@ -88,7 +155,9 @@ export const authOptions: NextAuthOptions = {
 				// To re-enable, implement proper OTP verification first
 				if (credentials?.phone) {
 					// Phone login disabled - requires OTP implementation
-					throw new Error('Phone login is temporarily disabled. Please use email/password or Google sign-in.');
+					throw new Error(
+						'Phone login is temporarily disabled. Please use email/password or Google sign-in.',
+					);
 				}
 
 				return null;
@@ -102,16 +171,26 @@ export const authOptions: NextAuthOptions = {
 				session.user.name = token.name;
 				session.user.email = token.email;
 				session.user.image = token.image as string;
+				session.user.emailVerified = token.emailVerified as Date | null;
 			}
 
 			return session;
 		},
-		async jwt({ token, user }) {
+		async jwt({ token, user, trigger }) {
 			if (user) {
 				token.id = user.id;
 				token.email = user.email;
 				token.name = user.name;
 				token.image = user.image;
+			}
+
+			// Fetch emailVerified status from database on sign-in and update
+			if (trigger === 'signIn' || trigger === 'update' || !token.emailVerified) {
+				const dbUser = await prisma.user.findUnique({
+					where: { id: token.id as string },
+					select: { emailVerified: true },
+				});
+				token.emailVerified = dbUser?.emailVerified || null;
 			}
 
 			return token;
@@ -121,6 +200,12 @@ export const authOptions: NextAuthOptions = {
 			// Allow all sign-ins for Google OAuth and credentials
 			if (account?.provider === 'google') {
 				// The PrismaAdapter will handle user creation automatically
+				if (user?.email) {
+					await prisma.user.update({
+						where: { email: user.email },
+						data: { emailVerified: new Date() },
+					});
+				}
 				return true;
 			}
 			return true;
