@@ -33,6 +33,72 @@ const itemDetectionSchema = z.object({
 
 export type ItemDetection = z.infer<typeof itemDetectionSchema>;
 
+// ============ ITEM VALIDATION SCHEMA ============
+
+const itemValidationSchema = z.object({
+	isValid: z.boolean().describe('Whether the described item exists in the photo'),
+	matchedItem: z.string().optional().describe('The name of the item that matches the description, if found'),
+	confidence: z.enum(['high', 'medium', 'low']).describe('Confidence level of the match'),
+	reason: z.string().describe('Brief explanation of why the item was or was not found'),
+	detectedItems: z
+		.array(z.string())
+		.describe('List of all items detected in the image for reference'),
+});
+
+export type ItemValidation = z.infer<typeof itemValidationSchema>;
+
+/**
+ * Validate whether a user-described item exists in the image
+ * This should be called before analysis when a user provides a hint/description
+ * @param imageUrl - The URL of the image to validate against
+ * @param userDescription - The user's description/hint of what the item is
+ * @returns Validation result indicating if the described item exists in the photo
+ */
+export async function validateItemInImage(
+	imageUrl: string,
+	userDescription: string,
+): Promise<ItemValidation> {
+	const result = await generateObject({
+		model: google('gemini-2.5-flash'),
+		schema: itemValidationSchema,
+		messages: [
+			{
+				role: 'user',
+				content: [
+					{ type: 'image', image: imageUrl },
+					{
+						type: 'text',
+						text: `The user says this image contains: "${userDescription}"
+
+Your task is to verify whether this item actually exists in the image.
+
+IMPORTANT INSTRUCTIONS:
+1. First, identify ALL items visible in the image
+2. Then, check if any item matches or closely relates to the user's description
+3. Be generous with matching - accept:
+   - Exact matches (user says "blue dress", image has a blue dress)
+   - Close matches (user says "summer dress", image has a floral dress)
+   - Category matches (user says "dress", image has any type of dress)
+   - Partial matches (user says "red bag", image has a maroon purse)
+4. Only mark as invalid if NO item in the image is even remotely related to the description
+
+Return:
+- isValid: true if ANY item in the image could reasonably match the description
+- matchedItem: The specific item that matches (if valid)
+- confidence: How confident you are in the match
+- reason: Brief explanation
+- detectedItems: List all items you can see in the image
+
+Be lenient - it's better to allow a slightly mismatched description than to reject a valid item.`,
+					},
+				],
+			},
+		],
+	});
+
+	return result.object;
+}
+
 /**
  * Analyze an item image using Google Gemini Vision
  * @param imageUrl - The URL of the image to analyze
@@ -162,9 +228,65 @@ const voyageClient = new VoyageAIClient({
 });
 
 /**
+ * Build an enriched text string from item metadata for embedding generation.
+ * Combines name, description, categories, and tags into a structured string
+ * that captures the full semantic meaning of the item.
+ */
+export function buildEnrichedText(metadata: {
+	name: string;
+	description?: string | null;
+	categories?: string[];
+	tags?: string[];
+}): string {
+	return [
+		`Name: ${metadata.name}`,
+		metadata.description ? `Description: ${metadata.description}` : '',
+		metadata.categories?.length ? `Categories: ${metadata.categories.join(', ')}` : '',
+		metadata.tags?.length ? `Tags: ${metadata.tags.join(', ')}` : '',
+	]
+		.filter(Boolean)
+		.join('. ');
+}
+
+/**
+ * Generate a document embedding for an item (image + enriched text metadata).
+ * Uses input_type: 'document' to optimize for retrieval as a stored document.
+ * This should be used when storing item embeddings.
+ * @param imageUrl - The URL of the item image
+ * @param text - Enriched text from buildEnrichedText()
+ * @returns 1024-dimensional embedding vector
+ */
+export async function generateDocumentEmbedding(imageUrl: string, text: string): Promise<number[]> {
+	try {
+		const result = await voyageClient.multimodalEmbed({
+			inputs: [
+				{
+					content: [
+						{ type: 'image_url', imageUrl: imageUrl },
+						{ type: 'text', text },
+					],
+				},
+			],
+			model: 'voyage-multimodal-3',
+			inputType: 'document',
+		});
+
+		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
+			throw new Error('No embedding data returned from Voyage AI');
+		}
+
+		return result.data[0].embedding;
+	} catch (error) {
+		console.error('Voyage AI document embedding error:', error);
+		throw new Error(`Voyage AI embedding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+	}
+}
+
+/**
  * Generate an embedding for an image using Voyage AI multimodal model
  * @param imageUrl - The URL of the image to embed
  * @returns 1024-dimensional embedding vector
+ * @deprecated Use generateDocumentEmbedding for item storage instead
  */
 export async function generateImageEmbedding(imageUrl: string): Promise<number[]> {
 	try {
@@ -189,8 +311,8 @@ export async function generateImageEmbedding(imageUrl: string): Promise<number[]
 }
 
 /**
- * Generate an embedding for text using Voyage AI multimodal model
- * Text embeddings are in the same vector space as images!
+ * Generate an embedding for text using Voyage AI multimodal model.
+ * Uses input_type: 'query' to optimize for search queries.
  * @param text - The text to embed
  * @returns 1024-dimensional embedding vector
  */
@@ -203,6 +325,7 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
 				},
 			],
 			model: 'voyage-multimodal-3',
+			inputType: 'query',
 		});
 
 		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
@@ -217,7 +340,8 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
 }
 
 /**
- * Generate a combined embedding for image + text using Voyage AI multimodal model
+ * Generate a combined embedding for image + text search query.
+ * Uses input_type: 'query' to optimize for search.
  * Useful for queries like "similar to this but in blue"
  * @param imageUrl - The URL of the image
  * @param text - The text to combine with the image
@@ -235,6 +359,7 @@ export async function generateMultimodalEmbedding(imageUrl: string, text: string
 				},
 			],
 			model: 'voyage-multimodal-3',
+			inputType: 'query',
 		});
 
 		if (!result.data || result.data.length === 0 || !result.data[0].embedding) {
