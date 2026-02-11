@@ -11,14 +11,10 @@ import { toggleMobileSidebar } from '@/lib/redux/slices/uiSlice';
 import { useUserSync } from '@/hooks/useUserSync';
 import { NotificationsProvider } from '@/components/providers/notifications-provider';
 
-export default function AuthenticatedLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 	const router = useRouter();
 	const pathname = usePathname();
-	const { status } = useSession();
+	const { data: session, status } = useSession();
 	const [mounted, setMounted] = useState(false);
 	const dispatch = useAppDispatch();
 
@@ -38,6 +34,13 @@ export default function AuthenticatedLayout({
 			router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
 		}
 	}, [mounted, status, router, pathname]);
+
+	// Check if email is verified - redirect to signup verify flow if not
+	useEffect(() => {
+		if (mounted && status === 'authenticated' && session?.user?.email && !session.user.emailVerified) {
+			router.push(`/signup?mode=verify&email=${encodeURIComponent(session.user.email)}`);
+		}
+	}, [mounted, status, session, router]);
 
 	// Show loading while checking authentication or during SSR
 	if (!mounted || status === 'loading' || status === 'unauthenticated') {
