@@ -12,6 +12,7 @@ import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
 import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
 import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -96,43 +97,45 @@ export function Sidebar() {
 			</div>
 
 			{/* Navigation */}
-			<nav className="flex-1 space-y-2 overflow-y-auto p-4">
-				{navItems.map(item => {
-					const Icon = item.icon;
-					const active = isActive(item.href);
-					// Determine unread count based on nav item
-					let unreadCount = 0;
-					if (item.id === 'notifications') {
-						unreadCount = totalNotificationUnread;
-					} else if (item.id === 'messages') {
-						unreadCount = totalMessageUnread;
-					}
-					return (
-						<Link
-							key={item.id}
-							href={item.href}
-							onClick={handleNavClick}
-							className={cn(
-								'flex w-full items-center justify-start gap-3 px-4 py-3 text-left font-medium transition-colors rounded-md',
-								active
-									? 'bg-primary text-primary-foreground shadow'
-									: 'text-foreground hover:bg-muted',
-							)}
-						>
-							<Icon className="h-5 w-5" />
-							<span className="flex-1">{item.label}</span>
-							{unreadCount > 0 && (
-								<Badge
-									variant={active ? 'secondary' : 'destructive'}
-									className="h-5 min-w-[20px] px-1.5 text-xs"
-								>
-									{unreadCount > 99 ? '99+' : unreadCount}
-								</Badge>
-							)}
-						</Link>
-					);
-				})}
-			</nav>
+			<ScrollArea className="flex-1">
+				<nav className="space-y-2 p-4">
+					{navItems.map(item => {
+						const Icon = item.icon;
+						const active = isActive(item.href);
+						// Determine unread count based on nav item
+						let unreadCount = 0;
+						if (item.id === 'notifications') {
+							unreadCount = totalNotificationUnread;
+						} else if (item.id === 'messages') {
+							unreadCount = totalMessageUnread;
+						}
+						return (
+							<Link
+								key={item.id}
+								href={item.href}
+								onClick={handleNavClick}
+								className={cn(
+									'flex w-full items-center justify-start gap-3 px-4 py-3 text-left font-medium transition-colors rounded-md',
+									active
+										? 'bg-primary text-primary-foreground shadow'
+										: 'text-foreground hover:bg-muted',
+								)}
+							>
+								<Icon className="h-5 w-5" />
+								<span className="flex-1">{item.label}</span>
+								{unreadCount > 0 && (
+									<Badge
+										variant={active ? 'secondary' : 'destructive'}
+										className="h-5 min-w-[20px] px-1.5 text-xs"
+									>
+										{unreadCount > 99 ? '99+' : unreadCount}
+									</Badge>
+								)}
+							</Link>
+						);
+					})}
+				</nav>
+			</ScrollArea>
 
 			{/* User Profile Section */}
 			{(userName || userEmail) && (
