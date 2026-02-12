@@ -43,6 +43,7 @@ interface Circle {
 	description: string | null;
 	avatarUrl: string | null;
 	inviteCode: string;
+	inviteExpiresAt: string;
 	createdAt: string;
 	updatedAt: string;
 	createdBy: {
