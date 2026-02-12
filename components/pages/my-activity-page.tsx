@@ -73,7 +73,7 @@ function ActiveTransactionCard({
 	const otherPerson = role === 'borrower' ? transaction.owner : transaction.borrower;
 
 	return (
-		<Card>
+		<Card data-testid="transaction-card" data-status={transaction.status}>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					{transaction.item.imageUrl && (
@@ -147,7 +147,7 @@ function PendingRequestCard({ request }: { request: BorrowRequest }) {
 	const router = useRouter();
 
 	return (
-		<Card>
+		<Card data-testid="pending-request-card" data-status={request.status}>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					{request.item.imageUrl && (
@@ -189,7 +189,7 @@ function QueueEntryCard({ entry }: { entry: BorrowQueueEntry }) {
 	const isReady = entry.status === 'READY';
 
 	return (
-		<Card className={isReady ? 'border-green-500/50 bg-green-500/5' : ''}>
+		<Card className={isReady ? 'border-green-500/50 bg-green-500/5' : ''} data-testid="queue-entry-card" data-status={entry.status}>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					{entry.item.imageUrl && (
