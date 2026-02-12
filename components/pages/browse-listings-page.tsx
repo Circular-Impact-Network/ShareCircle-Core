@@ -256,6 +256,7 @@ export function BrowseListingsPage() {
 						onChange={e => setSearchQuery(e.target.value)}
 						onKeyDown={handleSearchKeyDown}
 						className="pl-9 pr-20"
+						data-testid="search-input"
 					/>
 					<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
 						{searchQuery && (
@@ -286,7 +287,7 @@ export function BrowseListingsPage() {
 
 				{/* Category Filter */}
 				<Select value={selectedCategory} onValueChange={handleCategoryChange}>
-					<SelectTrigger className="w-full sm:w-[200px]">
+					<SelectTrigger className="w-full sm:w-[200px]" data-testid="category-filter">
 						<Filter className="h-4 w-4 mr-2" />
 						<SelectValue placeholder="Category" />
 					</SelectTrigger>
@@ -447,12 +448,13 @@ export function BrowseListingsPage() {
 
 			{/* Items Grid */}
 			{!isLoading && displayItems.length > 0 && (
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="items-grid">
 					{displayItems.map(item => (
 						<Card
 							key={item.id}
 							className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
 							onClick={() => router.push(`/items/${item.id}`)}
+							data-testid="item-card"
 						>
 							{/* Item Image/Media Carousel */}
 							<ItemCard item={item} variant="grid" showActions />
@@ -468,9 +470,9 @@ export function BrowseListingsPage() {
 
 								{/* Tags */}
 								{item.tags.length > 0 && (
-									<div className="flex flex-wrap gap-1.5 mb-3">
+									<div className="flex flex-wrap gap-1.5 mb-3" data-testid="tags-container">
 										{item.tags.slice(0, 3).map(tag => (
-											<Badge key={tag} variant="secondary" className="text-xs">
+											<Badge key={tag} variant="secondary" className="text-xs" data-testid="tag">
 												{tag}
 											</Badge>
 										))}
