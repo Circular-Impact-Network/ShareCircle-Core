@@ -76,6 +76,7 @@ interface Circle {
 	name: string;
 	description: string | null;
 	inviteCode: string;
+	inviteExpiresAt: string;
 	avatarUrl: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -161,8 +162,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		}
 	};
 
-	const handleRegenerateCode = async () => {
-		if (!circle || circle.userRole !== 'ADMIN') return;
+	const handleRegenerateCode = async (): Promise<boolean> => {
+		if (!circle || circle.userRole !== 'ADMIN') return false;
 
 		try {
 			setIsRegeneratingCode(true);
@@ -170,21 +171,37 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				method: 'POST',
 			});
 
-			if (!response.ok) throw new Error('Failed to regenerate code');
+			if (!response.ok) {
+				const errorPayload = await response.json().catch(() => null);
+				const message =
+					(errorPayload && typeof errorPayload.error === 'string' && errorPayload.error) ||
+					'Failed to regenerate invite code';
+				throw new Error(message);
+			}
 
 			const data = await response.json();
-			setCircle(prev => (prev ? { ...prev, inviteCode: data.inviteCode } : null));
+			setCircle(prev =>
+				prev
+					? {
+							...prev,
+							inviteCode: data.inviteCode,
+							inviteExpiresAt: data.inviteExpiresAt ?? prev.inviteExpiresAt,
+						}
+					: null,
+			);
 			toast({
 				title: 'Code regenerated',
 				description: 'A new invite code has been generated.',
 			});
+			return true;
 		} catch (error) {
 			console.error('Error regenerating code:', error);
 			toast({
 				title: 'Error',
-				description: 'Failed to regenerate invite code.',
+				description: error instanceof Error ? error.message : 'Failed to regenerate invite code.',
 				variant: 'destructive',
 			});
+			return false;
 		} finally {
 			setIsRegeneratingCode(false);
 		}
@@ -324,6 +341,24 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		return '';
 	};
 
+	const getInviteExpiryLabel = () => {
+		if (!circle?.inviteExpiresAt) return 'Invite expires 7 days after generation.';
+		return `Invite expires on ${formatDate(circle.inviteExpiresAt)}.`;
+	};
+
+	const handleInviteToggle = async () => {
+		if (showInviteSection) {
+			setShowInviteSection(false);
+			return;
+		}
+
+		if (circle?.userRole === 'ADMIN') {
+			await handleRegenerateCode();
+		}
+
+		setShowInviteSection(true);
+	};
+
 	// Loading state
 	if (isLoading) {
 		return (
@@ -422,7 +457,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							variant="outline"
 							size="sm"
 							className="gap-2"
-							onClick={() => setShowInviteSection(!showInviteSection)}
+							onClick={handleInviteToggle}
 						>
 							<Share2 className="h-4 w-4" />
 							<span className="hidden sm:inline">Invite</span>
@@ -506,6 +541,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									</div>
 								</div>
 							</div>
+							<p className="mt-3 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
 						</CardContent>
 					</Card>
 				)}
