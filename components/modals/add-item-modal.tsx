@@ -8,18 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import {
-	Upload,
-	Camera,
-	Loader2,
-	Sparkles,
-	X,
-	Check,
-	ImageIcon,
-	AlertCircle,
-	Plus,
-} from 'lucide-react';
+import { Dropzone } from '@/components/ui/dropzone';
+import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
 	useUploadItemImageMutation,
 	useUploadMediaMutation,
@@ -48,17 +40,14 @@ interface AddItemModalProps {
 export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreated }: AddItemModalProps) {
 	const { toast } = useToast();
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const videoRef = useRef<HTMLVideoElement>(null);
-	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const cameraInputRef = useRef<HTMLInputElement>(null);
 
 	// State
 	const [state, setState] = useState<ModalState>('capture');
 	const [imagePreview, setImagePreview] = useState<string | null>(null);
 	const [imagePath, setImagePath] = useState<string | null>(null);
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
-	const [showCamera, setShowCamera] = useState(false);
-	const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-	const [cameraError, setCameraError] = useState<string | null>(null);
+	const isDesktop = useMediaQuery('(min-width: 768px)');
 
 	// Option 1 & 2 flow states
 	const [manualMode, setManualMode] = useState(false); // Toggle for Option 1 vs Option 2
@@ -81,7 +70,9 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [isLoadingCircles, setIsLoadingCircles] = useState(false);
 
 	// Supporting media state
-	const [supportingMedia, setSupportingMedia] = useState<Array<{ path: string; url: string; preview: string; type: string }>>([]);
+	const [supportingMedia, setSupportingMedia] = useState<
+		Array<{ path: string; url: string; preview: string; type: string }>
+	>([]);
 	const supportingMediaInputRef = useRef<HTMLInputElement>(null);
 
 	// RTK Query mutations
@@ -133,7 +124,6 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setImagePreview(null);
 		setImagePath(null);
 		setImageUrl(null);
-		setShowCamera(false);
 		setName('');
 		setDescription('');
 		setCategories([]);
@@ -141,20 +131,13 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setTags([]);
 		setTagInput('');
 		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
-		setCameraError(null);
 		setSupportingMedia([]);
 		// Reset Option 1 & 2 states
 		setUserHint('');
 		setDetectedItems([]);
 		setSelectedItemName(null);
 		setManualItemName('');
-
-		// Stop camera if running
-		if (cameraStream) {
-			cameraStream.getTracks().forEach(track => track.stop());
-			setCameraStream(null);
-		}
-	}, [cameraStream, currentCircleId]);
+	}, [currentCircleId]);
 
 	// Handle modal close - cleanup uploaded image if not saved
 	const handleClose = async () => {
@@ -169,85 +152,27 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		onOpenChange(false);
 	};
 
-	// File upload handler
-	const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
+	const handleFile = async (file: File) => {
 		if (!file) return;
-
-		// Create preview
 		const reader = new FileReader();
 		reader.onload = e => {
 			setImagePreview(e.target?.result as string);
 		};
 		reader.readAsDataURL(file);
-
-		// Upload file
 		await uploadAndProcess(file);
 	};
 
-	// Camera handlers
-	const startCamera = async () => {
-		try {
-			setCameraError(null);
-			const stream = await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-			});
-			setCameraStream(stream);
-			if (videoRef.current) {
-				videoRef.current.srcObject = stream;
-			}
-			setShowCamera(true);
-		} catch (error) {
-			console.error('Camera error:', error);
-			setCameraError('Could not access camera. Please check permissions.');
-		}
+	// File upload handler
+	const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		await handleFile(file);
 	};
 
-	const capturePhoto = () => {
-		if (!videoRef.current || !canvasRef.current) return;
-
-		const video = videoRef.current;
-		const canvas = canvasRef.current;
-		canvas.width = video.videoWidth;
-		canvas.height = video.videoHeight;
-
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
-
-		ctx.drawImage(video, 0, 0);
-
-		// Stop camera
-		if (cameraStream) {
-			cameraStream.getTracks().forEach(track => track.stop());
-			setCameraStream(null);
-		}
-		setShowCamera(false);
-
-		// Get image data
-		canvas.toBlob(
-			async blob => {
-				if (!blob) return;
-
-				// Create preview
-				setImagePreview(canvas.toDataURL('image/jpeg', 0.9));
-
-				// Create file from blob
-				const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
-
-				// Upload and process
-				await uploadAndProcess(file);
-			},
-			'image/jpeg',
-			0.9,
-		);
-	};
-
-	const cancelCamera = () => {
-		if (cameraStream) {
-			cameraStream.getTracks().forEach(track => track.stop());
-			setCameraStream(null);
-		}
-		setShowCamera(false);
+	const handleDrop = async (files: File[]) => {
+		const [file] = files;
+		if (!file) return;
+		await handleFile(file);
 	};
 
 	// Upload and process image - handles both Option 1 and Option 2 flows
@@ -273,8 +198,38 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 					setCategories(analysis.categories);
 					setTags(analysis.tags);
 					setState('editing');
-				} catch (analysisError) {
+				} catch (analysisError: unknown) {
 					console.error('AI analysis failed:', analysisError);
+
+					// Check if this is a validation error (item not found in image)
+					const errorData = (
+						analysisError as { data?: { code?: string; message?: string; suggestion?: string } }
+					)?.data;
+					if (errorData?.code === 'ITEM_NOT_FOUND') {
+						toast({
+							title: 'Item Not Found in Photo',
+							description: errorData.message || 'The item you described was not found in the photo.',
+							variant: 'destructive',
+						});
+						// Show the suggestion if available
+						if (errorData.suggestion) {
+							setTimeout(() => {
+								toast({
+									title: 'Suggestion',
+									description: errorData.suggestion,
+									variant: 'default',
+								});
+							}, 500);
+						}
+						// Go back to capture state so user can try again with different description
+						setState('capture');
+						setImagePreview(null);
+						setImagePath(null);
+						setImageUrl(null);
+						// Keep the userHint so user can modify it
+						return;
+					}
+
 					toast({
 						title: 'AI Analysis Failed',
 						description: 'Please fill in the details manually.',
@@ -338,8 +293,23 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			setCategories(analysis.categories);
 			setTags(analysis.tags);
 			setState('editing');
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('AI analysis failed:', error);
+
+			// Check if this is a validation error (item not found in image)
+			const errorData = (error as { data?: { code?: string; message?: string; suggestion?: string } })?.data;
+			if (errorData?.code === 'ITEM_NOT_FOUND') {
+				toast({
+					title: 'Item Not Found',
+					description: errorData.message || 'The selected item was not found in the photo.',
+					variant: 'destructive',
+				});
+				// Go back to selection state to let user pick a different item
+				setState('selecting');
+				setSelectedItemName(null);
+				return;
+			}
+
 			toast({
 				title: 'AI Analysis Failed',
 				description: 'Please fill in the details manually.',
@@ -483,9 +453,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		for (const file of filesArray) {
 			try {
 				const uploadResult = await uploadMedia(file).unwrap();
-				const preview = file.type.startsWith('video/')
-					? URL.createObjectURL(file)
-					: URL.createObjectURL(file);
+				const preview = file.type.startsWith('video/') ? URL.createObjectURL(file) : URL.createObjectURL(file);
 
 				setSupportingMedia(prev => [
 					...prev,
@@ -569,30 +537,33 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
-			<DialogContent 
+			<DialogContent
 				className="sm:max-w-lg h-[90dvh] max-h-[90dvh] flex flex-col p-0"
-				onInteractOutside={(e) => e.preventDefault()}
+				onInteractOutside={e => e.preventDefault()}
 			>
 				<DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<Sparkles className="h-5 w-5 text-primary" />
 							<DialogTitle>Add New Item</DialogTitle>
+							{/* Toggle Switch for Option 1/2 */}
+							{state === 'capture' && (
+								<div className="flex items-center gap-2 mt-1">
+									<Label
+										htmlFor="manual-mode"
+										className="text-xs text-muted-foreground cursor-pointer"
+									>
+										Quick describe
+									</Label>
+									<Switch
+										id="manual-mode"
+										checked={manualMode}
+										onCheckedChange={setManualMode}
+										disabled={isLoading}
+									/>
+								</div>
+							)}
 						</div>
-						{/* Toggle Switch for Option 1/2 */}
-						{state === 'capture' && (
-							<div className="flex items-center gap-2 mr-2">
-								<Label htmlFor="manual-mode" className="text-xs text-muted-foreground cursor-pointer">
-									Quick describe
-								</Label>
-								<Switch
-									id="manual-mode"
-									checked={manualMode}
-									onCheckedChange={setManualMode}
-									disabled={isLoading}
-								/>
-							</div>
-						)}
 					</div>
 					<DialogDescription>
 						{state === 'capture' && 'Upload or capture an image to get started'}
@@ -605,435 +576,473 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="flex-1 overflow-y-auto px-6 py-4">{/* Scrollable content wrapper */}
+				<div className="flex-1 overflow-y-auto px-6 py-4">
+					{/* Scrollable content wrapper */}
 
-				{/* Capture State */}
-				{state === 'capture' && !showCamera && (
-					<div className="space-y-4">
-						{/* Option 1: Optional Text Input (when manualMode is ON) */}
-						{manualMode && (
-							<div className="space-y-2">
-								<Label htmlFor="item-hint" className="text-xs uppercase tracking-wide text-muted-foreground">
-									What is this item? <span className="text-muted-foreground/70">(optional)</span>
-								</Label>
-								<Input
-									id="item-hint"
-									placeholder="e.g., Blue summer dress"
-									value={userHint}
-									onChange={e => setUserHint(e.target.value)}
-									className="h-11"
-								/>
-								<p className="text-xs text-muted-foreground">
-									Help AI identify the correct item by describing it briefly.
+					{/* Capture State */}
+					{state === 'capture' && (
+						<div className="space-y-4">
+							{/* Option 1: Optional Text Input (when manualMode is ON) */}
+							{manualMode && (
+								<div className="space-y-2">
+									<Label
+										htmlFor="item-hint"
+										className="text-xs uppercase tracking-wide text-muted-foreground"
+									>
+										What is this item? <span className="text-muted-foreground/70">(optional)</span>
+									</Label>
+									<Input
+										id="item-hint"
+										placeholder="e.g., Blue summer dress"
+										value={userHint}
+										onChange={e => setUserHint(e.target.value)}
+										className="h-11"
+									/>
+									<p className="text-xs text-muted-foreground">
+										Help AI identify the correct item by describing it briefly.
+									</p>
+								</div>
+							)}
+
+							{/* File Inputs */}
+							<input
+								ref={fileInputRef}
+								type="file"
+								accept="image/jpeg,image/png,image/gif,image/webp"
+								onChange={handleFileSelect}
+								className="hidden"
+							/>
+							<input
+								ref={cameraInputRef}
+								type="file"
+								accept="image/*"
+								capture="environment"
+								onChange={handleFileSelect}
+								className="hidden"
+							/>
+
+							{/* Desktop: Drag + Drop */}
+							{isDesktop ? (
+								<Dropzone
+									accept={{
+										'image/jpeg': [],
+										'image/png': [],
+										'image/gif': [],
+										'image/webp': [],
+									}}
+									maxFiles={1}
+									onDrop={handleDrop}
+									disabled={isLoading}
+								>
+									<div className="flex flex-col items-center gap-3">
+										<div className="p-4 rounded-full bg-primary/10">
+											<Upload className="h-8 w-8 text-primary" />
+										</div>
+										<div>
+											<p className="font-medium text-foreground">Upload an image</p>
+											<p className="text-sm text-muted-foreground mt-1">Click or drag and drop</p>
+										</div>
+										<p className="text-xs text-muted-foreground">JPEG, PNG, GIF, WebP up to 5MB</p>
+									</div>
+								</Dropzone>
+							) : (
+								<div className="space-y-3">
+									<Button
+										variant="outline"
+										className="w-full gap-2 h-12"
+										onClick={() => fileInputRef.current?.click()}
+										disabled={isLoading}
+									>
+										<Upload className="h-5 w-5" />
+										Upload from device
+									</Button>
+									<Button
+										variant="outline"
+										className="w-full gap-2 h-12"
+										onClick={() => cameraInputRef.current?.click()}
+										disabled={isLoading}
+									>
+										<Camera className="h-5 w-5" />
+										Take a photo
+									</Button>
+									<p className="text-xs text-muted-foreground text-center">
+										Choose a photo from your library or open the camera directly.
+									</p>
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Loading States */}
+					{(state === 'uploading' || state === 'detecting' || state === 'analyzing') && (
+						<div className="py-12 flex flex-col items-center gap-4">
+							{imagePreview && (
+								<div className="w-32 h-32 rounded-lg overflow-hidden border border-border">
+									<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+								</div>
+							)}
+							<div className="flex flex-col items-center gap-2">
+								<Loader2 className="h-8 w-8 animate-spin text-primary" />
+								<p className="text-sm text-muted-foreground">
+									{state === 'uploading' && 'Uploading image...'}
+									{state === 'detecting' && 'Detecting items in image...'}
+									{state === 'analyzing' && 'Analyzing with AI...'}
 								</p>
 							</div>
-						)}
+						</div>
+					)}
 
-						{/* File Upload */}
-						<input
-							ref={fileInputRef}
-							type="file"
-							accept="image/jpeg,image/png,image/gif,image/webp"
-							onChange={handleFileSelect}
-							className="hidden"
-						/>
-
-						<div
-							onClick={() => fileInputRef.current?.click()}
-							className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all duration-200 group"
-						>
-							<div className="flex flex-col items-center gap-3">
-								<div className="p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-									<Upload className="h-8 w-8 text-primary" />
+					{/* Option 2: Item Selection State */}
+					{state === 'selecting' && (
+						<div className="space-y-4">
+							{/* Image Preview */}
+							{imagePreview && (
+								<div className="w-full rounded-lg overflow-hidden border border-border">
+									<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
 								</div>
-								<div>
-									<p className="font-medium text-foreground">Upload an image</p>
-									<p className="text-sm text-muted-foreground mt-1">Click or drag and drop</p>
+							)}
+
+							{/* Detected Items Grid */}
+							{detectedItems.length > 0 && (
+								<div className="space-y-3">
+									<Label className="text-sm font-medium">We found these items:</Label>
+									<div className="grid grid-cols-2 gap-3">
+										{detectedItems.map((item, index) => (
+											<button
+												key={index}
+												type="button"
+												onClick={() => handleItemSelect(item.name)}
+												disabled={isAnalyzing}
+												className="p-4 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+											>
+												<div className="font-medium text-sm mb-1">{item.name}</div>
+												{item.description && (
+													<div className="text-xs text-muted-foreground line-clamp-2">
+														{item.description}
+													</div>
+												)}
+												{item.category && (
+													<Badge variant="secondary" className="mt-2 text-xs">
+														{item.category}
+													</Badge>
+												)}
+											</button>
+										))}
+									</div>
 								</div>
-								<p className="text-xs text-muted-foreground">JPEG, PNG, GIF, WebP up to 5MB</p>
+							)}
+
+							{/* Manual Entry Option */}
+							<div className="relative">
+								<div className="absolute inset-0 flex items-center">
+									<span className="w-full border-t" />
+								</div>
+								<div className="relative flex justify-center text-xs uppercase">
+									<span className="bg-background px-2 text-muted-foreground">or enter manually</span>
+								</div>
+							</div>
+
+							<div className="space-y-2">
+								<Input
+									placeholder="Enter item name..."
+									value={manualItemName}
+									onChange={e => setManualItemName(e.target.value)}
+									onKeyDown={e => {
+										if (e.key === 'Enter' && manualItemName.trim()) {
+											handleManualEntry();
+										}
+									}}
+									className="h-11"
+								/>
+								<Button
+									onClick={handleManualEntry}
+									disabled={!manualItemName.trim() || isAnalyzing}
+									className="w-full"
+								>
+									{isAnalyzing ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin mr-2" />
+											Analyzing...
+										</>
+									) : (
+										'Continue'
+									)}
+								</Button>
 							</div>
 						</div>
+					)}
 
-						<div className="relative">
-							<div className="absolute inset-0 flex items-center">
-								<span className="w-full border-t" />
-							</div>
-							<div className="relative flex justify-center text-xs uppercase">
-								<span className="bg-background px-2 text-muted-foreground">or</span>
-							</div>
-						</div>
-
-						{/* Camera Button */}
-						<Button variant="outline" className="w-full gap-2 h-12" onClick={startCamera}>
-							<Camera className="h-5 w-5" />
-							Take a Photo
-						</Button>
-
-						{cameraError && (
-							<div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-								<AlertCircle className="h-4 w-4 flex-shrink-0" />
-								{cameraError}
-							</div>
-						)}
-					</div>
-				)}
-
-				{/* Camera View */}
-				{showCamera && (
-					<div className="space-y-4">
-						<div className="relative rounded-lg overflow-hidden bg-black aspect-video">
-							<video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-						</div>
-						<div className="flex gap-2">
-							<Button variant="outline" onClick={cancelCamera} className="flex-1">
-								Cancel
-							</Button>
-							<Button onClick={capturePhoto} className="flex-1 gap-2">
-								<Camera className="h-4 w-4" />
-								Capture
-							</Button>
-						</div>
-						<canvas ref={canvasRef} className="hidden" />
-					</div>
-				)}
-
-				{/* Loading States */}
-				{(state === 'uploading' || state === 'detecting' || state === 'analyzing') && (
-					<div className="py-12 flex flex-col items-center gap-4">
-						{imagePreview && (
-							<div className="w-32 h-32 rounded-lg overflow-hidden border border-border">
-								<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-							</div>
-						)}
-						<div className="flex flex-col items-center gap-2">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-							<p className="text-sm text-muted-foreground">
-								{state === 'uploading' && 'Uploading image...'}
-								{state === 'detecting' && 'Detecting items in image...'}
-								{state === 'analyzing' && 'Analyzing with AI...'}
-							</p>
-						</div>
-					</div>
-				)}
-
-				{/* Option 2: Item Selection State */}
-				{state === 'selecting' && (
-					<div className="space-y-4">
-						{/* Image Preview */}
-						{imagePreview && (
-							<div className="w-full rounded-lg overflow-hidden border border-border">
-								<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-							</div>
-						)}
-
-						{/* Detected Items Grid */}
-						{detectedItems.length > 0 && (
-							<div className="space-y-3">
-								<Label className="text-sm font-medium">We found these items:</Label>
-								<div className="grid grid-cols-2 gap-3">
-									{detectedItems.map((item, index) => (
-										<button
-											key={index}
-											type="button"
-											onClick={() => handleItemSelect(item.name)}
-											disabled={isAnalyzing}
-											className="p-4 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											<div className="font-medium text-sm mb-1">{item.name}</div>
-											{item.description && (
-												<div className="text-xs text-muted-foreground line-clamp-2">{item.description}</div>
+					{/* Edit State */}
+					{state === 'editing' && (
+						<div className="space-y-5">
+							{/* Image Preview and Supporting Media */}
+							<div className="flex flex-col gap-2">
+								<div className="overflow-x-auto -mx-6 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+									<div className="flex gap-2 items-start min-w-max">
+										{/* Main Image */}
+										<div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
+											{imagePreview ? (
+												<img
+													src={imagePreview}
+													alt="Preview"
+													className="w-full h-full object-cover"
+												/>
+											) : (
+												<div className="w-full h-full bg-muted flex items-center justify-center">
+													<ImageIcon className="h-8 w-8 text-muted-foreground" />
+												</div>
 											)}
-											{item.category && (
-												<Badge variant="secondary" className="mt-2 text-xs">
-													{item.category}
-												</Badge>
-											)}
-										</button>
-									))}
-								</div>
-							</div>
-						)}
+										</div>
 
-						{/* Manual Entry Option */}
-						<div className="relative">
-							<div className="absolute inset-0 flex items-center">
-								<span className="w-full border-t" />
-							</div>
-							<div className="relative flex justify-center text-xs uppercase">
-								<span className="bg-background px-2 text-muted-foreground">or enter manually</span>
-							</div>
-						</div>
+										{/* Supporting Media Items */}
+										{supportingMedia.map((media, index) => (
+											<div
+												key={index}
+												className="relative w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0"
+											>
+												{media.type.startsWith('video/') ? (
+													<video
+														src={media.preview}
+														className="w-full h-full object-cover"
+														muted
+														playsInline
+													/>
+												) : (
+													<img
+														src={media.preview}
+														alt={`Media ${index + 1}`}
+														className="w-full h-full object-cover"
+													/>
+												)}
+												<button
+													type="button"
+													onClick={() => removeSupportingMedia(index)}
+													className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background transition-colors"
+												>
+													<X className="w-3 h-3" />
+												</button>
+											</div>
+										))}
 
-						<div className="space-y-2">
-							<Input
-								placeholder="Enter item name..."
-								value={manualItemName}
-								onChange={e => setManualItemName(e.target.value)}
-								onKeyDown={e => {
-									if (e.key === 'Enter' && manualItemName.trim()) {
-										handleManualEntry();
-									}
-								}}
-								className="h-11"
-							/>
-							<Button
-								onClick={handleManualEntry}
-								disabled={!manualItemName.trim() || isAnalyzing}
-								className="w-full"
-							>
-								{isAnalyzing ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin mr-2" />
-										Analyzing...
-									</>
-								) : (
-									'Continue'
-								)}
-							</Button>
-						</div>
-					</div>
-				)}
-
-				{/* Edit State */}
-				{state === 'editing' && (
-					<div className="space-y-5">
-						{/* Image Preview and Supporting Media */}
-						<div className="flex flex-col gap-2">
-							<div className="overflow-x-auto -mx-6 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-								<div className="flex gap-2 items-start min-w-max">
-									{/* Main Image */}
-									<div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
-										{imagePreview ? (
-											<img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-										) : (
-											<div className="w-full h-full bg-muted flex items-center justify-center">
-												<ImageIcon className="h-8 w-8 text-muted-foreground" />
+										{/* Plus Icon Input */}
+										{supportingMedia.length < 5 && (
+											<div className="flex flex-col items-center gap-1 flex-shrink-0">
+												<input
+													ref={supportingMediaInputRef}
+													type="file"
+													accept="image/*,video/*"
+													multiple
+													onChange={e => handleSupportingMediaUpload(e.target.files)}
+													className="hidden"
+												/>
+												<button
+													type="button"
+													onClick={() => supportingMediaInputRef.current?.click()}
+													className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
+												>
+													<Plus className="w-6 h-6 text-muted-foreground" />
+												</button>
+												<span className="text-xs text-muted-foreground text-center whitespace-nowrap">
+													(5 max, 5MB each)
+												</span>
 											</div>
 										)}
 									</div>
+								</div>
+							</div>
 
-									{/* Supporting Media Items */}
-									{supportingMedia.map((media, index) => (
-										<div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
-											{media.type.startsWith('video/') ? (
-												<video
-													src={media.preview}
-													className="w-full h-full object-cover"
-													muted
-													playsInline
-												/>
-											) : (
-												<img src={media.preview} alt={`Media ${index + 1}`} className="w-full h-full object-cover" />
-											)}
+							{/* Name */}
+							<div className="space-y-2">
+								<Label
+									htmlFor="item-name"
+									className="text-xs uppercase tracking-wide text-muted-foreground"
+								>
+									Name *
+								</Label>
+								<Input
+									id="item-name"
+									placeholder="e.g., Camping Tent"
+									value={name}
+									onChange={e => setName(e.target.value)}
+									className="h-11"
+								/>
+							</div>
+
+							{/* Description */}
+							<div className="space-y-2">
+								<Label
+									htmlFor="item-description"
+									className="text-xs uppercase tracking-wide text-muted-foreground"
+								>
+									Description
+								</Label>
+								<Textarea
+									id="item-description"
+									placeholder="Describe your item, its condition, and any important details..."
+									value={description}
+									onChange={e => setDescription(e.target.value)}
+									rows={3}
+									className="resize-none"
+								/>
+							</div>
+
+							{/* Categories */}
+							<div className="space-y-2">
+								<Label className="text-xs uppercase tracking-wide text-muted-foreground">
+									Categories
+								</Label>
+								<div className="flex flex-wrap gap-2 mb-2">
+									{categories.map(category => (
+										<Badge key={category} variant="secondary" className="gap-1">
+											{category}
 											<button
-												type="button"
-												onClick={() => removeSupportingMedia(index)}
-												className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background transition-colors"
+												onClick={() => removeCategory(category)}
+												className="ml-1 hover:text-destructive"
 											>
-												<X className="w-3 h-3" />
+												<X className="h-3 w-3" />
 											</button>
-										</div>
+										</Badge>
 									))}
+								</div>
+								<div className="flex gap-2">
+									<Input
+										placeholder="Add a category..."
+										value={categoryInput}
+										onChange={e => setCategoryInput(e.target.value)}
+										onKeyDown={handleCategoryKeyDown}
+										className="flex-1"
+									/>
+									<Button variant="outline" onClick={addCategory} disabled={!categoryInput.trim()}>
+										Add
+									</Button>
+								</div>
+							</div>
 
-									{/* Plus Icon Input */}
-									{supportingMedia.length < 5 && (
-										<div className="flex flex-col items-center gap-1 flex-shrink-0">
-											<input
-												ref={supportingMediaInputRef}
-												type="file"
-												accept="image/*,video/*"
-												multiple
-												onChange={(e) => handleSupportingMediaUpload(e.target.files)}
-												className="hidden"
-											/>
+							{/* Tags */}
+							<div className="space-y-2">
+								<Label className="text-xs uppercase tracking-wide text-muted-foreground">Tags</Label>
+								<div className="flex flex-wrap gap-2 mb-2">
+									{tags.map(tag => (
+										<Badge key={tag} variant="outline" className="gap-1">
+											{tag}
 											<button
-												type="button"
-												onClick={() => supportingMediaInputRef.current?.click()}
-												className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
+												onClick={() => removeTag(tag)}
+												className="ml-1 hover:text-destructive"
 											>
-												<Plus className="w-6 h-6 text-muted-foreground" />
+												<X className="h-3 w-3" />
 											</button>
-											<span className="text-xs text-muted-foreground text-center whitespace-nowrap">(5 max, 5MB each)</span>
-										</div>
-									)}
+										</Badge>
+									))}
+								</div>
+								<div className="flex gap-2">
+									<Input
+										placeholder="Add a tag..."
+										value={tagInput}
+										onChange={e => setTagInput(e.target.value)}
+										onKeyDown={handleTagKeyDown}
+										className="flex-1"
+									/>
+									<Button variant="outline" onClick={addTag} disabled={!tagInput.trim()}>
+										Add
+									</Button>
 								</div>
 							</div>
-						</div>
 
-						{/* Name */}
-						<div className="space-y-2">
-							<Label htmlFor="item-name" className="text-xs uppercase tracking-wide text-muted-foreground">
-								Name *
-							</Label>
-							<Input
-								id="item-name"
-								placeholder="e.g., Camping Tent"
-								value={name}
-								onChange={e => setName(e.target.value)}
-								className="h-11"
-							/>
-						</div>
+							{/* Circle Selection */}
+							<div className="space-y-3">
+								<Label className="text-xs uppercase tracking-wide text-muted-foreground">
+									Share with Circles *
+								</Label>
 
-						{/* Description */}
-						<div className="space-y-2">
-							<Label htmlFor="item-description" className="text-xs uppercase tracking-wide text-muted-foreground">
-								Description
-							</Label>
-							<Textarea
-								id="item-description"
-								placeholder="Describe your item, its condition, and any important details..."
-								value={description}
-								onChange={e => setDescription(e.target.value)}
-								rows={3}
-								className="resize-none"
-							/>
-						</div>
-
-						{/* Categories */}
-						<div className="space-y-2">
-							<Label className="text-xs uppercase tracking-wide text-muted-foreground">Categories</Label>
-							<div className="flex flex-wrap gap-2 mb-2">
-								{categories.map(category => (
-									<Badge key={category} variant="secondary" className="gap-1">
-										{category}
-										<button onClick={() => removeCategory(category)} className="ml-1 hover:text-destructive">
-											<X className="h-3 w-3" />
-										</button>
-									</Badge>
-								))}
-							</div>
-							<div className="flex gap-2">
-								<Input
-									placeholder="Add a category..."
-									value={categoryInput}
-									onChange={e => setCategoryInput(e.target.value)}
-									onKeyDown={handleCategoryKeyDown}
-									className="flex-1"
-								/>
-								<Button variant="outline" onClick={addCategory} disabled={!categoryInput.trim()}>
-									Add
-								</Button>
-							</div>
-						</div>
-
-						{/* Tags */}
-						<div className="space-y-2">
-							<Label className="text-xs uppercase tracking-wide text-muted-foreground">Tags</Label>
-							<div className="flex flex-wrap gap-2 mb-2">
-								{tags.map(tag => (
-									<Badge key={tag} variant="outline" className="gap-1">
-										{tag}
-										<button onClick={() => removeTag(tag)} className="ml-1 hover:text-destructive">
-											<X className="h-3 w-3" />
-										</button>
-									</Badge>
-								))}
-							</div>
-							<div className="flex gap-2">
-								<Input
-									placeholder="Add a tag..."
-									value={tagInput}
-									onChange={e => setTagInput(e.target.value)}
-									onKeyDown={handleTagKeyDown}
-									className="flex-1"
-								/>
-								<Button variant="outline" onClick={addTag} disabled={!tagInput.trim()}>
-									Add
-								</Button>
-							</div>
-						</div>
-
-						{/* Circle Selection */}
-						<div className="space-y-3">
-							<Label className="text-xs uppercase tracking-wide text-muted-foreground">Share with Circles *</Label>
-
-							{isLoadingCircles ? (
-								<div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-									<Loader2 className="h-4 w-4 animate-spin" />
-									Loading circles...
-								</div>
-							) : circles.length === 0 ? (
-								<div className="text-sm text-muted-foreground py-4 text-center">
-									You need to join or create a circle first.
-								</div>
-							) : (
-								<>
-									{/* Select All Checkbox */}
-									{circles.length > 1 && (
-										<button
-											type="button"
-											onClick={toggleSelectAllCircles}
-											className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-all text-left w-full"
-										>
-											<div
-												className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-													allCirclesSelected
-														? 'border-primary bg-primary'
-														: 'border-muted-foreground'
-												}`}
-											>
-												{allCirclesSelected && <Check className="h-3 w-3 text-white" />}
-											</div>
-											<span className="font-medium text-sm">Select All Circles</span>
-										</button>
-									)}
-
-									{/* Horizontal Scrollable Circle List */}
-									<div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
-										{circles.map(circle => (
+								{isLoadingCircles ? (
+									<div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+										<Loader2 className="h-4 w-4 animate-spin" />
+										Loading circles...
+									</div>
+								) : circles.length === 0 ? (
+									<div className="text-sm text-muted-foreground py-4 text-center">
+										You need to join or create a circle first.
+									</div>
+								) : (
+									<>
+										{/* Select All Checkbox */}
+										{circles.length > 1 && (
 											<button
-												key={circle.id}
 												type="button"
-												onClick={() => toggleCircle(circle.id)}
-												className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left flex-shrink-0 snap-start min-w-[200px] ${
-													selectedCircleIds.includes(circle.id)
-														? 'border-primary bg-primary/5'
-														: 'border-border hover:border-primary/50 hover:bg-muted/50'
-												}`}
+												onClick={toggleSelectAllCircles}
+												className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-all text-left w-full"
 											>
 												<div
 													className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-														selectedCircleIds.includes(circle.id)
+														allCirclesSelected
 															? 'border-primary bg-primary'
 															: 'border-muted-foreground'
 													}`}
 												>
-													{selectedCircleIds.includes(circle.id) && <Check className="h-3 w-3 text-white" />}
+													{allCirclesSelected && <Check className="h-3 w-3 text-white" />}
 												</div>
-												<span className="font-medium flex-1 truncate">{circle.name}</span>
+												<span className="font-medium text-sm">Select All Circles</span>
 											</button>
-										))}
-									</div>
-								</>
-							)}
+										)}
+
+										{/* Horizontal Scrollable Circle List */}
+										<div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+											{circles.map(circle => (
+												<button
+													key={circle.id}
+													type="button"
+													onClick={() => toggleCircle(circle.id)}
+													className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left flex-shrink-0 snap-start min-w-[200px] ${
+														selectedCircleIds.includes(circle.id)
+															? 'border-primary bg-primary/5'
+															: 'border-border hover:border-primary/50 hover:bg-muted/50'
+													}`}
+												>
+													<div
+														className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+															selectedCircleIds.includes(circle.id)
+																? 'border-primary bg-primary'
+																: 'border-muted-foreground'
+														}`}
+													>
+														{selectedCircleIds.includes(circle.id) && (
+															<Check className="h-3 w-3 text-white" />
+														)}
+													</div>
+													<span className="font-medium flex-1 truncate">{circle.name}</span>
+												</button>
+											))}
+										</div>
+									</>
+								)}
+							</div>
 						</div>
+					)}
 
-					</div>
-				)}
-
-				{/* Saving State */}
-				{state === 'saving' && (
-					<div className="py-12 flex flex-col items-center gap-4">
-						<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						<p className="text-sm text-muted-foreground">Creating your item...</p>
-					</div>
-				)}
-				</div>{/* End of scrollable content wrapper */}
+					{/* Saving State */}
+					{state === 'saving' && (
+						<div className="py-12 flex flex-col items-center gap-4">
+							<Loader2 className="h-8 w-8 animate-spin text-primary" />
+							<p className="text-sm text-muted-foreground">Creating your item...</p>
+						</div>
+					)}
+				</div>
+				{/* End of scrollable content wrapper */}
 
 				{/* Footer with Action Buttons - Always visible when in editing state */}
 				{state === 'editing' && (
 					<div className="flex-shrink-0 px-6 py-4 border-t bg-background">
 						<div className="flex gap-3">
-							<Button 
-								variant="outline" 
+							<Button
+								variant="outline"
 								onClick={() => {
 									if (imagePath) cleanupImage(imagePath);
 									supportingMedia.forEach(media => {
 										cleanupImage(media.path).catch(console.error);
 									});
 									resetState();
-								}} 
-								className="flex-1" 
+								}}
+								className="flex-1"
 								disabled={isSaving}
 							>
 								Re-upload
