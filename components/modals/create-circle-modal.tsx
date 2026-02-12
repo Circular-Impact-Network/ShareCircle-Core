@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { format } from 'date-fns';
 import {
 	Dialog,
 	DialogContent,
@@ -105,6 +106,12 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 		return '';
 	};
 
+	const getInviteExpiryLabel = () => {
+		if (!createdCircle?.inviteExpiresAt) return 'Invite expires 7 days after generation.';
+		const expiresAt = new Date(createdCircle.inviteExpiresAt);
+		return `Invite expires on ${format(expiresAt, 'MMM d, yyyy')}.`;
+	};
+
 	// Render success state
 	if (createdCircle) {
 		return (
@@ -147,6 +154,7 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 									)}
 								</Button>
 							</div>
+							<p className="mt-2 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
 						</div>
 
 						<Separator />
@@ -175,6 +183,7 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 									)}
 								</Button>
 							</div>
+							<p className="mt-2 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
 						</div>
 					</div>
 
