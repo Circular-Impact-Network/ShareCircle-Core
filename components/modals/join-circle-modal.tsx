@@ -28,6 +28,7 @@ interface Circle {
 	name: string;
 	description: string | null;
 	inviteCode: string;
+	inviteExpiresAt: string;
 	avatarUrl: string | null;
 	createdAt: string;
 	updatedAt: string;
