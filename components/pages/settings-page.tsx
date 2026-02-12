@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Moon, Smartphone, Mail, Camera, Loader2 } from 'lucide-react';
+import { Bell, Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -50,6 +50,16 @@ export function SettingsPage() {
 	const [phone, setPhone] = useState('');
 	const [countryCode, setCountryCode] = useState('+91');
 	const [profileImage, setProfileImage] = useState('');
+	const [passwordStep, setPasswordStep] = useState<'idle' | 'request' | 'verify' | 'reset' | 'success'>('idle');
+	const [passwordError, setPasswordError] = useState('');
+	const [passwordSuccess, setPasswordSuccess] = useState('');
+	const [passwordIsLoading, setPasswordIsLoading] = useState(false);
+	const [resendCooldown, setResendCooldown] = useState(0);
+	const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+	const [resetToken, setResetToken] = useState('');
+	const [newPassword, setNewPassword] = useState('');
+	const [confirmNewPassword, setConfirmNewPassword] = useState('');
+	const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
 	// Initialize form state from Redux - use refs to track initialization
 	const initializedRef = useRef(false);
@@ -63,8 +73,21 @@ export function SettingsPage() {
 			if (userImage !== null) setProfileImage(userImage);
 			initializedRef.current = true;
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
+
+	useEffect(() => {
+		if (resendCooldown > 0) {
+			const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+			return () => clearTimeout(timer);
+		}
+	}, [resendCooldown]);
+
+	useEffect(() => {
+		if (passwordStep === 'verify') {
+			otpInputRefs.current[0]?.focus();
+		}
+	}, [passwordStep]);
 
 	const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -116,6 +139,277 @@ export function SettingsPage() {
 		return;
 	};
 
+	const accountEmail = userEmail || email;
+
+	const handleRequestPasswordOtp = async () => {
+		setPasswordError('');
+		setPasswordSuccess('');
+		if (!accountEmail) {
+			setPasswordError('Email is required to reset your password.');
+			return;
+		}
+
+		setPasswordIsLoading(true);
+		try {
+			const response = await fetch('/api/auth/resend-otp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: accountEmail, purpose: 'password_reset' }),
+			});
+
+			const data = await response.json();
+			if (!response.ok) {
+				setPasswordError(data.error || 'Failed to send verification code.');
+				setPasswordIsLoading(false);
+				return;
+			}
+
+			setPasswordStep('verify');
+			setResendCooldown(60);
+			setOtpCode(['', '', '', '', '', '']);
+			setPasswordSuccess('We sent a verification code to your email.');
+		} catch {
+			setPasswordError('Failed to send verification code. Please try again.');
+		} finally {
+			setPasswordIsLoading(false);
+		}
+	};
+
+	const handleOtpInputChange = (index: number, value: string) => {
+		if (!/^\d*$/.test(value)) return;
+		const next = [...otpCode];
+		next[index] = value.slice(-1);
+		setOtpCode(next);
+		setPasswordError('');
+
+		if (value && index < 5) {
+			otpInputRefs.current[index + 1]?.focus();
+		}
+	};
+
+	const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+			otpInputRefs.current[index - 1]?.focus();
+		}
+	};
+
+	const handleOtpPaste = (e: React.ClipboardEvent) => {
+		e.preventDefault();
+		const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+		if (pasted.length === 6) {
+			setOtpCode(pasted.split(''));
+		}
+	};
+
+	const handleVerifyOtp = async () => {
+		const fullCode = otpCode.join('');
+		if (fullCode.length !== 6) {
+			setPasswordError('Please enter the 6-digit code.');
+			return;
+		}
+		if (!accountEmail) {
+			setPasswordError('Email is required to reset your password.');
+			return;
+		}
+
+		setPasswordIsLoading(true);
+		try {
+			const response = await fetch('/api/auth/verify-otp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: accountEmail, code: fullCode, purpose: 'password_reset' }),
+			});
+
+			const data = await response.json();
+			if (!response.ok) {
+				setPasswordError(data.error || 'Failed to verify code.');
+				setPasswordIsLoading(false);
+				return;
+			}
+
+			setResetToken(data.resetToken || '');
+			setPasswordStep('reset');
+			setPasswordSuccess('Email verified. You can now set a new password.');
+		} catch {
+			setPasswordError('Failed to verify code. Please try again.');
+		} finally {
+			setPasswordIsLoading(false);
+		}
+	};
+
+	const handleResetPassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setPasswordError('');
+		setPasswordSuccess('');
+
+		if (!resetToken) {
+			setPasswordError('Missing reset token. Please request a new code.');
+			return;
+		}
+
+		if (!newPassword || !confirmNewPassword) {
+			setPasswordError('Please fill in all fields.');
+			return;
+		}
+
+		if (newPassword.length < 8) {
+			setPasswordError('Password must be at least 8 characters.');
+			return;
+		}
+
+		if (newPassword !== confirmNewPassword) {
+			setPasswordError('Passwords do not match.');
+			return;
+		}
+
+		setPasswordIsLoading(true);
+		try {
+			const response = await fetch('/api/auth/reset-password', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ token: resetToken, password: newPassword }),
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				setPasswordError(data.error || 'Failed to reset password.');
+				setPasswordIsLoading(false);
+				return;
+			}
+			setPasswordStep('success');
+			setPasswordSuccess('Password updated successfully.');
+			setNewPassword('');
+			setConfirmNewPassword('');
+			setResetToken('');
+		} catch {
+			setPasswordError('Failed to reset password. Please try again.');
+		} finally {
+			setPasswordIsLoading(false);
+		}
+	};
+
+	const renderPasswordFlow = () => {
+		if (passwordStep === 'success') {
+			return (
+				<div className="rounded-lg border p-4 space-y-2">
+					<div className="flex items-center gap-2 text-sm font-medium text-green-600">
+						<ShieldCheck className="w-4 h-4" />
+						Password updated successfully.
+					</div>
+					<Button
+						variant="outline"
+						onClick={() => {
+							setPasswordStep('idle');
+							setPasswordSuccess('');
+							setPasswordError('');
+						}}
+					>
+						Done
+					</Button>
+				</div>
+			);
+		}
+
+		if (passwordStep === 'reset') {
+			return (
+				<form onSubmit={handleResetPassword} className="rounded-lg border p-4 space-y-4">
+					<div>
+						<Label className="text-sm">New Password</Label>
+						<Input
+							type="password"
+							value={newPassword}
+							onChange={e => setNewPassword(e.target.value)}
+							className="mt-2"
+							disabled={passwordIsLoading}
+						/>
+						<p className="text-xs text-muted-foreground mt-1">Must be at least 8 characters.</p>
+					</div>
+					<div>
+						<Label className="text-sm">Confirm New Password</Label>
+						<Input
+							type="password"
+							value={confirmNewPassword}
+							onChange={e => setConfirmNewPassword(e.target.value)}
+							className="mt-2"
+							disabled={passwordIsLoading}
+						/>
+					</div>
+					<Button type="submit" className="w-full sm:w-auto" disabled={passwordIsLoading}>
+						{passwordIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Update Password
+					</Button>
+				</form>
+			);
+		}
+
+		if (passwordStep === 'verify') {
+			return (
+				<div className="rounded-lg border p-4 space-y-4">
+					<div className="text-sm text-muted-foreground">
+						Enter the 6-digit code we sent to <span className="font-medium">{accountEmail}</span>.
+					</div>
+					<div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+						{otpCode.map((digit, index) => (
+							<Input
+								key={index}
+								ref={el => {
+									otpInputRefs.current[index] = el;
+								}}
+								type="text"
+								inputMode="numeric"
+								maxLength={1}
+								value={digit}
+								onChange={e => handleOtpInputChange(index, e.target.value)}
+								onKeyDown={e => handleOtpKeyDown(index, e)}
+								className="w-10 h-12 text-center text-lg font-semibold"
+								disabled={passwordIsLoading}
+							/>
+						))}
+					</div>
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+						<Button
+							type="button"
+							onClick={handleVerifyOtp}
+							disabled={passwordIsLoading || otpCode.join('').length !== 6}
+							className="w-full sm:w-auto"
+						>
+							{passwordIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Verify Code
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={handleRequestPasswordOtp}
+							disabled={resendCooldown > 0 || passwordIsLoading}
+						>
+							{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+						</Button>
+					</div>
+				</div>
+			);
+		}
+
+		if (passwordStep === 'request') {
+			return (
+				<div className="rounded-lg border p-4 space-y-4">
+					<p className="text-sm text-muted-foreground">
+						We will send a one-time code to <span className="font-medium">{accountEmail}</span> to confirm
+						this change.
+					</p>
+					<Button
+						onClick={handleRequestPasswordOtp}
+						disabled={passwordIsLoading}
+						className="w-full sm:w-auto"
+					>
+						{passwordIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Send Verification Code
+					</Button>
+				</div>
+			);
+		}
+
+		return null;
+	};
+
 	const getInitials = (name: string) => {
 		if (!name) return 'U';
 		return name
@@ -145,8 +439,8 @@ export function SettingsPage() {
 						</CardHeader>
 						<CardContent className="space-y-6">
 							<div className="flex flex-col md:flex-row gap-6 items-start">
-								<div className="flex flex-col items-center gap-4">
-									<Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-background shadow-xl">
+								<div className="flex flex-col items-center gap-4" data-testid="avatar-section">
+									<Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-background shadow-xl" data-testid="avatar">
 										<AvatarImage src={profileImage} />
 										<AvatarFallback className="text-2xl md:text-4xl bg-primary text-primary-foreground">
 											{getInitials(name)}
@@ -297,10 +591,33 @@ export function SettingsPage() {
 							<div className="flex items-center justify-between p-4 border rounded-lg">
 								<div className="space-y-0.5">
 									<div className="font-medium">Password</div>
-									<div className="text-sm text-muted-foreground">Last changed 3 months ago</div>
+									<div className="text-sm text-muted-foreground">Verify by OTP before updating.</div>
 								</div>
-								<Button variant="outline">Change Password</Button>
+								<Button
+									variant="outline"
+									onClick={() => {
+										setPasswordError('');
+										setPasswordSuccess('');
+										setPasswordStep('request');
+									}}
+								>
+									Change Password
+								</Button>
 							</div>
+
+							{passwordError && (
+								<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+									{passwordError}
+								</div>
+							)}
+
+							{passwordSuccess && (
+								<div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+									{passwordSuccess}
+								</div>
+							)}
+
+							{renderPasswordFlow()}
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -325,7 +642,7 @@ export function SettingsPage() {
 								<Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
 							</div>
 
-							<div className="flex items-center justify-between">
+							<div className="flex items-center justify-between" data-testid="notification-preferences">
 								<div className="space-y-0.5">
 									<div className="font-medium flex items-center gap-2">
 										<Bell className="w-4 h-4" />
@@ -335,7 +652,7 @@ export function SettingsPage() {
 										Receive updates about your circles and items
 									</div>
 								</div>
-								<Switch defaultChecked />
+								<Switch defaultChecked data-testid="notification-toggle" />
 							</div>
 						</CardContent>
 					</Card>
