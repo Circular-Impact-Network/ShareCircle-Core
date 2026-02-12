@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { JoinType, MemberRole } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
 
+const INVITE_EXPIRY_DAYS = 7;
+
 // Generate 8-character alphanumeric invite code
 function generateInviteCode(): string {
 	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding similar characters like 0/O, 1/I/L
@@ -14,6 +16,12 @@ function generateInviteCode(): string {
 	}
 	return code;
 }
+
+const getInviteExpiryDate = () => {
+	const expiresAt = new Date();
+	expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+	return expiresAt;
+};
 
 // GET /api/circles - List user's circles with member count
 export async function GET() {
@@ -97,6 +105,7 @@ export async function GET() {
 					name: circle.name,
 					description: circle.description,
 					inviteCode: circle.inviteCode,
+					inviteExpiresAt: circle.inviteExpiresAt,
 					avatarUrl,
 					createdAt: circle.createdAt,
 					updatedAt: circle.updatedAt,
@@ -173,6 +182,7 @@ export async function POST(req: NextRequest) {
 					name: name.trim(),
 					description: description?.trim() || null,
 					inviteCode,
+					inviteExpiresAt: getInviteExpiryDate(),
 					createdById: userId,
 				},
 			});
@@ -217,6 +227,7 @@ export async function POST(req: NextRequest) {
 				name: createdCircle!.name,
 				description: createdCircle!.description,
 				inviteCode: createdCircle!.inviteCode,
+				inviteExpiresAt: createdCircle!.inviteExpiresAt,
 				avatarUrl: createdCircle!.avatarUrl,
 				createdAt: createdCircle!.createdAt,
 				createdBy: createdCircle!.createdBy,
