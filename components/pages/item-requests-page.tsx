@@ -52,8 +52,10 @@ function RequestCard({
 	const isOpen = request.status === 'OPEN';
 	const isFulfilled = request.status === 'FULFILLED';
 
+	const hasDates = !!(request.desiredFrom && request.desiredTo);
+
 	return (
-		<Card className={isOpen ? '' : 'opacity-60'}>
+		<Card className={isOpen ? '' : 'opacity-60'} data-testid="request-card" data-status={request.status} data-has-dates={hasDates ? 'true' : 'false'}>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					<div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
@@ -71,7 +73,7 @@ function RequestCard({
 								{request.description}
 							</p>
 						)}
-						<div className="flex items-center gap-2 text-xs text-muted-foreground">
+						<div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="requester">
 							<Avatar className="h-4 w-4">
 								<AvatarImage src={request.requester.image || undefined} />
 								<AvatarFallback className="text-[8px]">
@@ -84,10 +86,10 @@ function RequestCard({
 							<span>•</span>
 							<span>{formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}</span>
 						</div>
-						{request.desiredFrom && request.desiredTo && (
-							<p className="text-xs text-muted-foreground mt-1">
-								Needed: {new Date(request.desiredFrom).toLocaleDateString()} -{' '}
-								{new Date(request.desiredTo).toLocaleDateString()}
+						{hasDates && (
+							<p className="text-xs text-muted-foreground mt-1" data-testid="date-range">
+								Needed: {new Date(request.desiredFrom!).toLocaleDateString()} -{' '}
+								{new Date(request.desiredTo!).toLocaleDateString()}
 							</p>
 						)}
 
@@ -286,14 +288,16 @@ export function ItemRequestsPage() {
 							</CardContent>
 						</Card>
 					) : (
-						openRequests.map(request => (
-							<RequestCard
-								key={request.id}
-								request={request}
-								onFulfill={handleFulfill}
-								isMyRequest={myRequests.some(r => r.id === request.id)}
-							/>
-						))
+						<div data-testid="requests-list">
+							{openRequests.map(request => (
+								<RequestCard
+									key={request.id}
+									request={request}
+									onFulfill={handleFulfill}
+									isMyRequest={myRequests.some(r => r.id === request.id)}
+								/>
+							))}
+						</div>
 					)}
 				</TabsContent>
 
