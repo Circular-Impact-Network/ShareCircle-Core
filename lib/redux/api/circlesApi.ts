@@ -31,6 +31,7 @@ export interface Circle {
 	name: string;
 	description: string | null;
 	inviteCode: string;
+	inviteExpiresAt: string;
 	avatarUrl: string | null;
 	createdAt: string;
 	updatedAt?: string;
@@ -154,7 +155,7 @@ export const circlesApi = createApi({
 		}),
 
 		// Regenerate invite code (admin only)
-		regenerateInviteCode: builder.mutation<{ inviteCode: string }, string>({
+		regenerateInviteCode: builder.mutation<{ inviteCode: string; inviteExpiresAt: string }, string>({
 			query: id => ({
 				url: `/circles/${id}/regenerate-code`,
 				method: 'POST',
