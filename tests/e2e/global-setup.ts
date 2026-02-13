@@ -64,9 +64,9 @@ export default async function globalSetup(config: FullConfig) {
 		const context = await browser.newContext();
 		const page = await context.newPage();
 		await page.goto(`${baseURL}/login`);
-		await page.getByLabel('Email').fill(user.email);
-		await page.getByLabel('Password').fill(user.password);
-		await page.getByRole('button', { name: 'Login' }).click();
+		await page.getByPlaceholder('you@example.com').fill(user.email);
+		await page.getByPlaceholder('••••••••').fill(user.password);
+		await page.getByRole('button', { name: 'Login', exact: true }).click();
 		await page.waitForURL('**/home');
 		await context.storageState({ path: storagePaths[user.key] });
 		await context.close();
