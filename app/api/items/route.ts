@@ -4,22 +4,28 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
-import { generateImageEmbedding } from '@/lib/ai';
+import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
 
 /**
  * Fire-and-forget function to generate and store embedding for an item.
+ * Uses multimodal embedding (image + enriched text metadata) for better search quality.
  * This runs asynchronously after the item is created to avoid blocking.
  */
-async function generateAndStoreEmbedding(itemId: string, imageUrl: string): Promise<void> {
+async function generateAndStoreEmbedding(
+	itemId: string,
+	imageUrl: string,
+	metadata: { name: string; description?: string | null; categories?: string[]; tags?: string[] },
+): Promise<void> {
 	try {
-		const embedding = await generateImageEmbedding(imageUrl);
+		const enrichedText = buildEnrichedText(metadata);
+		const embedding = await generateDocumentEmbedding(imageUrl, enrichedText);
 		// Format embedding as PostgreSQL vector literal using Prisma.raw
 		const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
 		await prisma.$executeRaw`
 			UPDATE items SET embedding = ${embeddingVector}
 			WHERE id = ${itemId}
 		`;
-		console.log(`Successfully generated embedding for item ${itemId}, dimensions: ${embedding.length}`);
+		console.log(`Successfully generated multimodal embedding for item ${itemId}, dimensions: ${embedding.length}`);
 	} catch (error) {
 		console.error(`Failed to generate embedding for item ${itemId}:`, error);
 		// Don't throw - this is fire-and-forget
@@ -130,10 +136,13 @@ export async function GET(req: NextRequest) {
 					createdAt: item.createdAt,
 					updatedAt: item.updatedAt,
 					owner: item.owner,
-					circles: item.circles.map(c => ({
-						id: c.circle.id,
-						name: c.circle.name,
-					})),
+					// Only show circles the user is a member of (not all circles the item is shared in)
+					circles: item.circles
+						.filter(c => userCircleIds.includes(c.circleId))
+						.map(c => ({
+							id: c.circle.id,
+							name: c.circle.name,
+						})),
 					isOwner: item.ownerId === userId,
 					isAvailable: item.isAvailable,
 				};
@@ -229,11 +238,16 @@ export async function POST(req: NextRequest) {
 		// Generate signed URL for the response
 		const signedImageUrl = await getSignedUrl(item.imagePath, 'items');
 
-		// Fire-and-forget: Generate embedding in the background (NON-BLOCKING)
+		// Fire-and-forget: Generate multimodal embedding in the background (NON-BLOCKING)
 		// This allows the response to return immediately while embedding is generated
-		// NOTE: Only the main image (imageUrl) is used for embedding, NOT supporting media files
+		// Embedding combines the main image + text metadata (name, description, categories, tags)
 		if (imageUrl) {
-			generateAndStoreEmbedding(item.id, imageUrl).catch(err =>
+			generateAndStoreEmbedding(item.id, imageUrl, {
+				name: item.name,
+				description: item.description,
+				categories: categories || [],
+				tags: tags || [],
+			}).catch(err =>
 				console.error('Background embedding generation failed:', err)
 			);
 		}
