@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { analyzeImage } from '@/lib/ai';
+import { analyzeImage, validateItemInImage } from '@/lib/ai';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 // POST /api/items/analyze - Analyze an image using AI
@@ -25,6 +25,62 @@ export async function POST(req: NextRequest) {
 
 		if (!imageUrl || typeof imageUrl !== 'string') {
 			return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
+		}
+
+		// Validate that the user's description matches something in the image
+		// This prevents users from describing items that don't exist in the photo
+		if (userHint && typeof userHint === 'string' && userHint.trim()) {
+			try {
+				const validation = await validateItemInImage(imageUrl, userHint.trim());
+				
+				if (!validation.isValid) {
+					return NextResponse.json(
+						{
+							error: 'Item not found in image',
+							code: 'ITEM_NOT_FOUND',
+							message: `The item you described ("${userHint}") was not found in the photo. ${validation.reason}`,
+							detectedItems: validation.detectedItems,
+							suggestion: validation.detectedItems.length > 0
+								? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
+								: 'Please try with a different photo or description.',
+						},
+						{ status: 422 }
+					);
+				}
+				
+				// If validation found a matched item, use it to refine the analysis
+				if (validation.matchedItem) {
+					console.log(`Validation matched: "${userHint}" -> "${validation.matchedItem}" (${validation.confidence})`);
+				}
+			} catch (validationError) {
+				// Log but don't fail - validation is a nice-to-have, not required
+				console.error('Validation failed, proceeding with analysis:', validationError);
+			}
+		}
+
+		// Also validate for selectedItem (Option 2 flow)
+		if (selectedItem && typeof selectedItem === 'string' && selectedItem.trim()) {
+			try {
+				const validation = await validateItemInImage(imageUrl, selectedItem.trim());
+				
+				if (!validation.isValid) {
+					return NextResponse.json(
+						{
+							error: 'Selected item not found in image',
+							code: 'ITEM_NOT_FOUND',
+							message: `The selected item ("${selectedItem}") was not found in the photo. ${validation.reason}`,
+							detectedItems: validation.detectedItems,
+							suggestion: validation.detectedItems.length > 0
+								? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
+								: 'Please try selecting a different item.',
+						},
+						{ status: 422 }
+					);
+				}
+			} catch (validationError) {
+				// Log but don't fail - validation is a nice-to-have, not required
+				console.error('Validation failed, proceeding with analysis:', validationError);
+			}
 		}
 
 		// Analyze the image using Gemini Vision
