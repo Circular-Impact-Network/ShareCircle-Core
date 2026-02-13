@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
 
 		const userId = session.user.id;
 		const body: SearchRequestBody = await req.json();
-		const { 
-			query, 
-			imageUrl, 
-			category, 
-			tag, 
-			circleIds, 
-			limit = 20, 
-			threshold = 0.1  // Lowered from 0.3 - cross-modal search has lower similarity scores
+		const {
+			query,
+			imageUrl,
+			category,
+			tag,
+			circleIds,
+			limit = 20,
+			threshold = 0.2, // Multimodal embeddings produce higher similarity scores for relevant matches
 		} = body;
 
 		// Need at least query or imageUrl
@@ -127,12 +127,16 @@ export async function POST(req: NextRequest) {
 			embeddingLength: embedding.length,
 		});
 
-		// Perform vector similarity search using the SQL function
+		// Prepare query text for hybrid full-text search (null for image-only searches)
+		const queryText = query?.trim() || null;
+
+		// Perform hybrid search (vector similarity + full-text) using the SQL function
 		let results: SearchResult[];
 		try {
 			results = await prisma.$queryRaw<SearchResult[]>`
 				SELECT * FROM search_items(
 					${embeddingVector},
+					${queryText},
 					${searchCircleIds}::text[],
 					${categoryFilter},
 					${tagFilter},
