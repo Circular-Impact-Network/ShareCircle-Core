@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
-import { generateImageEmbedding } from '@/lib/ai';
+import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
 
 // GET /api/items/[id] - Get a single item
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -104,10 +104,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				createdAt: item.createdAt,
 				updatedAt: item.updatedAt,
 				owner: item.owner,
-				circles: item.circles.map(c => ({
-					id: c.circle.id,
-					name: c.circle.name,
-				})),
+				// Only show circles the user is a member of (not all circles the item is shared in)
+				circles: item.circles
+					.filter(c => userCircleIds.includes(c.circleId))
+					.map(c => ({
+						id: c.circle.id,
+						name: c.circle.name,
+					})),
 				isOwner: item.ownerId === userId,
 			},
 			{ status: 200 },
@@ -168,13 +171,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			}
 		}
 
-		// If image changed, generate new embedding
-		// NOTE: Only the main image (imageUrl) is used for embedding, NOT supporting media files
+		// Regenerate embedding if image or any text metadata changed
+		// Embedding combines image + text metadata (name, description, categories, tags)
 		let embedding: number[] | null = null;
 		const imageChanged = imagePath && imagePath !== item.imagePath;
-		if (imageChanged && imageUrl) {
+		const metadataChanged = name !== undefined || description !== undefined || categories !== undefined || tags !== undefined;
+		if (imageChanged || metadataChanged) {
+			// Resolve the image URL to use (new image or existing)
+			const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
 			try {
-				embedding = await generateImageEmbedding(imageUrl);
+				// We need to fetch the current item to merge with new values
+				const currentItem = await prisma.item.findUnique({
+					where: { id },
+					select: { name: true, description: true, categories: true, tags: true },
+				});
+				const enrichedText = buildEnrichedText({
+					name: (name !== undefined ? name.trim() : currentItem?.name) || '',
+					description: description !== undefined ? description?.trim() || null : currentItem?.description,
+					categories: categories !== undefined ? categories : currentItem?.categories || [],
+					tags: tags !== undefined ? tags : currentItem?.tags || [],
+				});
+				embedding = await generateDocumentEmbedding(embeddingImageUrl, enrichedText);
 			} catch (embeddingError) {
 				console.error('Failed to generate embedding:', embeddingError);
 			}
