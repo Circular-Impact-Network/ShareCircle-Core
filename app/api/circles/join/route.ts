@@ -42,6 +42,13 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid invite code. Circle not found.' }, { status: 404 });
 		}
 
+		if (circle.inviteExpiresAt && circle.inviteExpiresAt.getTime() <= Date.now()) {
+			return NextResponse.json(
+				{ error: 'This invite has expired. Please ask for a new invite code.' },
+				{ status: 410 },
+			);
+		}
+
 		// Check if user is already a member
 		const existingMembership = await prisma.circleMember.findUnique({
 			where: {
@@ -92,6 +99,7 @@ export async function POST(req: NextRequest) {
 				name: circle.name,
 				description: circle.description,
 				inviteCode: circle.inviteCode,
+				inviteExpiresAt: circle.inviteExpiresAt,
 				avatarUrl: circle.avatarUrl,
 				createdAt: circle.createdAt,
 				createdBy: circle.createdBy,
