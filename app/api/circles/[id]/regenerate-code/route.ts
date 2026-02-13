@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
 
+const INVITE_EXPIRY_DAYS = 7;
+
 // Generate 8-character alphanumeric invite code
 function generateInviteCode(): string {
 	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -13,6 +15,12 @@ function generateInviteCode(): string {
 	}
 	return code;
 }
+
+const getInviteExpiryDate = () => {
+	const expiresAt = new Date();
+	expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+	return expiresAt;
+};
 
 // POST /api/circles/[id]/regenerate-code - Generate new invite code (admin only)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -65,12 +73,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			);
 		}
 
-		const updatedCircle = await prisma.circle.update({
-			where: { id },
-			data: { inviteCode },
-		});
+		const inviteExpiresAt = getInviteExpiryDate();
 
-		return NextResponse.json({ inviteCode: updatedCircle.inviteCode }, { status: 200 });
+		try {
+			const updatedCircle = await prisma.circle.update({
+				where: { id },
+				data: {
+					inviteCode,
+					inviteExpiresAt,
+				},
+			});
+
+			return NextResponse.json(
+				{ inviteCode: updatedCircle.inviteCode, inviteExpiresAt: updatedCircle.inviteExpiresAt },
+				{ status: 200 },
+			);
+		} catch (error) {
+			console.error('Prisma update failed, falling back to raw SQL:', error);
+			const updatedCount = await prisma.$executeRaw`
+				UPDATE "circles"
+				SET "invite_code" = ${inviteCode}, "invite_expires_at" = ${inviteExpiresAt}
+				WHERE "id" = ${id}
+			`;
+
+			if (typeof updatedCount === 'number' && updatedCount === 0) {
+				return NextResponse.json({ error: 'Circle not found' }, { status: 404 });
+			}
+
+			return NextResponse.json({ inviteCode, inviteExpiresAt }, { status: 200 });
+		}
 	} catch (error) {
 		console.error('Regenerate code error:', error);
 		return NextResponse.json({ error: 'Failed to regenerate invite code' }, { status: 500 });
