@@ -20,6 +20,7 @@ export async function GET() {
 				image: true,
 				phone_number: true,
 				country_code: true,
+				created_at: true,
 				// Note: bio field doesn't exist in schema yet, but we'll include it for future use
 				// For now, we'll return null
 			},
@@ -37,6 +38,7 @@ export async function GET() {
 				image: user.image,
 				phoneNumber: user.phone_number,
 				countryCode: user.country_code,
+				createdAt: user.created_at,
 				bio: null, // Will be added when bio field is added to schema
 			},
 			{ status: 200 },
