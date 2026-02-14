@@ -8,6 +8,7 @@ export interface User {
 	phoneNumber: string | null;
 	countryCode: string | null;
 	bio: string | null;
+	createdAt: string;
 }
 
 export interface UpdateUserRequest {
