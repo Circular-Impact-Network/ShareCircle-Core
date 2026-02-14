@@ -10,15 +10,17 @@ test.describe('search functionality', () => {
 
 	test('user can access search from browse page', async ({ page }) => {
 		await page.goto('/browse');
+		await page.waitForLoadState('networkidle');
 		
-		// Look for search input
-		const searchInput = page.getByPlaceholder(/Search/i);
-		const searchButton = page.getByRole('button', { name: /Search/i });
+		// Look for search input with data-testid or placeholder
+		const searchInput = page.locator('[data-testid="search-input"]');
+		const searchInputAlt = page.getByPlaceholder(/Search/i);
 		
-		const hasSearchInput = await searchInput.isVisible().catch(() => false);
-		const hasSearchButton = await searchButton.isVisible().catch(() => false);
+		// At least one search mechanism should exist
+		const hasSearchInput = await searchInput.isVisible({ timeout: 5000 }).catch(() => false);
+		const hasSearchInputAlt = await searchInputAlt.isVisible({ timeout: 2000 }).catch(() => false);
 		
-		expect(hasSearchInput || hasSearchButton).toBeTruthy();
+		expect(hasSearchInput || hasSearchInputAlt).toBeTruthy();
 	});
 
 	test('user can search items by name', async ({ page }) => {
