@@ -49,6 +49,7 @@ export function ChatContainer({
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [threadSearch, setThreadSearch] = useState('');
 	const [messageSearch, setMessageSearch] = useState('');
+	const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false);
 	const [messageInput, setMessageInput] = useState('');
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
 	const [isLoadingThreads, setIsLoadingThreads] = useState(false);
@@ -124,6 +125,12 @@ export function ChatContainer({
 		fetchMessages(activeId);
 	}, [activeId, fetchMessages]);
 
+	useEffect(() => {
+		if (messageSearch && !isMessageSearchOpen) {
+			setIsMessageSearchOpen(true);
+		}
+	}, [messageSearch, isMessageSearchOpen]);
+
 	const handleSelectThread = (threadId: string) => {
 		if (!isDesktop && !showListOnly) {
 			setActiveId(threadId);
@@ -196,6 +203,15 @@ export function ChatContainer({
 			prev.map(item => (item.clientId === message.clientId ? { ...saved, localStatus: undefined } : item)),
 		);
 		fetchThreads();
+	};
+
+	const handleToggleSearch = () => {
+		setIsMessageSearchOpen(prev => {
+			if (prev) {
+				setMessageSearch('');
+			}
+			return !prev;
+		});
 	};
 
 	const handleTogglePin = async (threadId: string, pinned: boolean) => {
@@ -351,6 +367,8 @@ export function ChatContainer({
 										activeThread?.mutedUntil && new Date(activeThread.mutedUntil) > new Date(),
 									)}
 									isArchived={Boolean(activeThread?.archivedAt)}
+									isSearchOpen={isMessageSearchOpen}
+									searchValue={messageSearch}
 									onTogglePin={() => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt)}
 									onToggleMute={() =>
 										activeThread &&
@@ -363,13 +381,14 @@ export function ChatContainer({
 										activeThread && handleArchive(activeThread.id, !activeThread.archivedAt)
 									}
 									onDelete={() => activeThread && handleDelete(activeThread.id)}
+									onToggleSearch={handleToggleSearch}
+									onSearchChange={setMessageSearch}
 								/>
 								<ChatThread
 									messages={messages}
 									currentUserId={currentUser?.id || ''}
 									onRetry={handleRetry}
 									searchValue={messageSearch}
-									onSearchChange={setMessageSearch}
 									onLoadMore={onLoadMore}
 									hasMore={Boolean(nextCursor)}
 									isLoading={isLoadingMessages}
