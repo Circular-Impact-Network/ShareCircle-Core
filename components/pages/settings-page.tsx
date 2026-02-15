@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -314,8 +315,7 @@ export function SettingsPage() {
 				<form onSubmit={handleResetPassword} className="rounded-lg border p-4 space-y-4">
 					<div>
 						<Label className="text-sm">New Password</Label>
-						<Input
-							type="password"
+						<PasswordInput
 							value={newPassword}
 							onChange={e => setNewPassword(e.target.value)}
 							className="mt-2"
@@ -325,8 +325,7 @@ export function SettingsPage() {
 					</div>
 					<div>
 						<Label className="text-sm">Confirm New Password</Label>
-						<Input
-							type="password"
+						<PasswordInput
 							value={confirmNewPassword}
 							onChange={e => setConfirmNewPassword(e.target.value)}
 							className="mt-2"
