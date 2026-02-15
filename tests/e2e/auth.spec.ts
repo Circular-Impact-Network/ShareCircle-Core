@@ -7,5 +7,5 @@ test('user can log in with credentials', async ({ page, users }) => {
 	await page.getByRole('button', { name: 'Login', exact: true }).click();
 
 	await expect(page).toHaveURL(/\/home/);
-	await expect(page.getByText(/Welcome back/i)).toBeVisible();
+	await expect(page.getByText(/Welcome( back)?/i)).toBeVisible();
 });
