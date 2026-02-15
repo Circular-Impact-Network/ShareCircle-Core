@@ -5,12 +5,11 @@ import { useSession } from 'next-auth/react';
 import {
 	Bell,
 	Clock,
-	HandshakeIcon,
-	MessageCircle,
 	Plus,
 	Search,
 	TrendingUp,
 	Users,
+	MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -48,6 +47,10 @@ export function DashboardHome() {
 	const { data: circles = [], isLoading: isCirclesLoading } = useGetCirclesQuery();
 
 	const userName = user?.name || session?.user?.name || 'there';
+	const newUserWindowMs = 2 * 60 * 60 * 1000;
+	const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : null;
+	const isNewUser = userCreatedAt ? Date.now() - userCreatedAt.getTime() < newUserWindowMs : false;
+	const welcomeTitle = isNewUser ? `Welcome, ${userName}!` : `Welcome back, ${userName}!`;
 	const unreadNotifications = notificationsData?.unreadCount ?? 0;
 	const unreadMessages = unreadMessagesData?.unreadCount ?? 0;
 	
@@ -64,19 +67,6 @@ export function DashboardHome() {
 		() => items.filter(item => item.isOwner),
 		[items]
 	);
-	const activeBorrower = useMemo(
-		() => borrowerTransactions.filter(
-			transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
-		),
-		[borrowerTransactions]
-	);
-	const activeOwner = useMemo(
-		() => ownerTransactions.filter(
-			transaction => transaction.status === 'ACTIVE' || transaction.status === 'RETURN_PENDING',
-		),
-		[ownerTransactions]
-	);
-
 	const recentTransactions = useMemo(() => {
 		const withRole = [
 			...borrowerTransactions.map(transaction => ({ ...transaction, role: 'borrower' as const })),
@@ -92,14 +82,12 @@ export function DashboardHome() {
 			.slice(0, 5);
 	}, [borrowerTransactions, ownerTransactions]);
 
-	const latestAlerts = notificationsData?.notifications?.slice(0, 3) ?? [];
-
 	return (
 		<div className="flex-1 bg-background">
 			<PageShell className="space-y-8">
 				<Card className="border-none bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 text-primary-foreground shadow-2xl">
 					<CardHeader className="space-y-2">
-						<CardTitle className="text-3xl font-bold lg:text-4xl">Welcome back, {userName}!</CardTitle>
+						<CardTitle className="text-3xl font-bold lg:text-4xl">{welcomeTitle}</CardTitle>
 						<CardDescription className="text-base text-primary-foreground/80">
 							Share what you have, borrow what you need
 						</CardDescription>
@@ -123,7 +111,7 @@ export function DashboardHome() {
 					</CardContent>
 				</Card>
 
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardDescription>Unread notifications</CardDescription>
@@ -165,21 +153,6 @@ export function DashboardHome() {
 							</div>
 							<Button asChild variant="link" className="h-auto p-0 text-sm">
 								<Link href="/notifications?tab=requests">Review requests</Link>
-							</Button>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardDescription>Active borrows</CardDescription>
-							<HandshakeIcon className="h-5 w-5 text-primary" />
-						</CardHeader>
-						<CardContent>
-							<div className={`text-3xl font-bold ${isBorrowerLoading || isOwnerLoading ? 'text-muted-foreground' : ''}`}>
-								{isBorrowerLoading || isOwnerLoading ? '—' : activeBorrower.length + activeOwner.length}
-							</div>
-							<Button asChild variant="link" className="h-auto p-0 text-sm">
-								<Link href="/activity?tab=active">View activity</Link>
 							</Button>
 						</CardContent>
 					</Card>
@@ -265,33 +238,7 @@ export function DashboardHome() {
 					</Card>
 				</div>
 
-				<div className="grid gap-6 lg:grid-cols-2">
-					<Card className="border-border/60">
-						<CardHeader>
-							<CardTitle>Latest alerts</CardTitle>
-							<CardDescription>Quick view of recent notifications</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							{isNotificationsLoading ? (
-								<p className="text-sm text-muted-foreground">Loading alerts...</p>
-							) : latestAlerts.length === 0 ? (
-								<p className="text-sm text-muted-foreground">No new alerts at the moment.</p>
-							) : (
-								latestAlerts.map(alert => (
-									<div key={alert.id} className="space-y-1">
-										<p className="text-sm font-medium text-foreground">{alert.title}</p>
-										<p className="text-xs text-muted-foreground">
-											{formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}
-										</p>
-									</div>
-								))
-							)}
-							<Button asChild variant="outline" className="w-full">
-								<Link href="/notifications">View all alerts</Link>
-							</Button>
-						</CardContent>
-					</Card>
-
+				<div className="grid gap-6">
 					<Card className="border-border/60">
 						<CardHeader>
 							<CardTitle>Open item requests</CardTitle>
@@ -320,7 +267,7 @@ export function DashboardHome() {
 					</Card>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
 					<Card className="bg-primary text-primary-foreground">
 						<CardHeader>
 							<CardTitle>My listings</CardTitle>
@@ -353,15 +300,15 @@ export function DashboardHome() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="flex flex-col">
 						<CardHeader>
 							<CardTitle>My circles</CardTitle>
 							<CardDescription>
 								{isCirclesLoading ? 'Loading circles...' : `${circles.length} circles`}
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<Button variant="outline" className="w-full gap-2" asChild>
+						<CardContent className="mt-auto">
+							<Button variant="outline" className="h-auto w-full gap-2 whitespace-normal py-2" asChild>
 								<Link href="/circles">
 									<Users className="h-4 w-4" />
 									Manage circles
@@ -370,15 +317,15 @@ export function DashboardHome() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="flex flex-col">
 						<CardHeader>
 							<CardTitle>Item requests</CardTitle>
 							<CardDescription>
 								{isItemRequestsLoading ? 'Loading requests...' : `${openItemRequests.length} open requests`}
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<Button variant="outline" className="w-full gap-2" asChild>
+						<CardContent className="mt-auto">
+							<Button variant="outline" className="h-auto w-full gap-2 whitespace-normal py-2" asChild>
 								<Link href="/requests">
 									<TrendingUp className="h-4 w-4" />
 									View requests
