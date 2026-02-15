@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -481,8 +482,7 @@ function SignupContent() {
 
 							<div>
 								<label className="block text-sm font-medium mb-2">Password</label>
-								<Input
-									type="password"
+								<PasswordInput
 									placeholder="••••••••"
 									value={password}
 									onChange={e => setPassword(e.target.value)}
@@ -493,8 +493,7 @@ function SignupContent() {
 
 							<div>
 								<label className="block text-sm font-medium mb-2">Confirm Password</label>
-								<Input
-									type="password"
+								<PasswordInput
 									placeholder="••••••••"
 									value={confirmPassword}
 									onChange={e => setConfirmPassword(e.target.value)}
