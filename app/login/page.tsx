@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Loader2, Mail, ArrowLeft, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -562,8 +563,7 @@ function LoginContent() {
 				<form onSubmit={handleResetPassword} className="space-y-4">
 					<div>
 						<label className="block text-sm font-medium mb-2">New Password</label>
-						<Input
-							type="password"
+						<PasswordInput
 							placeholder="••••••••"
 							value={password}
 							onChange={e => setPassword(e.target.value)}
@@ -575,8 +575,7 @@ function LoginContent() {
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-2">Confirm New Password</label>
-						<Input
-							type="password"
+						<PasswordInput
 							placeholder="••••••••"
 							value={confirmPassword}
 							onChange={e => setConfirmPassword(e.target.value)}
@@ -663,8 +662,7 @@ function LoginContent() {
 											Forgot Password?
 										</button>
 									</div>
-									<Input
-										type="password"
+									<PasswordInput
 										placeholder="••••••••"
 										value={password}
 										onChange={e => setPassword(e.target.value)}
@@ -827,7 +825,7 @@ function LoginContent() {
 
 	return (
 		<AuthSplitLayout
-			leftTitle="Welcome Back"
+			leftTitle="Welcome to ShareCircle"
 			leftDescription="Share items, build community, and make a difference together."
 			rightHeader={renderHeader()}
 		>
