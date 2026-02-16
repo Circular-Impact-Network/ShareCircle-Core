@@ -191,7 +191,7 @@ model Circle {
   createdBy    User           @relation("CircleCreator", fields: [createdById], references: [id], onDelete: Cascade)
   members      CircleMember[]
   items        ItemCircle[]
-  itemRequests ItemRequest[]
+  itemRequestCircles ItemRequestCircle[]
 
   @@index([createdById])
   @@map("circles")
@@ -354,7 +354,6 @@ model MessageAttachment {
 model ItemRequest {
   id          String            @id @default(cuid())
   requesterId String            @map("requester_id")
-  circleId    String            @map("circle_id")
   title       String
   description String?           @db.Text
   desiredFrom DateTime?         @map("desired_from")
@@ -365,12 +364,26 @@ model ItemRequest {
   updatedAt   DateTime          @updatedAt @map("updated_at")
 
   requester User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
-  circle    Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  circles   ItemRequestCircle[]
 
   @@index([requesterId])
-  @@index([circleId])
   @@index([status])
   @@map("item_requests")
+}
+
+model ItemRequestCircle {
+  id            String      @id @default(cuid())
+  itemRequestId String      @map("item_request_id")
+  circleId      String      @map("circle_id")
+  sharedAt      DateTime    @default(now()) @map("shared_at")
+
+  itemRequest ItemRequest @relation(fields: [itemRequestId], references: [id], onDelete: Cascade)
+  circle      Circle      @relation(fields: [circleId], references: [id], onDelete: Cascade)
+
+  @@unique([itemRequestId, circleId])
+  @@index([circleId])
+  @@index([itemRequestId])
+  @@map("item_request_circles")
 }
 
 // Borrow Request - request to borrow a specific item
