@@ -371,6 +371,7 @@ model ItemRequest {
   @@map("item_requests")
 }
 
+// Join table for item requests shared to multiple circles
 model ItemRequestCircle {
   id            String      @id @default(cuid())
   itemRequestId String      @map("item_request_id")
