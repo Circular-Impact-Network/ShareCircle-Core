@@ -1,3 +1,4 @@
+-- Baseline migration (consolidated schema)
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- CreateEnum
