@@ -39,13 +39,14 @@ export interface ItemRequest {
 	createdAt: string;
 	updatedAt: string;
 	requester: UserInfo;
-	circle: CircleInfo;
+	circle: CircleInfo | null;
+	circles: { circle: CircleInfo }[];
 }
 
 export interface CreateItemRequestInput {
 	title: string;
 	description?: string;
-	circleId: string;
+	circleIds: string[];
 	desiredFrom?: string;
 	desiredTo?: string;
 }
