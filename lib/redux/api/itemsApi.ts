@@ -19,6 +19,7 @@ export interface Item {
 	imageUrl: string;
 	imagePath: string;
 	mediaUrls?: string[];
+	mediaPaths?: string[];
 	categories: string[];
 	tags: string[];
 	createdAt: string;
