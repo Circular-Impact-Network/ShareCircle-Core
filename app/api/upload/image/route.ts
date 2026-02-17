@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
 
 // Allowed storage buckets
-const ALLOWED_BUCKETS = ['avatars', 'items', 'media'];
+const ALLOWED_BUCKETS = ['avatars', 'items', 'media', 'attachments'];
 
 export async function POST(req: NextRequest) {
 	try {
@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
 
 		// Validate bucket
 		if (!ALLOWED_BUCKETS.includes(bucket)) {
-			return NextResponse.json({ error: `Invalid bucket. Allowed: ${ALLOWED_BUCKETS.join(', ')}` }, { status: 400 });
+			return NextResponse.json(
+				{ error: `Invalid bucket. Allowed: ${ALLOWED_BUCKETS.join(', ')}` },
+				{ status: 400 },
+			);
 		}
 
 		const formData = await req.formData();
@@ -33,14 +36,11 @@ export async function POST(req: NextRequest) {
 		// For 'media' bucket, allow images and videos. For other buckets, only images.
 		const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 		const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-		const validTypes = bucket === 'media' 
-			? [...validImageTypes, ...validVideoTypes]
-			: validImageTypes;
-		
+		const validTypes = bucket === 'media' ? [...validImageTypes, ...validVideoTypes] : validImageTypes;
+
 		if (!validTypes.includes(file.type)) {
-			const allowedTypes = bucket === 'media' 
-				? 'JPEG, PNG, GIF, WebP, MP4, WebM, or QuickTime'
-				: 'JPEG, PNG, GIF, and WebP';
+			const allowedTypes =
+				bucket === 'media' ? 'JPEG, PNG, GIF, WebP, MP4, WebM, or QuickTime' : 'JPEG, PNG, GIF, and WebP';
 			return NextResponse.json(
 				{ error: `Invalid file type. Only ${allowedTypes} are allowed.` },
 				{ status: 400 },
