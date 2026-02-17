@@ -99,6 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				imageUrl,
 				imagePath: item.imagePath,
 				mediaUrls,
+				mediaPaths: item.mediaPaths,
 				categories: item.categories,
 				tags: item.tags,
 				createdAt: item.createdAt,
@@ -279,6 +280,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			signedImageUrl, // Main image is first
 			...((updatedItem.mediaPaths || []).map(path => getSignedUrl(path, 'media'))),
 		]);
+		const updatedCircleRecords = await prisma.itemCircle.findMany({
+			where: { itemId: updatedItem.id },
+			include: {
+				circle: {
+					select: { id: true, name: true },
+				},
+			},
+		});
 
 		return NextResponse.json(
 			{
@@ -288,11 +297,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				imageUrl: signedImageUrl,
 				imagePath: updatedItem.imagePath,
 				mediaUrls,
+				mediaPaths: updatedItem.mediaPaths,
 				categories: updatedItem.categories,
 				tags: updatedItem.tags,
 				createdAt: updatedItem.createdAt,
 				updatedAt: updatedItem.updatedAt,
 				owner: updatedItem.owner,
+				circles: updatedCircleRecords.map(c => ({
+					id: c.circle.id,
+					name: c.circle.name,
+				})),
 				isOwner: true,
 			},
 			{ status: 200 },
