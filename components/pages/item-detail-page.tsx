@@ -16,7 +16,8 @@ import {
 	Clock,
 	Users,
 	CheckCircle2,
-	AlertCircle
+	AlertCircle,
+	Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
+import { EditItemModal } from '@/components/modals/edit-item-modal';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -55,11 +57,12 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [copied, setCopied] = useState(false);
 	const [isStartingChat, setIsStartingChat] = useState(false);
 	const [showBorrowModal, setShowBorrowModal] = useState(false);
+	const [showEditModal, setShowEditModal] = useState(false);
 	const [borrowMessage, setBorrowMessage] = useState('');
 	const [desiredFrom, setDesiredFrom] = useState('');
 	const [desiredTo, setDesiredTo] = useState('');
 	
-	const { data: item, isLoading, error } = useGetItemQuery(itemId);
+	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
 	
 	// Get existing borrow requests and queue for this item
 	const { data: existingRequests = [] } = useGetBorrowRequestsQuery(
@@ -443,15 +446,26 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 
 					{/* Action Buttons */}
 					<div className="flex flex-col sm:flex-row gap-3 pt-2">
-						<Button
-							variant="outline"
-							className="w-full sm:flex-1 gap-2 bg-transparent"
-							onClick={handleStartChat}
-							disabled={item.isOwner || isStartingChat}
-						>
-							{isStartingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-							{item.isOwner ? 'Your item' : 'Chat with owner'}
-						</Button>
+						{item.isOwner ? (
+							<Button
+								variant="outline"
+								className="w-full sm:flex-1 gap-2 bg-transparent"
+								onClick={() => setShowEditModal(true)}
+							>
+								<Pencil className="h-4 w-4" />
+								Edit listing
+							</Button>
+						) : (
+							<Button
+								variant="outline"
+								className="w-full sm:flex-1 gap-2 bg-transparent"
+								onClick={handleStartChat}
+								disabled={isStartingChat}
+							>
+								{isStartingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+								Chat with owner
+							</Button>
+						)}
 						{!item.isOwner && !isCurrentBorrower && (
 							<Button 
 								className="w-full sm:flex-1"
@@ -538,6 +552,15 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			<EditItemModal
+				itemId={item.id}
+				open={showEditModal}
+				onOpenChange={setShowEditModal}
+				onSuccess={() => {
+					setShowEditModal(false);
+					refetchItem();
+				}}
+			/>
 		</PageShell>
 	);
 }
