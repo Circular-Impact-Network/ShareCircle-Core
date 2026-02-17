@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { ExternalLink, Trash2 } from 'lucide-react';
+import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,11 +21,12 @@ export interface ItemCardProps {
 	variant?: 'grid' | 'list' | 'detail';
 	showActions?: boolean;
 	onDelete?: (item: Item) => void;
+	onEdit?: (item: Item) => void;
 	onClick?: (item: Item) => void;
 	className?: string;
 }
 
-export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showActions = false, onDelete, onClick, className }: ItemCardProps) {
+export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showActions = false, onDelete, onEdit, onClick, className }: ItemCardProps) {
 	// Determine if we should show carousel (always show if multiple images, or if detail variant)
 	const hasMultipleMedia = item.mediaUrls && item.mediaUrls.length > 1;
 	const shouldShowCarousel = hasMultipleMedia || variant === 'detail';
@@ -51,6 +52,13 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 		e.stopPropagation();
 		if (onDelete) {
 			onDelete(item);
+		}
+	};
+
+	const handleEditClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (onEdit) {
+			onEdit(item);
 		}
 	};
 
@@ -125,6 +133,16 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 							>
 								<ExternalLink className="h-4 w-4 text-black" />
 							</Button>
+							{onEdit && item.isOwner && (
+								<Button
+									variant="secondary"
+									size="icon"
+									className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+									onClick={handleEditClick}
+								>
+									<Pencil className="h-4 w-4" />
+								</Button>
+							)}
 							{onDelete && item.isOwner && (
 								<Button
 									variant="secondary"
@@ -157,6 +175,16 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 							>
 								<ExternalLink className="h-4 w-4 text-black" />
 							</Button>
+							{onEdit && item.isOwner && (
+								<Button
+									variant="secondary"
+									size="icon"
+									className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+									onClick={handleEditClick}
+								>
+									<Pencil className="h-4 w-4" />
+								</Button>
+							)}
 							{onDelete && item.isOwner && (
 								<Button
 									variant="secondary"
