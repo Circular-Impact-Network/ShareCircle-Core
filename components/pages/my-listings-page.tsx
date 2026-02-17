@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
 import { AddItemModal } from '@/components/modals/add-item-modal';
+import { EditItemModal } from '@/components/modals/edit-item-modal';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import {
 	Dialog,
@@ -27,6 +28,7 @@ export function MyListingsPage() {
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 	const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+	const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
 	const { toast } = useToast();
 
 	// Fetch all items
@@ -129,6 +131,7 @@ export function MyListingsPage() {
 										variant="grid"
 										showActions
 										onDelete={setItemToDelete}
+										onEdit={setItemToEdit}
 										onClick={() => router.push(`/items/${item.id}`)}
 									/>
 
@@ -250,6 +253,14 @@ export function MyListingsPage() {
 
 			{/* Modals */}
 			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} onItemCreated={() => refetch()} />
+			<EditItemModal
+				itemId={itemToEdit?.id || null}
+				open={!!itemToEdit}
+				onOpenChange={open => {
+					if (!open) setItemToEdit(null);
+				}}
+				onSuccess={() => refetch()}
+			/>
 			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</PageShell>
 	);
