@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping } from 'lucide-react';
+import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +32,7 @@ export function BrowseListingsPage() {
 	const [showRequestForm, setShowRequestForm] = useState(false);
 	const [requestTitle, setRequestTitle] = useState('');
 	const [requestDescription, setRequestDescription] = useState('');
-	const [requestCircleId, setRequestCircleId] = useState('');
+	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
 	
 	// Item request mutation
 	const [createItemRequest, { isLoading: isCreatingRequest }] = useCreateItemRequestMutation();
@@ -142,6 +142,21 @@ export function BrowseListingsPage() {
 
 	// Get user's circles (only circles the user is a member of)
 	const { data: userCircles = [] } = useGetCirclesQuery();
+	const allRequestCirclesSelected = userCircles.length > 0 && requestCircleIds.length === userCircles.length;
+
+	const toggleRequestCircle = (circleId: string) => {
+		setRequestCircleIds(prev =>
+			prev.includes(circleId) ? prev.filter(id => id !== circleId) : [...prev, circleId],
+		);
+	};
+
+	const toggleAllRequestCircles = () => {
+		if (allRequestCirclesSelected) {
+			setRequestCircleIds([]);
+			return;
+		}
+		setRequestCircleIds(userCircles.map(circle => circle.id));
+	};
 
 	// Handle item request submission
 	const handleSubmitItemRequest = async () => {
@@ -149,21 +164,21 @@ export function BrowseListingsPage() {
 			toast({ title: 'Please enter what you&apos;re looking for', variant: 'destructive' });
 			return;
 		}
-		if (!requestCircleId) {
-			toast({ title: 'Please select a circle', variant: 'destructive' });
+		if (requestCircleIds.length === 0) {
+			toast({ title: 'Please select at least one circle', variant: 'destructive' });
 			return;
 		}
 		try {
 			await createItemRequest({
 				title: requestTitle.trim(),
 				description: requestDescription.trim() || undefined,
-				circleId: requestCircleId,
+				circleIds: requestCircleIds,
 			}).unwrap();
 			toast({ title: 'Request created!', description: 'Circle members will be notified.' });
 			setShowRequestForm(false);
 			setRequestTitle('');
 			setRequestDescription('');
-			setRequestCircleId('');
+			setRequestCircleIds([]);
 		} catch (error) {
 			console.error('Create item request error:', error);
 			const errorMessage = error && typeof error === 'object' && 'data' in error
@@ -381,18 +396,37 @@ export function BrowseListingsPage() {
 										onChange={e => setRequestDescription(e.target.value)}
 										rows={2}
 									/>
-									<Select value={requestCircleId} onValueChange={setRequestCircleId}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select a circle" />
-										</SelectTrigger>
-										<SelectContent>
-											{userCircles.map(circle => (
-												<SelectItem key={circle.id} value={circle.id}>
-													{circle.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									<div className="space-y-2">
+										{userCircles.length > 1 && (
+											<Button variant="outline" type="button" onClick={toggleAllRequestCircles} className="w-full">
+												{allRequestCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
+											</Button>
+										)}
+										<div className="max-h-44 space-y-2 overflow-auto rounded-md border p-2">
+											{userCircles.map(circle => {
+												const isSelected = requestCircleIds.includes(circle.id);
+												return (
+													<button
+														key={circle.id}
+														type="button"
+														onClick={() => toggleRequestCircle(circle.id)}
+														className={`flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+															isSelected ? 'bg-primary/10' : 'hover:bg-muted'
+														}`}
+													>
+														<div
+															className={`h-4 w-4 rounded border flex items-center justify-center ${
+																isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'
+															}`}
+														>
+															{isSelected && <Check className="h-3 w-3" />}
+														</div>
+														<span>{circle.name}</span>
+													</button>
+												);
+											})}
+										</div>
+									</div>
 									<div className="flex gap-2">
 										<Button
 											variant="outline"
@@ -400,7 +434,7 @@ export function BrowseListingsPage() {
 												setShowRequestForm(false);
 												setRequestTitle('');
 												setRequestDescription('');
-												setRequestCircleId('');
+												setRequestCircleIds([]);
 											}}
 											className="flex-1"
 										>
@@ -408,7 +442,7 @@ export function BrowseListingsPage() {
 										</Button>
 										<Button
 											onClick={handleSubmitItemRequest}
-											disabled={isCreatingRequest || !requestTitle.trim() || !requestCircleId}
+											disabled={isCreatingRequest || !requestTitle.trim() || requestCircleIds.length === 0}
 											className="flex-1 gap-2"
 										>
 											{isCreatingRequest ? (
