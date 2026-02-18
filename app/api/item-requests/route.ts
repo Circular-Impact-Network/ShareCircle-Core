@@ -39,11 +39,15 @@ export async function GET(req: NextRequest) {
 
 		// Build where clause
 		const whereClause: {
-			circleId: string | { in: string[] };
+			circles: { some: { circleId: string | { in: string[] } } };
 			status?: ItemRequestStatus;
 			requesterId?: string;
 		} = {
-			circleId: circleId || { in: userCircleIds },
+			circles: {
+				some: {
+					circleId: circleId || { in: userCircleIds },
+				},
+			},
 		};
 
 		if (status) {
@@ -64,10 +68,14 @@ export async function GET(req: NextRequest) {
 						image: true,
 					},
 				},
-				circle: {
-					select: {
-						id: true,
-						name: true,
+				circles: {
+					include: {
+						circle: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
 					},
 				},
 			},
@@ -76,7 +84,12 @@ export async function GET(req: NextRequest) {
 			},
 		});
 
-		return NextResponse.json(itemRequests, { status: 200 });
+		const response = itemRequests.map(request => ({
+			...request,
+			circle: request.circles[0]?.circle ?? null,
+		}));
+
+		return NextResponse.json(response, { status: 200 });
 	} catch (error) {
 		console.error('Get item requests error:', error);
 		return NextResponse.json({ error: 'Failed to fetch item requests' }, { status: 500 });
@@ -94,35 +107,45 @@ export async function POST(req: NextRequest) {
 
 		const userId = session.user.id;
 		const body = await req.json();
-		const { title, description, circleId, desiredFrom, desiredTo } = body;
+		const { title, description, circleIds, circleId, desiredFrom, desiredTo } = body;
 
 		// Validate required fields
 		if (!title || typeof title !== 'string' || title.trim().length === 0) {
 			return NextResponse.json({ error: 'Title is required' }, { status: 400 });
 		}
 
-		if (!circleId) {
-			return NextResponse.json({ error: 'Circle is required' }, { status: 400 });
+		const requestedCircleIds = Array.isArray(circleIds) ? circleIds : circleId ? [circleId] : [];
+		if (!Array.isArray(requestedCircleIds) || requestedCircleIds.length === 0) {
+			return NextResponse.json({ error: 'At least one circle is required' }, { status: 400 });
 		}
 
-		// Verify user is a member of the circle
-		const membership = await prisma.circleMember.findFirst({
+		const uniqueCircleIds = [...new Set(requestedCircleIds.filter((id: unknown) => typeof id === 'string'))] as string[];
+		if (uniqueCircleIds.length === 0) {
+			return NextResponse.json({ error: 'At least one valid circle is required' }, { status: 400 });
+		}
+
+		// Verify user is a member of all selected circles
+		const memberships = await prisma.circleMember.findMany({
 			where: {
 				userId,
-				circleId,
+				circleId: { in: uniqueCircleIds },
 				leftAt: null,
 			},
+			select: { circleId: true },
 		});
 
-		if (!membership) {
-			return NextResponse.json({ error: 'You are not a member of this circle' }, { status: 403 });
+		const memberCircleIds = memberships.map(m => m.circleId);
+		const invalidCircleIds = uniqueCircleIds.filter(id => !memberCircleIds.includes(id));
+		if (invalidCircleIds.length > 0) {
+			return NextResponse.json({ error: 'You are not a member of some selected circles' }, { status: 403 });
 		}
 
-		// Get circle name for notification
-		const circle = await prisma.circle.findUnique({
-			where: { id: circleId },
-			select: { name: true },
+		// Get circle names for notifications
+		const circles = await prisma.circle.findMany({
+			where: { id: { in: uniqueCircleIds } },
+			select: { id: true, name: true },
 		});
+		const circleNameById = new Map(circles.map(circle => [circle.id, circle.name]));
 
 		// Create the item request
 		let itemRequest;
@@ -132,7 +155,11 @@ export async function POST(req: NextRequest) {
 					title: title.trim(),
 					description: description?.trim() || null,
 					requesterId: userId,
-					circleId,
+					circles: {
+						create: uniqueCircleIds.map(selectedCircleId => ({
+							circleId: selectedCircleId,
+						})),
+					},
 					desiredFrom: desiredFrom ? new Date(desiredFrom) : null,
 					desiredTo: desiredTo ? new Date(desiredTo) : null,
 					status: ItemRequestStatus.OPEN,
@@ -145,10 +172,14 @@ export async function POST(req: NextRequest) {
 							image: true,
 						},
 					},
-					circle: {
-						select: {
-							id: true,
-							name: true,
+					circles: {
+						include: {
+							circle: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
 						},
 					},
 				},
@@ -158,7 +189,7 @@ export async function POST(req: NextRequest) {
 			// Check for specific Prisma errors
 			if (dbError instanceof Error) {
 				if (dbError.message.includes('Unique constraint')) {
-					return NextResponse.json({ error: 'An item request with this title already exists in this circle' }, { status: 409 });
+					return NextResponse.json({ error: 'An item request with this title already exists in one of the selected circles' }, { status: 409 });
 				}
 				if (dbError.message.includes('Foreign key constraint')) {
 					return NextResponse.json({ error: 'Invalid circle or user' }, { status: 400 });
@@ -167,36 +198,48 @@ export async function POST(req: NextRequest) {
 			throw dbError; // Re-throw to be caught by outer catch
 		}
 
+		const response = {
+			...itemRequest,
+			circle: itemRequest.circles[0]!.circle,
+		};
+
 		// Notify circle members about the new item request (non-blocking)
-		notifyCircleMembers({
-			circleId,
-			actorId: userId,
-			type: NotificationType.ITEM_REQUEST_CREATED,
-			entityId: itemRequest.id,
-			title: 'New Item Request',
-			body: `${session.user.name || 'Someone'} is looking for "${title}" in ${circle?.name || 'your circle'}`,
-			metadata: {
-				itemRequestId: itemRequest.id,
-				requesterId: userId,
-				requesterName: session.user.name,
-				circleId,
-				circleName: circle?.name,
-			},
-		}).catch(err => {
+		Promise.all(
+			uniqueCircleIds.map(selectedCircleId =>
+				notifyCircleMembers({
+					circleId: selectedCircleId,
+					actorId: userId,
+					type: NotificationType.ITEM_REQUEST_CREATED,
+					entityId: itemRequest.id,
+					title: 'New Item Request',
+					body: `${session.user.name || 'Someone'} is looking for "${title}" in ${circleNameById.get(selectedCircleId) || 'your circle'}`,
+					metadata: {
+						itemRequestId: itemRequest.id,
+						requesterId: userId,
+						requesterName: session.user.name,
+						circleIds: uniqueCircleIds,
+						circleNames: circles.map(circle => circle.name),
+					},
+				}),
+			),
+		).catch(err => {
 			console.error('Failed to notify circle members:', err);
-			// Don't fail the request if notification fails
 		});
 
 		// Broadcast to circle channel for realtime updates (non-blocking)
-		broadcastItemRequest({
-			circleId,
-			request: itemRequest,
-		}).catch(err => {
+		Promise.all(
+			uniqueCircleIds.map(selectedCircleId =>
+				broadcastItemRequest({
+					circleId: selectedCircleId,
+					request: response,
+				}),
+			),
+		).catch(err => {
 			console.error('Failed to broadcast item request:', err);
 			// Don't fail the request if broadcast fails
 		});
 
-		return NextResponse.json(itemRequest, { status: 201 });
+		return NextResponse.json(response, { status: 201 });
 	} catch (error) {
 		console.error('Create item request error:', error);
 		
@@ -204,7 +247,7 @@ export async function POST(req: NextRequest) {
 		if (error instanceof Error) {
 			// Prisma errors
 			if (error.message.includes('Unique constraint')) {
-				return NextResponse.json({ error: 'An item request with this title already exists in this circle' }, { status: 409 });
+				return NextResponse.json({ error: 'An item request with this title already exists in one of the selected circles' }, { status: 409 });
 			}
 			if (error.message.includes('Foreign key constraint')) {
 				return NextResponse.json({ error: 'Invalid circle or user. Please refresh and try again.' }, { status: 400 });
