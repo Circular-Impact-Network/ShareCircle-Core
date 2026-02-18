@@ -27,10 +27,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 						image: true,
 					},
 				},
-				circle: {
-					select: {
-						id: true,
-						name: true,
+				circles: {
+					include: {
+						circle: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
 					},
 				},
 			},
@@ -40,11 +44,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			return NextResponse.json({ error: 'Item request not found' }, { status: 404 });
 		}
 
-		// Verify user is a member of the circle
+		// Verify user is a member of at least one request circle
+		const requestCircleIds = itemRequest.circles.map(entry => entry.circleId);
 		const membership = await prisma.circleMember.findFirst({
 			where: {
 				userId,
-				circleId: itemRequest.circleId,
+				circleId: { in: requestCircleIds },
 				leftAt: null,
 			},
 		});
@@ -53,7 +58,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			return NextResponse.json({ error: 'You are not a member of this circle' }, { status: 403 });
 		}
 
-		return NextResponse.json(itemRequest, { status: 200 });
+		return NextResponse.json(
+			{
+				...itemRequest,
+				circle: itemRequest.circles[0]?.circle ?? null,
+			},
+			{ status: 200 },
+		);
 	} catch (error) {
 		console.error('Get item request error:', error);
 		return NextResponse.json({ error: 'Failed to fetch item request' }, { status: 500 });
@@ -83,10 +94,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 						name: true,
 					},
 				},
-				circle: {
-					select: {
-						id: true,
-						name: true,
+				circles: {
+					include: {
+						circle: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
 					},
 				},
 			},
@@ -96,11 +111,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return NextResponse.json({ error: 'Item request not found' }, { status: 404 });
 		}
 
-		// Verify user is a member of the circle
+		// Verify user is a member of at least one request circle
+		const requestCircleIds = itemRequest.circles.map(entry => entry.circleId);
 		const membership = await prisma.circleMember.findFirst({
 			where: {
 				userId,
-				circleId: itemRequest.circleId,
+				circleId: { in: requestCircleIds },
 				leftAt: null,
 			},
 		});
@@ -122,13 +138,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		}
 
 		if (fulfilledBy && status === ItemRequestStatus.FULFILLED) {
-			// Verify the item exists and belongs to the circle
+			// Verify the item exists and belongs to one of the request circles
 			const item = await prisma.item.findFirst({
 				where: {
 					id: fulfilledBy,
 					circles: {
 						some: {
-							circleId: itemRequest.circleId,
+							circleId: { in: requestCircleIds },
 						},
 					},
 				},
@@ -152,10 +168,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 						image: true,
 					},
 				},
-				circle: {
-					select: {
-						id: true,
-						name: true,
+				circles: {
+					include: {
+						circle: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
 					},
 				},
 			},
@@ -172,12 +192,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				metadata: {
 					itemRequestId: itemRequest.id,
 					itemId: fulfilledBy,
-					circleName: itemRequest.circle.name,
+					circleName: itemRequest.circles[0]?.circle.name || 'your circle',
 				},
 			});
 		}
 
-		return NextResponse.json(updatedRequest, { status: 200 });
+		return NextResponse.json(
+			{
+				...updatedRequest,
+				circle: updatedRequest.circles[0]?.circle ?? null,
+			},
+			{ status: 200 },
+		);
 	} catch (error) {
 		console.error('Update item request error:', error);
 		return NextResponse.json({ error: 'Failed to update item request' }, { status: 500 });
