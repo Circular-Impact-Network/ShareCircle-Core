@@ -11,9 +11,10 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 type ChatThreadPageProps = {
 	threadId: string;
+	initialDraft?: string | null;
 };
 
-export function ChatThreadPage({ threadId }: ChatThreadPageProps) {
+export function ChatThreadPage({ threadId, initialDraft = null }: ChatThreadPageProps) {
 	const router = useRouter();
 	const { data: session } = useSession();
 	const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -42,6 +43,7 @@ export function ChatThreadPage({ threadId }: ChatThreadPageProps) {
 				{/* On desktop, show chat list alongside the thread; on mobile, hide the list */}
 				<ChatContainer 
 					initialThreadId={threadId} 
+					initialMessageDraft={initialDraft}
 					hideList={!isDesktop} 
 					fullBleed 
 				/>
