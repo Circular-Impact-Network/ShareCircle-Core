@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase';
+import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 
 const MAX_PAGE_SIZE = 50;
@@ -169,9 +170,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		const body = await req.json();
 		const messageBody = typeof body?.body === 'string' ? body.body.trim() : '';
 		const clientId = typeof body?.clientId === 'string' ? body.clientId : null;
+		const attachments =
+			Array.isArray(body?.attachments)
+				? body.attachments
+						.filter((attachment: unknown) => {
+							if (!attachment || typeof attachment !== 'object') return false;
+							const candidate = attachment as { type?: unknown; url?: unknown };
+							return candidate.type === 'IMAGE' && typeof candidate.url === 'string' && candidate.url.length > 0;
+						})
+						.map((attachment: { type: 'IMAGE'; url: string; path?: string }) => ({
+							type: attachment.type,
+							url: attachment.url,
+							path: attachment.path,
+						}))
+				: [];
 
-		if (!messageBody) {
-			return NextResponse.json({ error: 'Message body is required' }, { status: 400 });
+		if (!messageBody && attachments.length === 0) {
+			return NextResponse.json({ error: 'Message body or attachment is required' }, { status: 400 });
 		}
 
 		const conversation = await prisma.conversation.findUnique({
@@ -247,6 +262,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 				});
 			}
 
+			if (attachments.length > 0) {
+				await tx.messageAttachment.createMany({
+					data: attachments.map(attachment => ({
+						messageId: created.id,
+						type: AttachmentType.IMAGE,
+						url: attachment.url,
+						metadata: attachment.path ? { path: attachment.path } : undefined,
+					})),
+				});
+			}
+
+			const createdWithAttachments = await tx.message.findUniqueOrThrow({
+				where: { id: created.id },
+				include: {
+					sender: { select: { id: true, name: true, image: true } },
+					attachments: true,
+				},
+			});
+
 			await tx.conversation.update({
 				where: { id: conversation.id },
 				data: { lastMessageAt: created.createdAt },
@@ -262,7 +296,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 				},
 			});
 
-			return created;
+			return createdWithAttachments;
 		});
 
 		const receipts = await prisma.messageReceipt.findMany({
