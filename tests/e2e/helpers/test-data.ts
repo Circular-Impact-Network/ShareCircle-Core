@@ -147,7 +147,7 @@ export class TestAPI {
 		return response.json();
 	}
 
-	async createItemRequest(data: { title: string; description?: string; circleId: string }): Promise<unknown> {
+	async createItemRequest(data: { title: string; description?: string; circleIds: string[] }): Promise<unknown> {
 		const response = await this.request.post('/api/item-requests', {
 			data,
 		});
