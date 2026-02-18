@@ -18,6 +18,7 @@ import type { ChatMessage, ChatThread as ChatThreadType, ChatUser, MessageReceip
 
 type ChatContainerProps = {
 	initialThreadId?: string | null;
+	initialMessageDraft?: string | null;
 	showListOnly?: boolean;
 	hideList?: boolean;
 	fullBleed?: boolean;
@@ -27,6 +28,7 @@ const PAGE_SIZE = 30;
 
 export function ChatContainer({
 	initialThreadId = null,
+	initialMessageDraft = null,
 	showListOnly = false,
 	hideList = false,
 	fullBleed = false,
@@ -55,6 +57,7 @@ export function ChatContainer({
 	const [isLoadingThreads, setIsLoadingThreads] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [canMessage, setCanMessage] = useState(true);
+	const [hasAppliedInitialDraft, setHasAppliedInitialDraft] = useState(false);
 
 	const activeThread = threads.find(thread => thread.id === activeId) || null;
 	const activeUser = activeThread?.participants[0] || null;
@@ -131,6 +134,13 @@ export function ChatContainer({
 		}
 	}, [messageSearch, isMessageSearchOpen]);
 
+	useEffect(() => {
+		if (!initialMessageDraft || hasAppliedInitialDraft) return;
+		if (initialThreadId && activeId !== initialThreadId) return;
+		setMessageInput(initialMessageDraft);
+		setHasAppliedInitialDraft(true);
+	}, [initialMessageDraft, hasAppliedInitialDraft, initialThreadId, activeId]);
+
 	const handleSelectThread = (threadId: string) => {
 		if (!isDesktop && !showListOnly) {
 			setActiveId(threadId);
@@ -141,18 +151,26 @@ export function ChatContainer({
 		setActiveId(threadId);
 	};
 
-	const handleSend = async () => {
-		if (!activeId || !messageInput.trim() || !currentUser) return;
+	const handleSend = async (payload?: { attachments: { type: 'IMAGE'; path: string; url: string }[] }) => {
+		if (!activeId || !currentUser) return;
+		const body = messageInput.trim();
+		const attachments = payload?.attachments || [];
+		if (!body && attachments.length === 0) return;
 		const clientId = crypto.randomUUID();
 		const optimistic: ChatMessage = {
 			id: `local-${clientId}`,
 			conversationId: activeId,
 			senderId: currentUser.id,
-			body: messageInput.trim(),
+			body,
 			createdAt: new Date().toISOString(),
 			sender: currentUser,
 			receipts: [],
-			attachments: [],
+			attachments: attachments.map((attachment, index) => ({
+				id: `local-attachment-${clientId}-${index}`,
+				type: attachment.type,
+				url: attachment.url,
+				metadata: { path: attachment.path },
+			})),
 			clientId,
 			localStatus: 'sending',
 		};
@@ -163,7 +181,7 @@ export function ChatContainer({
 		const response = await fetch(`/api/messages/threads/${activeId}/messages`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ body: optimistic.body, clientId }),
+			body: JSON.stringify({ body: optimistic.body, clientId, attachments }),
 		});
 
 		if (!response.ok) {
