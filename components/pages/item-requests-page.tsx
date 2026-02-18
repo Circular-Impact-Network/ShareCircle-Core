@@ -9,13 +9,13 @@ import {
 	Loader2,
 	Search,
 	Send,
+	Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
 	Dialog,
@@ -44,15 +44,19 @@ function RequestCard({
 	request,
 	onFulfill,
 	isMyRequest,
+	isFulfilling,
 }: {
 	request: ItemRequest;
-	onFulfill?: (requestId: string) => void;
+	onFulfill?: (requestId: string, requesterId: string, requestTitle: string) => void;
 	isMyRequest: boolean;
+	isFulfilling?: boolean;
 }) {
 	const isOpen = request.status === 'OPEN';
 	const isFulfilled = request.status === 'FULFILLED';
 
 	const hasDates = !!(request.desiredFrom && request.desiredTo);
+
+	const circleNames = request.circles?.map(entry => entry.circle.name) ?? [];
 
 	return (
 		<Card className={isOpen ? '' : 'opacity-60'} data-testid="request-card" data-status={request.status} data-has-dates={hasDates ? 'true' : 'false'}>
@@ -82,7 +86,7 @@ function RequestCard({
 							</Avatar>
 							<span>{request.requester.name || 'Unknown'}</span>
 							<span>•</span>
-							<span>{request.circle.name}</span>
+							<span>{circleNames.join(', ') || request.circle?.name || 'Circle'}</span>
 							<span>•</span>
 							<span>{formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}</span>
 						</div>
@@ -99,9 +103,10 @@ function RequestCard({
 								size="sm"
 								variant="outline"
 								className="mt-3 gap-2"
-								onClick={() => onFulfill(request.id)}
+								disabled={isFulfilling}
+								onClick={() => onFulfill(request.id, request.requester.id, request.title)}
 							>
-								<Plus className="h-4 w-4" />
+								{isFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
 								I have this item
 							</Button>
 						)}
@@ -119,7 +124,8 @@ export function ItemRequestsPage() {
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [requestTitle, setRequestTitle] = useState('');
 	const [requestDescription, setRequestDescription] = useState('');
-	const [requestCircleId, setRequestCircleId] = useState('');
+	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
+	const [startingChatForRequestId, setStartingChatForRequestId] = useState<string | null>(null);
 
 	// Fetch data
 	const { data: allRequests = [], isLoading: allLoading } = useGetItemRequestsQuery({});
@@ -136,9 +142,24 @@ export function ItemRequestsPage() {
 	// Filter open requests
 	const openRequests = allRequests.filter(r => r.status === 'OPEN');
 	const myOpenRequests = myRequests.filter(r => r.status === 'OPEN');
+	const allCirclesSelected = circles.length > 0 && requestCircleIds.length === circles.length;
+
+	const toggleCircleSelection = (circleId: string) => {
+		setRequestCircleIds(prev =>
+			prev.includes(circleId) ? prev.filter(id => id !== circleId) : [...prev, circleId],
+		);
+	};
+
+	const toggleSelectAllCircles = () => {
+		if (allCirclesSelected) {
+			setRequestCircleIds([]);
+			return;
+		}
+		setRequestCircleIds(circles.map(circle => circle.id));
+	};
 
 	const handleCreate = async () => {
-		if (!requestTitle.trim() || !requestCircleId) {
+		if (!requestTitle.trim() || requestCircleIds.length === 0) {
 			toast({ title: 'Please fill in required fields', variant: 'destructive' });
 			return;
 		}
@@ -146,13 +167,13 @@ export function ItemRequestsPage() {
 			await createItemRequest({
 				title: requestTitle.trim(),
 				description: requestDescription.trim() || undefined,
-				circleId: requestCircleId,
+				circleIds: requestCircleIds,
 			}).unwrap();
 			toast({ title: 'Request created!', description: 'Circle members will be notified.' });
 			setShowCreateModal(false);
 			setRequestTitle('');
 			setRequestDescription('');
-			setRequestCircleId('');
+			setRequestCircleIds([]);
 		} catch (error) {
 			console.error('Create item request error:', error);
 			const errorMessage = error && typeof error === 'object' && 'data' in error
@@ -166,9 +187,32 @@ export function ItemRequestsPage() {
 		}
 	};
 
-	const handleFulfill = (requestId: string) => {
-		// Navigate to add item page with request context
-		router.push(`/listings?fulfillRequest=${requestId}`);
+	const handleFulfill = async (requestId: string, requesterId: string, requestTitleText: string) => {
+		setStartingChatForRequestId(requestId);
+		try {
+			const threadResponse = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId: requesterId }),
+			});
+			if (!threadResponse.ok) {
+				const errorData = await threadResponse.json().catch(() => ({}));
+				throw new Error(errorData.error || 'Failed to start conversation');
+			}
+
+			const thread = await threadResponse.json();
+			const draft = `I have this item and can help with your request: "${requestTitleText}".`;
+			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
+		} catch (error) {
+			console.error('Start fulfillment chat error:', error);
+			toast({
+				title: 'Unable to message requester',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setStartingChatForRequestId(null);
+		}
 	};
 
 	const isLoading = allLoading || myLoading;
@@ -211,18 +255,36 @@ export function ItemRequestsPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Select value={requestCircleId} onValueChange={setRequestCircleId}>
-									<SelectTrigger>
-										<SelectValue placeholder="Select a circle" />
-									</SelectTrigger>
-									<SelectContent>
-										{circles.map(circle => (
-											<SelectItem key={circle.id} value={circle.id}>
-												{circle.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								<p className="text-sm text-muted-foreground">Share this request with circles *</p>
+								{circles.length > 1 && (
+									<Button variant="outline" type="button" onClick={toggleSelectAllCircles}>
+										{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
+									</Button>
+								)}
+								<div className="flex flex-col gap-2 max-h-44 overflow-auto rounded-md border p-2">
+									{circles.map(circle => {
+										const isSelected = requestCircleIds.includes(circle.id);
+										return (
+											<button
+												key={circle.id}
+												type="button"
+												onClick={() => toggleCircleSelection(circle.id)}
+												className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+													isSelected ? 'bg-primary/10' : 'hover:bg-muted'
+												}`}
+											>
+												<div
+													className={`h-4 w-4 rounded border flex items-center justify-center ${
+														isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'
+													}`}
+												>
+													{isSelected && <Check className="h-3 w-3" />}
+												</div>
+												<span>{circle.name}</span>
+											</button>
+										);
+									})}
+								</div>
 							</div>
 						</div>
 						<DialogFooter>
@@ -231,7 +293,7 @@ export function ItemRequestsPage() {
 							</Button>
 							<Button
 								onClick={handleCreate}
-								disabled={isCreating || !requestTitle.trim() || !requestCircleId}
+								disabled={isCreating || !requestTitle.trim() || requestCircleIds.length === 0}
 							>
 								{isCreating ? (
 									<Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -288,12 +350,13 @@ export function ItemRequestsPage() {
 							</CardContent>
 						</Card>
 					) : (
-						<div data-testid="requests-list">
+						<div className="space-y-3" data-testid="requests-list">
 							{openRequests.map(request => (
 								<RequestCard
 									key={request.id}
 									request={request}
 									onFulfill={handleFulfill}
+									isFulfilling={startingChatForRequestId === request.id}
 									isMyRequest={myRequests.some(r => r.id === request.id)}
 								/>
 							))}
@@ -326,9 +389,11 @@ export function ItemRequestsPage() {
 							</CardContent>
 						</Card>
 					) : (
-						myRequests.map(request => (
-							<RequestCard key={request.id} request={request} isMyRequest={true} />
-						))
+						<div className="space-y-3" data-testid="my-requests-list">
+							{myRequests.map(request => (
+								<RequestCard key={request.id} request={request} isMyRequest={true} />
+							))}
+						</div>
 					)}
 				</TabsContent>
 			</Tabs>
