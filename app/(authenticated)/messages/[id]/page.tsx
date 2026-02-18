@@ -3,9 +3,11 @@ import { ChatThreadPage } from '@/components/chat/ChatThreadPage';
 
 type MessagesThreadRouteProps = {
 	params: Promise<{ id: string }>;
+	searchParams: Promise<{ draft?: string }>;
 };
 
-export default function MessagesThreadRoute({ params }: MessagesThreadRouteProps) {
+export default function MessagesThreadRoute({ params, searchParams }: MessagesThreadRouteProps) {
 	const { id } = use(params);
-	return <ChatThreadPage threadId={id} />;
+	const { draft } = use(searchParams);
+	return <ChatThreadPage threadId={id} initialDraft={draft ?? null} />;
 }
