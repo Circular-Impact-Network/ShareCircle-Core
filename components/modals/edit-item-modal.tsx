@@ -1,5 +1,6 @@
 'use client';
 
+// Edit item name, description, categories, tags, main image, extra media, circles
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import {
