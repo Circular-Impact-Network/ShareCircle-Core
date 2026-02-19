@@ -6,7 +6,7 @@ import type {
 	BorrowTransactionStatus,
 } from '@prisma/client';
 
-// Types
+// Types (ItemRequest supports multi-circle via circles array)
 export interface UserInfo {
 	id: string;
 	name: string | null;
