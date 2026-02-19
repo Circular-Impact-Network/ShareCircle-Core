@@ -33,7 +33,7 @@ test.describe('notifications', () => {
 			data: {
 				title: 'Need a ladder',
 				description: 'A ladder for weekend work.',
-				circleId: circle.id,
+				circleIds: [circle.id],
 			},
 		});
 		expect(requestResponse.ok()).toBeTruthy();
