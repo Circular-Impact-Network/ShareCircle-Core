@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
 
+// GET/PATCH/DELETE with multi-circle and media paths
+
 // GET /api/items/[id] - Get a single item
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
