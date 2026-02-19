@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
 
-// Allowed storage buckets
+// Allowed storage buckets (attachments for chat, media for item video)
 const ALLOWED_BUCKETS = ['avatars', 'items', 'media', 'attachments'];
 
 export async function POST(req: NextRequest) {
