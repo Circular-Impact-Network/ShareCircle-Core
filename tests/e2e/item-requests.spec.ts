@@ -34,13 +34,16 @@ test.describe('item requests', () => {
 			await descriptionInput.fill('Need a ladder for painting the ceiling. 6-8 feet would be perfect.');
 		}
 		
-		// Select a circle - click the select trigger
-		const circleSelect = page.getByRole('combobox').filter({ hasText: /Select a circle/i });
-		if (await circleSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await circleSelect.click();
-			// Select first available circle
-			const firstCircle = page.locator('[role="option"]').first();
-			await firstCircle.click();
+		// Select circles in multi-select UI
+		const selectAllCircles = page.getByRole('button', { name: /Select All Circles/i });
+		if (await selectAllCircles.isVisible({ timeout: 2000 }).catch(() => false)) {
+			await selectAllCircles.click();
+		} else {
+			// If there's only one circle, select the first circle row in the chooser
+			const firstCircleRow = page.locator('.max-h-44 button').first();
+			if (await firstCircleRow.isVisible({ timeout: 2000 }).catch(() => false)) {
+				await firstCircleRow.click();
+			}
 		}
 		
 		// Submit the request
