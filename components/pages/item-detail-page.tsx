@@ -1,5 +1,6 @@
 'use client';
 
+// Item detail with edit modal, borrow/queue actions
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 

@@ -1,5 +1,6 @@
 'use client';
 
+// Browse items and create item requests with circleIds, search, filters
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping, Check } from 'lucide-react';
