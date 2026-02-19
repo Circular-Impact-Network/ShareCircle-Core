@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-// Types
+// Types (Item includes mediaPaths and mediaUrls for carousel)
 export interface ItemOwner {
 	id: string;
 	name: string | null;
