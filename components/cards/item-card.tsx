@@ -1,5 +1,6 @@
 'use client';
 
+// Card with carousel for mediaUrls, video support, edit/delete actions
 import { memo } from 'react';
 import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
