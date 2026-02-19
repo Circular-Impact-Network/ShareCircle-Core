@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
 
+// List and create items with mediaPaths and signed media URLs
+
 /**
  * Fire-and-forget function to generate and store embedding for an item.
  * Uses multimodal embedding (image + enriched text metadata) for better search quality.
