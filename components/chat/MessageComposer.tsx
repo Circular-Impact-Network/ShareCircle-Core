@@ -1,3 +1,4 @@
+// Composer with image attachments (upload to attachments bucket) and send
 import { ImagePlus, Smile, Send, X } from 'lucide-react';
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
