@@ -1,3 +1,4 @@
+// Passes initialDraft from searchParams.draft to ChatThreadPage
 import { use } from 'react';
 import { ChatThreadPage } from '@/components/chat/ChatThreadPage';
 
