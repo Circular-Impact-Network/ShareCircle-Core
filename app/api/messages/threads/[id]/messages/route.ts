@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 
+// List/send messages with attachments (IMAGE) and delivery receipts
 const MAX_PAGE_SIZE = 50;
 
 // GET /api/messages/threads/[id]/messages - list messages
