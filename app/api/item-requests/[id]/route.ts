@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { ItemRequestStatus, NotificationType } from '@prisma/client';
 import { createNotification } from '@/lib/notifications';
 
+// GET/PATCH with circles relation and fulfilledBy in request circle
 // GET /api/item-requests/[id] - Get a single item request
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
