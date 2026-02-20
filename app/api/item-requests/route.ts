@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { ItemRequestStatus, NotificationType } from '@prisma/client';
 import { notifyCircleMembers, broadcastItemRequest } from '@/lib/notifications';
 
+// GET/POST item requests with multi-circle (circleIds) and per-circle notify/broadcast
 // GET /api/item-requests - Get item requests for user's circles
 export async function GET(req: NextRequest) {
 	try {
