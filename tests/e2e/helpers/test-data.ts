@@ -1,5 +1,6 @@
 /**
- * Test data factories and helper functions for E2E tests
+ * Test data factories and helper functions for E2E tests.
+ * createItemRequest uses circleIds for multi-circle item requests.
  */
 
 import { APIRequestContext } from '@playwright/test';
