@@ -1,3 +1,5 @@
+// Renders message body, image attachments, and delivery receipts
+// Renders message body, image attachments, and delivery receipts
 import { memo } from 'react';
 import { AlertCircle, Check, CheckCheck, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
