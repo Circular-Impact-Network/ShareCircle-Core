@@ -1,5 +1,6 @@
 'use client';
 
+// Thread-only view with initialThreadId, initialDraft, fullBleed
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
