@@ -1,5 +1,5 @@
 /**
- * E2E tests for item requests flow
+ * E2E tests for item requests flow (multi-circle create, list, filter).
  * Tests: create item request, view requests, fulfill requests
  */
 
