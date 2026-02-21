@@ -229,6 +229,7 @@ model Item {
   tags         String[] @default([])
   mediaPaths   String[] @default([]) @map("media_paths")
   isAvailable  Boolean  @default(true) @map("is_available")
+  archivedAt   DateTime? @map("archived_at")
   // Vector embeddings stored via raw SQL (pgvector)
   embedding    Unsupported("vector(1024)")?
   createdAt    DateTime @default(now()) @map("created_at")
@@ -243,6 +244,7 @@ model Item {
 
   @@index([ownerId])
   @@index([isAvailable])
+  @@index([archivedAt])
   @@map("items")
 }
 
