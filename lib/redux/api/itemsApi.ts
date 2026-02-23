@@ -24,9 +24,11 @@ export interface Item {
 	tags: string[];
 	createdAt: string;
 	updatedAt?: string;
+	archivedAt?: string | null;
 	owner: ItemOwner;
 	circles: ItemCircle[];
 	isOwner: boolean;
+	isAvailable?: boolean;
 	similarity?: number;
 }
 
@@ -80,12 +82,16 @@ export interface UpdateItemRequest {
 	categories?: string[];
 	tags?: string[];
 	circleIds?: string[];
+	archived?: boolean;
 }
 
 export interface GetItemsFilters {
 	category?: string;
 	tag?: string;
 	circleId?: string;
+	includeArchived?: boolean;
+	archived?: boolean;
+	ownerOnly?: boolean;
 }
 
 export interface SearchItemsRequest {
@@ -165,7 +171,7 @@ export const itemsApi = createApi({
 			query: (filters = {}) => {
 				const params = new URLSearchParams();
 				if (filters && typeof filters === 'object') {
-					const { category, tag, circleId } = filters;
+					const { category, tag, circleId, includeArchived, archived, ownerOnly } = filters;
 					if (category && category !== 'All Categories') {
 						params.append('category', category);
 					}
@@ -174,6 +180,15 @@ export const itemsApi = createApi({
 					}
 					if (circleId) {
 						params.append('circleId', circleId);
+					}
+					if (includeArchived) {
+						params.append('includeArchived', 'true');
+					}
+					if (archived !== undefined) {
+						params.append('archived', String(archived));
+					}
+					if (ownerOnly) {
+						params.append('ownerOnly', 'true');
 					}
 				}
 				const queryString = params.toString();
