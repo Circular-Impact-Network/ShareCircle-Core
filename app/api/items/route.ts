@@ -47,6 +47,9 @@ export async function GET(req: NextRequest) {
 		const circleId = req.nextUrl.searchParams.get('circleId');
 		const category = req.nextUrl.searchParams.get('category');
 		const tag = req.nextUrl.searchParams.get('tag');
+	const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true';
+	const ownerOnly = req.nextUrl.searchParams.get('ownerOnly') === 'true';
+	const archivedParam = req.nextUrl.searchParams.get('archived');
 
 		// Get circles the user is a member of
 		const userCircles = await prisma.circleMember.findMany({
@@ -67,17 +70,26 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Build where clause with optional category/tag filtering
-		const whereClause: {
-			circles: { some: { circleId: string | { in: string[] } } };
-			categories?: { has: string };
-			tags?: { has: string };
-		} = {
-			circles: {
-				some: {
-					circleId: circleId || { in: userCircleIds },
-				},
-			},
-		};
+		const whereClause: Prisma.ItemWhereInput = ownerOnly
+			? {
+					ownerId: userId,
+					...(circleId
+						? {
+								circles: {
+									some: {
+										circleId,
+									},
+								},
+							}
+						: {}),
+				}
+			: {
+					circles: {
+						some: {
+							circleId: circleId || { in: userCircleIds },
+						},
+					},
+				};
 
 		// Add category filter if provided and not "All Categories"
 		if (category && category !== 'All Categories') {
@@ -87,6 +99,14 @@ export async function GET(req: NextRequest) {
 		// Add tag filter if provided
 		if (tag) {
 			whereClause.tags = { has: tag };
+		}
+
+		if (archivedParam === 'true') {
+			whereClause.archivedAt = { not: null };
+		} else if (archivedParam === 'false') {
+			whereClause.archivedAt = null;
+		} else if (!includeArchived) {
+			whereClause.archivedAt = null;
 		}
 
 		// Get items in the specified circle(s) with filters
@@ -138,6 +158,7 @@ export async function GET(req: NextRequest) {
 					tags: item.tags,
 					createdAt: item.createdAt,
 					updatedAt: item.updatedAt,
+					archivedAt: item.archivedAt,
 					owner: item.owner,
 					// Only show circles the user is a member of (not all circles the item is shared in)
 					circles: item.circles
@@ -273,9 +294,11 @@ export async function POST(req: NextRequest) {
 				categories: item.categories,
 				tags: item.tags,
 				createdAt: item.createdAt,
+				archivedAt: item.archivedAt,
 				owner: item.owner,
 				circles: validCircleIds,
 				isOwner: true,
+				isAvailable: item.isAvailable,
 			},
 			{ status: 201 },
 		);

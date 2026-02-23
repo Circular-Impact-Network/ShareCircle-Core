@@ -84,6 +84,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			}, { status: 403 });
 		}
 
+		if (item.archivedAt && item.ownerId !== userId) {
+			return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+		}
+
 		// Generate signed URL for main image
 		const imageUrl = await getSignedUrl(item.imagePath, 'items');
 		
@@ -106,6 +110,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				tags: item.tags,
 				createdAt: item.createdAt,
 				updatedAt: item.updatedAt,
+				archivedAt: item.archivedAt,
 				owner: item.owner,
 				// Only show circles the user is a member of (not all circles the item is shared in)
 				circles: item.circles
@@ -115,6 +120,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 						name: c.circle.name,
 					})),
 				isOwner: item.ownerId === userId,
+				isAvailable: item.isAvailable,
 			},
 			{ status: 200 },
 		);
@@ -136,7 +142,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const { id } = await params;
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths } = body;
+		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, archived } = body;
 
 		// Verify ownership
 		const item = await prisma.item.findUnique({
@@ -212,6 +218,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					...(categories !== undefined && { categories }),
 					...(tags !== undefined && { tags }),
 					...(mediaPaths !== undefined && { mediaPaths }),
+					...(archived !== undefined && { archivedAt: archived ? new Date() : null }),
 				},
 				include: {
 					owner: {
@@ -304,12 +311,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				tags: updatedItem.tags,
 				createdAt: updatedItem.createdAt,
 				updatedAt: updatedItem.updatedAt,
+				archivedAt: updatedItem.archivedAt,
 				owner: updatedItem.owner,
 				circles: updatedCircleRecords.map(c => ({
 					id: c.circle.id,
 					name: c.circle.name,
 				})),
 				isOwner: true,
+				isAvailable: updatedItem.isAvailable,
 			},
 			{ status: 200 },
 		);
