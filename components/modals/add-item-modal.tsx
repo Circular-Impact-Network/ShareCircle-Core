@@ -777,7 +777,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						<div className="space-y-5">
 							{/* Image Preview and Supporting Media */}
 							<div className="flex flex-col gap-2">
-								<div className="overflow-x-auto -mx-6 px-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+								<div className="app-scrollbar app-scrollbar-thin -mx-6 overflow-x-auto px-6">
 									<div className="flex gap-2 items-start min-w-max">
 										{/* Main Image */}
 										<div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0">
@@ -986,7 +986,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 										)}
 
 										{/* Horizontal Scrollable Circle List */}
-										<div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+										<div className="app-scrollbar app-scrollbar-thin flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
 											{circles.map(circle => (
 												<button
 													key={circle.id}

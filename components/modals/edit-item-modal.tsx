@@ -281,7 +281,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 									{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
 								</Button>
 							)}
-							<div className="max-h-40 space-y-2 overflow-auto rounded-md border p-2">
+							<div className="app-scrollbar app-scrollbar-thin max-h-40 space-y-2 overflow-auto rounded-md border p-2">
 								{circles.map(circle => {
 									const selected = selectedCircleIds.includes(circle.id);
 									return (
