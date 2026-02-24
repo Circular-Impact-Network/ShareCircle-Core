@@ -347,7 +347,7 @@ export function ChatContainer({
 	const isTyping = activeUser ? typingUserIds.includes(activeUser.id) : false;
 
 	return (
-		<PageShell className={cn('flex flex-col', fullBleed && 'max-w-none h-[100dvh] overflow-hidden')}>
+		<PageShell className={cn('flex flex-col', fullBleed && 'h-[100dvh] max-w-none overflow-hidden')}>
 			<div className="flex-shrink-0">
 				<PageHeader title="Messages" description="Chat with people in your circles" />
 			</div>
@@ -356,7 +356,7 @@ export function ChatContainer({
 					'flex flex-1 flex-col overflow-hidden md:flex-row',
 					fullBleed
 						? 'h-[calc(100dvh-8rem)] md:h-[calc(100dvh-7rem)] border-0'
-						: 'min-h-[70vh] rounded-xl border border-border bg-card/30',
+						: 'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
 				)}
 			>
 				{!hideList && (
@@ -371,7 +371,7 @@ export function ChatContainer({
 
 				{showThreadPanel && (
 					<div className={cn(
-						'flex flex-1 flex-col overflow-hidden rounded-lg border border-border',
+						'flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70',
 						fullBleed ? 'bg-card' : 'bg-background/40',
 					)}>
 						{activeUser ? (
@@ -425,7 +425,7 @@ export function ChatContainer({
 								/>
 							</>
 						) : (
-							<div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+							<div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
 								{isLoadingThreads ? 'Loading conversations...' : 'Select a chat to start'}
 							</div>
 						)}
