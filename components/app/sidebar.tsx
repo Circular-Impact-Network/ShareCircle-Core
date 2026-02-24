@@ -79,26 +79,26 @@ export function Sidebar() {
 	const sidebarContent = (
 		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
-			<div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
-				<Link href="/home" className="flex items-center gap-3" onClick={handleNavClick}>
-					<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+			<div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+				<Link href="/home" className="flex items-center gap-2.5" onClick={handleNavClick}>
+					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
 						<span className="text-primary-foreground font-bold text-sm">SC</span>
 					</div>
-					<span className="font-display font-semibold text-lg">ShareCircle</span>
+					<span className="font-display text-base font-semibold">ShareCircle</span>
 				</Link>
 				<Button
 					variant="ghost"
 					size="icon"
-					className="lg:hidden"
+					className="h-8 w-8 lg:hidden"
 					onClick={() => dispatch(setMobileSidebarOpen(false))}
 				>
-					<X className="h-5 w-5" />
+					<X className="h-4 w-4" />
 				</Button>
 			</div>
 
 			{/* Navigation */}
 			<ScrollArea className="flex-1">
-				<nav className="space-y-2 p-4">
+				<nav className="space-y-1.5 p-3">
 					{navItems.map(item => {
 						const Icon = item.icon;
 						const active = isActive(item.href);
@@ -115,18 +115,18 @@ export function Sidebar() {
 								href={item.href}
 								onClick={handleNavClick}
 								className={cn(
-									'flex w-full items-center justify-start gap-3 px-4 py-3 text-left font-medium transition-colors rounded-md',
+									'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
 									active
-										? 'bg-primary text-primary-foreground shadow'
-										: 'text-foreground hover:bg-muted',
+										? 'bg-primary text-primary-foreground shadow-sm'
+										: 'text-foreground hover:bg-muted/80',
 								)}
 							>
-								<Icon className="h-5 w-5" />
+								<Icon className="h-4 w-4" />
 								<span className="flex-1">{item.label}</span>
 								{unreadCount > 0 && (
 									<Badge
 										variant={active ? 'secondary' : 'destructive'}
-										className="h-5 min-w-[20px] px-1.5 text-xs"
+										className="h-5 min-w-[20px] px-1.5 text-[10px]"
 									>
 										{unreadCount > 99 ? '99+' : unreadCount}
 									</Badge>
@@ -139,9 +139,9 @@ export function Sidebar() {
 
 			{/* User Profile Section */}
 			{(userName || userEmail) && (
-				<div className="border-t border-border px-4 py-3">
-					<div className="flex items-center gap-3">
-						<Avatar className="w-10 h-10 bg-primary">
+				<div className="border-t border-border px-4 py-2.5">
+					<div className="flex items-center gap-2.5">
+						<Avatar className="h-9 w-9 bg-primary">
 							<AvatarImage src={userImage || ''} />
 							<AvatarFallback className="bg-primary text-primary-foreground font-semibold leading-[1.6rem]">
 								{getInitials(userName || userEmail || 'U')}
@@ -151,8 +151,8 @@ export function Sidebar() {
 							<p className="text-sm font-medium truncate">{userName || userEmail?.split('@')[0]}</p>
 							<p className="text-xs text-muted-foreground truncate">{userEmail}</p>
 						</div>
-						<Button variant="outline" className="gap-2 bg-transparent" onClick={handleLogout}>
-							<LogOut className="w-4 h-4" />
+						<Button variant="outline" size="icon" className="h-8 w-8 bg-transparent" onClick={handleLogout}>
+							<LogOut className="h-4 w-4" />
 						</Button>
 					</div>
 				</div>
@@ -163,7 +163,7 @@ export function Sidebar() {
 	return (
 		<>
 			{/* Desktop Sidebar - Fixed position */}
-			<aside className="hidden lg:flex fixed left-0 top-0 w-64 h-[100dvh] border-r border-border bg-card flex-col z-40">
+			<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
 				{sidebarContent}
 			</aside>
 
@@ -177,7 +177,7 @@ export function Sidebar() {
 
 			{/* Mobile Sidebar */}
 			<div
-				className={`fixed inset-y-0 left-0 w-64 border-r border-border bg-card flex flex-col min-h-[100dvh] max-h-[100dvh] z-50 transform transition-transform duration-300 lg:hidden ${
+				className={`fixed inset-y-0 left-0 z-50 flex min-h-[100dvh] max-h-[100dvh] w-60 flex-col border-r border-border bg-card transition-transform duration-300 lg:hidden ${
 					isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 				}`}
 			>
