@@ -449,7 +449,7 @@ export function CircleSettingsDialog({
 					</TabsList>
 
 					{/* General Tab */}
-					<TabsContent value="general" className="flex-1 min-h-0 overflow-auto space-y-6 p-1">
+					<TabsContent value="general" className="app-scrollbar flex-1 min-h-0 overflow-auto space-y-6 p-1">
 						{/* Avatar Section */}
 						<div className="space-y-3">
 							<Label>Circle Avatar</Label>
@@ -620,7 +620,7 @@ export function CircleSettingsDialog({
 						</div>
 
 						{/* Members List */}
-						<div className="flex-1 overflow-auto space-y-2 min-h-0">
+						<div className="app-scrollbar flex-1 overflow-auto space-y-2 min-h-0">
 							{filteredMembers.length === 0 ? (
 								<p className="text-sm text-muted-foreground text-center py-4">
 									{memberSearch ? 'No members match your search' : 'No members found'}
@@ -733,7 +733,7 @@ export function CircleSettingsDialog({
 					</TabsContent>
 
 					{/* Danger Zone Tab */}
-					<TabsContent value="danger" className="flex-1 min-h-0 overflow-auto space-y-6 p-1">
+					<TabsContent value="danger" className="app-scrollbar flex-1 min-h-0 overflow-auto space-y-6 p-1">
 						<Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
 							<AlertTriangle className="h-4 w-4" />
 							<AlertDescription>
