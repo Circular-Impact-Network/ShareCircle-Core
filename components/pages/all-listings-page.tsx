@@ -1,19 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Loader2, Package, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ItemCard } from '@/components/cards/item-card';
-import { useGetAllItemsQuery, Item } from '@/lib/redux/api/itemsApi';
-import { ItemDetailsModal } from '@/components/modals/item-details-modal';
+import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { ItemSummaryCard } from '@/components/cards/item-summary-card';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 export function AllListingsPage() {
+	const router = useRouter();
 	const [searchTerm, setSearchTerm] = useState('');
-	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
 	// Fetch all items across user's circles
 	const { data: items = [], isLoading, error } = useGetAllItemsQuery();
@@ -27,6 +27,11 @@ export function AllListingsPage() {
 			item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
 			item.circles.some(circle => circle.name.toLowerCase().includes(searchTerm.toLowerCase())),
 	);
+	const {
+		visibleItems,
+		hasMore,
+		loadMore,
+	} = useProgressivePagination({ items: filteredItems, pageSize: 12 });
 
 	return (
 		<PageShell className="space-y-6">
@@ -107,60 +112,29 @@ export function AllListingsPage() {
 
 			{/* Items List */}
 			{!isLoading && !error && filteredItems.length > 0 && (
-				<div className="space-y-3">
-					{filteredItems.map(item => (
-						<Card
-							key={item.id}
-							className="group hover:border-primary/50 transition-all cursor-pointer"
-							onClick={() => setSelectedItem(item)}
-						>
-							<CardContent className="flex items-center gap-4 p-4">
-								{/* Item Image/Media Carousel */}
-								<ItemCard item={item} variant="list" />
-
-								{/* Item Info */}
-								<div className="flex-1 min-w-0">
-									<div className="flex items-start justify-between gap-2 mb-1">
-										<h3 className="font-semibold text-foreground truncate">{item.name}</h3>
-										{item.isOwner && (
-											<Badge variant="secondary" className="text-xs flex-shrink-0">
-												Your Item
-											</Badge>
-										)}
+				<>
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{visibleItems.map(item => (
+							<ItemSummaryCard
+								key={item.id}
+								item={item}
+								onClick={() => router.push(`/items/${item.id}`)}
+								actions={
+									<div
+										className="flex flex-wrap gap-2"
+										onClick={event => {
+											event.stopPropagation();
+										}}
+									>
+										<span className="text-xs text-muted-foreground">Browse across your circles</span>
 									</div>
-
-									{item.description && (
-										<p className="text-sm text-muted-foreground line-clamp-1 mb-2">
-											{item.description}
-										</p>
-									)}
-
-									<div className="flex items-center gap-3 text-sm text-muted-foreground">
-										<div className="flex items-center gap-1.5">
-											<Avatar className="h-4 w-4">
-												<AvatarImage src={item.owner.image || undefined} />
-												<AvatarFallback className="text-[8px]">
-													{item.owner.name?.[0]?.toUpperCase() || '?'}
-												</AvatarFallback>
-											</Avatar>
-											<span className="truncate">{item.owner.name || 'Unknown'}</span>
-										</div>
-										{item.circles.length > 0 && (
-											<>
-												<span>•</span>
-												<span className="truncate">{item.circles[0].name}</span>
-											</>
-										)}
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
+								}
+							/>
+						))}
+					</div>
+					<InfiniteScrollSentinel hasMore={hasMore} onLoadMore={loadMore} label="Loading more items" />
+				</>
 			)}
-
-			{/* Item Details Modal */}
-			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</PageShell>
 	);
 }
