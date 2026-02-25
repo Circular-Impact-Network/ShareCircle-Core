@@ -240,7 +240,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<p className="text-muted-foreground mb-6">
 							You don&apos;t have access to this item. You must be a member of the circle this item belongs to.
 						</p>
-						<div className="flex flex-col gap-3 w-full">
+						<div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
 							<Button 
 								onClick={() => {
 									console.log('[Access Request] User requested access to item:', itemId);
@@ -249,14 +249,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 										description: 'This feature is coming soon.',
 									});
 								}}
-								className="w-full"
 							>
 								Request Access
 							</Button>
 							<Button 
 								variant="outline" 
 								onClick={() => router.push('/browse')}
-								className="w-full gap-2"
+								className="gap-2"
 							>
 								<ArrowLeft className="h-4 w-4" />
 								Go to Browse
@@ -446,11 +445,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					)}
 
 					{/* Action Buttons */}
-					<div className="flex flex-col sm:flex-row gap-3 pt-2">
+					<div className="flex flex-wrap gap-3 pt-2">
 						{item.isOwner ? (
 							<Button
 								variant="outline"
-								className="w-full sm:flex-1 gap-2 bg-transparent"
+								className="gap-2 bg-transparent"
 								onClick={() => setShowEditModal(true)}
 							>
 								<Pencil className="h-4 w-4" />
@@ -459,7 +458,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						) : (
 							<Button
 								variant="outline"
-								className="w-full sm:flex-1 gap-2 bg-transparent"
+								className="gap-2 bg-transparent"
 								onClick={handleStartChat}
 								disabled={isStartingChat}
 							>
@@ -469,7 +468,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						)}
 						{!item.isOwner && !isCurrentBorrower && (
 							<Button 
-								className="w-full sm:flex-1"
+								className="min-w-36"
 								onClick={() => setShowBorrowModal(true)}
 								disabled={hasPendingRequest || isInQueue}
 							>
@@ -479,7 +478,6 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						{isCurrentBorrower && activeTransaction?.status === 'ACTIVE' && (
 							<Button 
 								variant="secondary"
-								className="w-full sm:flex-1"
 								onClick={() => router.push('/activity')}
 							>
 								View in My Activity
