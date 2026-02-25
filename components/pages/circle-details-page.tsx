@@ -24,6 +24,7 @@ import {
 	ChevronRight,
 	Package,
 	MessageCircle,
+	Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,7 +33,7 @@ import { AddItemModal } from '@/components/modals/add-item-modal';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ItemCard } from '@/components/cards/item-card';
+import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -55,6 +56,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
 import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
 import { PageShell } from '@/components/ui/page';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 interface CircleDetailsPageProps {
 	circleId: string;
@@ -113,6 +116,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	// Items query and mutation
 	const { data: items = [], isLoading: isLoadingItems, refetch: refetchItems } = useGetCircleItemsQuery(circleId);
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
+	const {
+		visibleItems: visibleItems,
+		hasMore: hasMoreItems,
+		loadMore: loadMoreItems,
+	} = useProgressivePagination({ items, pageSize: 9 });
 
 	const fetchCircle = useCallback(async () => {
 		try {
@@ -570,8 +578,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				{/* Desktop: Horizontal Scroll Carousel */}
 				<div
 					ref={membersScrollRef}
-					className="hidden sm:flex gap-4 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
-					style={{ scrollbarWidth: 'thin' }}
+					className="app-scrollbar app-scrollbar-thin hidden sm:flex gap-4 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory"
 				>
 					{circle.members.map(member => {
 						const isCurrentUser = member.userId === currentUserId;
@@ -623,7 +630,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 											<Button
 												variant="outline"
 												size="sm"
-												className="mt-2 w-full gap-2"
+												className="mt-2 gap-2"
 												onClick={() => handleStartChat(member.userId)}
 												disabled={isStartingChatId === member.userId}
 											>
@@ -740,7 +747,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 											<Button
 												variant="outline"
 												size="sm"
-												className="mt-2 w-full gap-2"
+												className="mt-2 gap-2"
 												onClick={() => handleStartChat(member.userId)}
 												disabled={isStartingChatId === member.userId}
 											>
@@ -881,63 +888,47 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						</CardContent>
 					</Card>
 				) : (
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{items.map(item => (
-							<Card
-								key={item.id}
-								className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
-								onClick={() => router.push(`/items/${item.id}`)}
-							>
-								{/* Item Image/Media Carousel */}
-								<ItemCard
+					<>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+							{visibleItems.map(item => (
+								<ItemSummaryCard
+									key={item.id}
 									item={item}
-									variant="grid"
-									showActions
-									onDelete={setItemToDelete}
-								/>
-
-								{/* Item Details */}
-								<CardContent className="p-4">
-									<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
-									{item.description && (
-										<p className="text-sm text-muted-foreground line-clamp-2 mb-3">{item.description}</p>
-									)}
-
-									{/* Tags */}
-									{item.tags.length > 0 && (
-										<div className="flex flex-wrap gap-1.5 mb-3">
-											{item.tags.slice(0, 3).map(tag => (
-												<Badge key={tag} variant="secondary" className="text-xs">
-													{tag}
-												</Badge>
-											))}
-											{item.tags.length > 3 && (
-												<Badge variant="outline" className="text-xs">
-													+{item.tags.length - 3}
-												</Badge>
-											)}
+									onClick={() => router.push(`/items/${item.id}`)}
+									showMediaActions={item.isOwner}
+									onDelete={item.isOwner ? setItemToDelete : undefined}
+									actions={
+										<div
+											className="flex flex-wrap gap-2"
+											onClick={event => {
+												event.stopPropagation();
+											}}
+										>
+											<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+												View item
+											</Button>
+											{item.isOwner ? (
+												<Button
+													variant="outline"
+													size="sm"
+													className="gap-2 text-destructive"
+													onClick={() => setItemToDelete(item)}
+												>
+													<Trash2 className="h-4 w-4" />
+													Delete
+												</Button>
+											) : null}
 										</div>
-									)}
-
-									{/* Owner */}
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<Avatar className="h-5 w-5">
-											<AvatarImage src={item.owner.image || undefined} />
-											<AvatarFallback className="text-[10px]">
-												{item.owner.name?.[0]?.toUpperCase() || '?'}
-											</AvatarFallback>
-										</Avatar>
-										<span className="truncate">{item.owner.name || 'Unknown'}</span>
-										{item.isOwner && (
-											<Badge variant="outline" className="text-[10px] px-1.5 py-0">
-												You
-											</Badge>
-										)}
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
+									}
+								/>
+							))}
+						</div>
+						<InfiniteScrollSentinel
+							hasMore={hasMoreItems}
+							onLoadMore={loadMoreItems}
+							label="Loading more shared items"
+						/>
+					</>
 				)}
 			</div>
 
