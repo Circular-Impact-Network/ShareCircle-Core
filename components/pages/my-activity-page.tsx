@@ -16,8 +16,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import {
 	useGetBorrowRequestsQuery,
 	useGetQueueEntriesQuery,
@@ -29,6 +30,7 @@ import {
 } from '@/lib/redux/api/borrowApi';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 type TabType = 'active' | 'pending' | 'queue' | 'history';
 
@@ -113,7 +115,7 @@ function ActiveTransactionCard({
 							<Button
 								size="sm"
 								variant="outline"
-								className="mt-3 w-full gap-2"
+								className="mt-3 gap-2"
 								onClick={() => onMarkReturned(transaction.borrowRequestId)}
 								disabled={isLoading}
 							>
@@ -129,7 +131,7 @@ function ActiveTransactionCard({
 						{role === 'owner' && isReturnPending && (
 							<Button
 								size="sm"
-								className="mt-3 w-full"
+								className="mt-3"
 								onClick={() => router.push('/notifications?tab=requests')}
 							>
 								Confirm Return
@@ -217,7 +219,7 @@ function QueueEntryCard({ entry }: { entry: BorrowQueueEntry }) {
 							<span className="truncate">{entry.item.owner?.name || 'Unknown'}</span>
 						</div>
 						{isReady && (
-							<Button size="sm" className="mt-3 w-full" onClick={() => router.push(`/items/${entry.item.id}`)}>
+							<Button size="sm" className="mt-3" onClick={() => router.push(`/items/${entry.item.id}`)}>
 								Request Now
 							</Button>
 						)}
@@ -316,6 +318,14 @@ export function MyActivityPage() {
 	// History = completed transactions
 	const borrowedHistory = borrowerTransactions.filter(t => t.status === 'COMPLETED');
 	const lentHistory = ownerTransactions.filter(t => t.status === 'COMPLETED');
+	const visibleActiveTransactions = useProgressivePagination({
+		items: [...activeBorrowed, ...activeLent],
+		pageSize: 8,
+	});
+	const visiblePendingRequests = useProgressivePagination({ items: pendingRequests, pageSize: 8 });
+	const visibleQueueEntries = useProgressivePagination({ items: activeQueueEntries, pageSize: 8 });
+	const visibleBorrowedHistory = useProgressivePagination({ items: borrowedHistory, pageSize: 8 });
+	const visibleLentHistory = useProgressivePagination({ items: lentHistory, pageSize: 8 });
 
 	const isLoading = requestsLoading || borrowerTxLoading || ownerTxLoading || queueLoading;
 
@@ -323,43 +333,36 @@ export function MyActivityPage() {
 		<PageShell className="space-y-6">
 			<PageHeader title="My Activity" description="Track your borrowing and lending activity" />
 
-			<Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)} className="w-full">
-				<TabsList className="mb-4 flex-wrap h-auto gap-1">
-					<TabsTrigger value="active" className="gap-2">
+			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
+				<PageTabsList>
+					<PageTabsTrigger value="active" className="gap-2" badge={activeCount > 0 ? activeCount : undefined}>
 						<HandshakeIcon className="h-4 w-4" />
 						Active
-						{activeCount > 0 && (
-							<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-								{activeCount}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="pending" className="gap-2">
+					</PageTabsTrigger>
+					<PageTabsTrigger
+						value="pending"
+						className="gap-2"
+						badge={pendingRequests.length > 0 ? pendingRequests.length : undefined}
+					>
 						<Clock className="h-4 w-4" />
 						Pending
-						{pendingRequests.length > 0 && (
-							<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-								{pendingRequests.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="queue" className="gap-2">
+					</PageTabsTrigger>
+					<PageTabsTrigger
+						value="queue"
+						className="gap-2"
+						badge={activeQueueEntries.length > 0 ? activeQueueEntries.length : undefined}
+					>
 						<Users className="h-4 w-4" />
 						Queue
-						{activeQueueEntries.length > 0 && (
-							<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-								{activeQueueEntries.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="history" className="gap-2">
+					</PageTabsTrigger>
+					<PageTabsTrigger value="history" className="gap-2">
 						<History className="h-4 w-4" />
 						History
-					</TabsTrigger>
-				</TabsList>
+					</PageTabsTrigger>
+				</PageTabsList>
 
 				{/* Active Tab - Currently borrowed/lent items */}
-				<TabsContent value="active" className="space-y-4">
+				<PageTabsContent value="active" className="space-y-4">
 					{isLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -387,7 +390,9 @@ export function MyActivityPage() {
 										<ArrowUpRight className="h-4 w-4 rotate-180" />
 										Items I&apos;m Borrowing ({activeBorrowed.length})
 									</h3>
-									{activeBorrowed.map(tx => (
+									{activeBorrowed
+										.filter(tx => visibleActiveTransactions.visibleItems.some(item => item.id === tx.id))
+										.map(tx => (
 										<ActiveTransactionCard
 											key={tx.id}
 											transaction={tx}
@@ -406,17 +411,25 @@ export function MyActivityPage() {
 										<ArrowUpRight className="h-4 w-4" />
 										Items I&apos;ve Lent Out ({activeLent.length})
 									</h3>
-									{activeLent.map(tx => (
+									{activeLent
+										.filter(tx => visibleActiveTransactions.visibleItems.some(item => item.id === tx.id))
+										.map(tx => (
 										<ActiveTransactionCard key={tx.id} transaction={tx} role="owner" />
 									))}
 								</div>
 							)}
+							<InfiniteScrollSentinel
+								hasMore={visibleActiveTransactions.hasMore}
+								onLoadMore={visibleActiveTransactions.loadMore}
+								enabled={activeTab === 'active'}
+								label="Loading more activity"
+							/>
 						</>
 					)}
-				</TabsContent>
+				</PageTabsContent>
 
 				{/* Pending Tab - Requests awaiting approval */}
-				<TabsContent value="pending" className="space-y-3">
+				<PageTabsContent value="pending" className="space-y-3">
 					{requestsLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -436,12 +449,22 @@ export function MyActivityPage() {
 							</CardContent>
 						</Card>
 					) : (
-						pendingRequests.map(request => <PendingRequestCard key={request.id} request={request} />)
+						<>
+							{visiblePendingRequests.visibleItems.map(request => (
+								<PendingRequestCard key={request.id} request={request} />
+							))}
+							<InfiniteScrollSentinel
+								hasMore={visiblePendingRequests.hasMore}
+								onLoadMore={visiblePendingRequests.loadMore}
+								enabled={activeTab === 'pending'}
+								label="Loading more requests"
+							/>
+						</>
 					)}
-				</TabsContent>
+				</PageTabsContent>
 
 				{/* Queue Tab */}
-				<TabsContent value="queue" className="space-y-3">
+				<PageTabsContent value="queue" className="space-y-3">
 					{queueLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -461,12 +484,22 @@ export function MyActivityPage() {
 							</CardContent>
 						</Card>
 					) : (
-						activeQueueEntries.map(entry => <QueueEntryCard key={entry.id} entry={entry} />)
+						<>
+							{visibleQueueEntries.visibleItems.map(entry => (
+								<QueueEntryCard key={entry.id} entry={entry} />
+							))}
+							<InfiniteScrollSentinel
+								hasMore={visibleQueueEntries.hasMore}
+								onLoadMore={visibleQueueEntries.loadMore}
+								enabled={activeTab === 'queue'}
+								label="Loading more queue items"
+							/>
+						</>
 					)}
-				</TabsContent>
+				</PageTabsContent>
 
 				{/* History Tab */}
-				<TabsContent value="history" className="space-y-4">
+				<PageTabsContent value="history" className="space-y-4">
 					{isLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -493,9 +526,15 @@ export function MyActivityPage() {
 									<h3 className="text-sm font-medium text-muted-foreground">
 										Items I Borrowed ({borrowedHistory.length})
 									</h3>
-									{borrowedHistory.map(tx => (
+									{visibleBorrowedHistory.visibleItems.map(tx => (
 										<HistoryTransactionCard key={tx.id} transaction={tx} role="borrower" />
 									))}
+									<InfiniteScrollSentinel
+										hasMore={visibleBorrowedHistory.hasMore}
+										onLoadMore={visibleBorrowedHistory.loadMore}
+										enabled={activeTab === 'history'}
+										label="Loading more history"
+									/>
 								</div>
 							)}
 
@@ -505,15 +544,21 @@ export function MyActivityPage() {
 									<h3 className="text-sm font-medium text-muted-foreground">
 										Items I Lent ({lentHistory.length})
 									</h3>
-									{lentHistory.map(tx => (
+									{visibleLentHistory.visibleItems.map(tx => (
 										<HistoryTransactionCard key={tx.id} transaction={tx} role="owner" />
 									))}
+									<InfiniteScrollSentinel
+										hasMore={visibleLentHistory.hasMore}
+										onLoadMore={visibleLentHistory.loadMore}
+										enabled={activeTab === 'history'}
+										label="Loading more history"
+									/>
 								</div>
 							)}
 						</>
 					)}
-				</TabsContent>
-			</Tabs>
+				</PageTabsContent>
+			</PageTabs>
 		</PageShell>
 	);
 }
