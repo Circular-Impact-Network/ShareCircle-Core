@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Bell, Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/app/providers';
@@ -26,6 +25,7 @@ import {
 } from '@/lib/redux/selectors/userSelectors';
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
@@ -423,14 +423,14 @@ export function SettingsPage() {
 		<PageShell className="max-w-5xl space-y-8">
 			<PageHeader title="Settings" description="Manage your account settings and preferences." />
 
-			<Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-				<TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-					<TabsTrigger value="profile">Profile</TabsTrigger>
-					<TabsTrigger value="account">Account</TabsTrigger>
-					<TabsTrigger value="appearance">Appearance</TabsTrigger>
-				</TabsList>
+			<PageTabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
+				<PageTabsList className="grid grid-cols-3">
+					<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
+					<PageTabsTrigger value="account">Account</PageTabsTrigger>
+					<PageTabsTrigger value="appearance">Appearance</PageTabsTrigger>
+				</PageTabsList>
 
-				<TabsContent value="profile" className="space-y-6">
+				<PageTabsContent value="profile" className="space-y-6">
 					<Card>
 						<CardHeader>
 							<CardTitle>Public Profile</CardTitle>
@@ -503,9 +503,9 @@ export function SettingsPage() {
 							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
+				</PageTabsContent>
 
-				<TabsContent value="account" className="space-y-6">
+				<PageTabsContent value="account" className="space-y-6">
 					<Card>
 						<CardHeader>
 							<CardTitle>Contact Information</CardTitle>
@@ -619,9 +619,9 @@ export function SettingsPage() {
 							{renderPasswordFlow()}
 						</CardContent>
 					</Card>
-				</TabsContent>
+				</PageTabsContent>
 
-				<TabsContent value="appearance" className="space-y-6">
+				<PageTabsContent value="appearance" className="space-y-6">
 					<Card>
 						<CardHeader>
 							<CardTitle>Appearance</CardTitle>
@@ -655,8 +655,8 @@ export function SettingsPage() {
 							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
-			</Tabs>
+				</PageTabsContent>
+			</PageTabs>
 		</PageShell>
 	);
 }
