@@ -1,17 +1,13 @@
 'use client';
 
-// My listings with add, edit (EditItemModal), and delete
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Loader2, Package } from 'lucide-react';
+import { Archive, ArchiveRestore, Loader2, Package, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ItemCard } from '@/components/cards/item-card';
 import { AddItemModal } from '@/components/modals/add-item-modal';
 import { EditItemModal } from '@/components/modals/edit-item-modal';
-import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import {
 	Dialog,
 	DialogContent,
@@ -20,24 +16,73 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { useGetAllItemsQuery, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
+import { ItemSummaryCard } from '@/components/cards/item-summary-card';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { useGetAllItemsQuery, useDeleteItemMutation, useUpdateItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+
+type ListingTab = 'active' | 'archived';
+
+function EmptyListingsState({
+	title,
+	description,
+	action,
+}: {
+	title: string;
+	description: string;
+	action?: ReactNode;
+}) {
+	return (
+		<Card className="border-dashed border-border/70 bg-card">
+			<CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+				<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+					<Package className="h-7 w-7 text-primary" />
+				</div>
+				<div className="space-y-1">
+					<p className="font-medium text-foreground">{title}</p>
+					<p className="text-sm text-muted-foreground">{description}</p>
+				</div>
+				{action}
+			</CardContent>
+		</Card>
+	);
+}
 
 export function MyListingsPage() {
 	const router = useRouter();
+	const { toast } = useToast();
+	const [activeTab, setActiveTab] = useState<ListingTab>('active');
 	const [showAddItem, setShowAddItem] = useState(false);
-	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 	const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
 	const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
-	const { toast } = useToast();
+	const [actionItemId, setActionItemId] = useState<string | null>(null);
 
-	// Fetch all items
-	const { data: allItems = [], isLoading, refetch } = useGetAllItemsQuery();
+	const {
+		data: myItems = [],
+		isLoading,
+		refetch,
+	} = useGetAllItemsQuery({
+		ownerOnly: true,
+		includeArchived: true,
+	});
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
+	const [updateItem] = useUpdateItemMutation();
 
-	// Filter to only user's items
-	const myItems = allItems.filter(item => item.isOwner);
+	const activeItems = myItems.filter(item => !item.archivedAt);
+	const archivedItems = myItems.filter(item => Boolean(item.archivedAt));
+	const {
+		visibleItems: visibleActiveItems,
+		hasMore: hasMoreActiveItems,
+		loadMore: loadMoreActiveItems,
+	} = useProgressivePagination({ items: activeItems, pageSize: 12 });
+	const {
+		visibleItems: visibleArchivedItems,
+		hasMore: hasMoreArchivedItems,
+		loadMore: loadMoreArchivedItems,
+	} = useProgressivePagination({ items: archivedItems, pageSize: 12 });
 
 	const handleDelete = async () => {
 		if (!itemToDelete) return;
@@ -46,7 +91,7 @@ export function MyListingsPage() {
 			await deleteItem(itemToDelete.id).unwrap();
 			toast({
 				title: 'Item deleted',
-				description: `${itemToDelete.name} has been deleted.`,
+				description: `${itemToDelete.name} has been deleted permanently.`,
 			});
 			setItemToDelete(null);
 		} catch (error) {
@@ -59,11 +104,78 @@ export function MyListingsPage() {
 		}
 	};
 
+	const handleArchiveToggle = async (item: Item, archived: boolean) => {
+		setActionItemId(item.id);
+		try {
+			await updateItem({ id: item.id, archived }).unwrap();
+			toast({
+				title: archived ? 'Item archived' : 'Item restored',
+				description: archived ? `${item.name} moved to Archived.` : `${item.name} is active again.`,
+			});
+		} catch (error) {
+			console.error('Failed to update archive state:', error);
+			toast({
+				title: 'Unable to update listing',
+				description: 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setActionItemId(null);
+		}
+	};
+
+	const renderItemActions = (item: Item, archived: boolean) => (
+		<div
+			className="flex flex-wrap gap-2"
+			onClick={event => {
+				event.stopPropagation();
+			}}
+		>
+			{!archived && (
+				<Button
+					variant="outline"
+					size="sm"
+					className="gap-2"
+					onClick={() => setItemToEdit(item)}
+					disabled={archived}
+				>
+					<Pencil className="h-4 w-4" />
+					Edit
+				</Button>
+			)}
+			<Button
+				variant="outline"
+				size="sm"
+				className="gap-2"
+				onClick={() => handleArchiveToggle(item, !archived)}
+				disabled={actionItemId === item.id}
+			>
+				{actionItemId === item.id ? (
+					<Loader2 className="h-4 w-4 animate-spin" />
+				) : archived ? (
+					<ArchiveRestore className="h-4 w-4" />
+				) : (
+					<Archive className="h-4 w-4" />
+				)}
+				{archived ? 'Unarchive' : 'Archive'}
+			</Button>
+			<Button
+				variant="outline"
+				size="sm"
+				className="gap-2 text-destructive"
+				onClick={() => setItemToDelete(item)}
+			>
+				<Trash2 className="h-4 w-4" />
+				Delete
+			</Button>
+		</div>
+	);
+
 	return (
 		<PageShell className="space-y-6">
 			<PageHeader
 				title="My Listings"
-				description="Manage items you&apos;re sharing"
+				description="Manage the items you share with your circles."
 				actions={
 					<Button onClick={() => setShowAddItem(true)} className="gap-2">
 						<Plus className="h-4 w-4" />
@@ -73,153 +185,96 @@ export function MyListingsPage() {
 				}
 			/>
 
-			{/* Tabs for different item states */}
-			<Tabs defaultValue="all" className="space-y-6">
-				<TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
-					<TabsTrigger value="all">
-						All Items
-						{myItems.length > 0 && (
-							<Badge variant="secondary" className="ml-2">
-								{myItems.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="active">Active</TabsTrigger>
-				</TabsList>
+			<PageTabs value={activeTab} onValueChange={value => setActiveTab(value as ListingTab)}>
+				<PageTabsList>
+					<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
+						Active
+					</PageTabsTrigger>
+					<PageTabsTrigger
+						value="archived"
+						badge={archivedItems.length > 0 ? archivedItems.length : undefined}
+					>
+						Archived
+					</PageTabsTrigger>
+				</PageTabsList>
 
-				{/* All Items Tab */}
-				<TabsContent value="all" className="space-y-4">
-					{/* Loading State */}
-					{isLoading && (
+				<PageTabsContent value="active">
+					{isLoading ? (
 						<div className="flex flex-col items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-							<p className="text-sm text-muted-foreground">Loading your items...</p>
+							<Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
+							<p className="text-sm text-muted-foreground">Loading your active listings...</p>
 						</div>
-					)}
-
-					{/* Empty State */}
-					{!isLoading && myItems.length === 0 && (
-						<Card className="border-dashed border-border/70 bg-card">
-							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-								<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-									<Package className="h-7 w-7 text-primary" />
-								</div>
-								<div>
-									<p className="font-medium text-foreground mb-1">No items yet</p>
-									<p className="text-sm text-muted-foreground mb-4">
-										Start sharing items with your circles
-									</p>
-									<Button onClick={() => setShowAddItem(true)} className="gap-2">
-										<Plus className="h-4 w-4" />
-										Add Your First Item
-									</Button>
-								</div>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Items Grid */}
-					{!isLoading && myItems.length > 0 && (
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-							{myItems.map(item => (
-								<Card
-									key={item.id}
-									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all"
-								>
-									{/* Item Image/Media Carousel */}
-									<ItemCard
-										item={item}
-										variant="grid"
-										showActions
-										onDelete={setItemToDelete}
-										onEdit={setItemToEdit}
-										onClick={() => router.push(`/items/${item.id}`)}
-									/>
-
-									{/* Item Details */}
-									<CardContent className="p-4">
-										<h3
-											className="font-semibold text-foreground truncate mb-1 cursor-pointer hover:text-primary"
-											onClick={() => router.push(`/items/${item.id}`)}
-										>
-											{item.name}
-										</h3>
-										{item.description && (
-											<p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-												{item.description}
-											</p>
-										)}
-
-										{/* Tags */}
-										{item.tags.length > 0 && (
-											<div className="flex flex-wrap gap-1.5 mb-3">
-												{item.tags.slice(0, 3).map(tag => (
-													<Badge key={tag} variant="secondary" className="text-xs">
-														{tag}
-													</Badge>
-												))}
-												{item.tags.length > 3 && (
-													<Badge variant="outline" className="text-xs">
-														+{item.tags.length - 3}
-													</Badge>
-												)}
-											</div>
-										)}
-
-										{/* Shared in Circles */}
-										{item.circles.length > 0 && (
-											<div className="text-xs text-muted-foreground truncate">
-												Shared in: {item.circles.map(c => c.name).join(', ')}
-											</div>
-										)}
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					)}
-				</TabsContent>
-
-				{/* Active Tab (same content for now) */}
-				<TabsContent value="active" className="space-y-4">
-					{!isLoading && myItems.length === 0 ? (
-						<Card className="border-dashed border-border/70 bg-card">
-							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-								<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-									<Package className="h-7 w-7 text-primary" />
-								</div>
-								<div>
-									<p className="font-medium text-foreground mb-1">No active items</p>
-									<p className="text-sm text-muted-foreground">
-										Your active listings will appear here
-									</p>
-								</div>
-							</CardContent>
-						</Card>
+					) : activeItems.length === 0 ? (
+						<EmptyListingsState
+							title="No active listings"
+							description="Create a listing to start sharing items with your circles."
+							action={
+								<Button onClick={() => setShowAddItem(true)} className="gap-2">
+									<Plus className="h-4 w-4" />
+									Add your first item
+								</Button>
+							}
+						/>
 					) : (
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-							{myItems.map(item => (
-								<Card
-									key={item.id}
-									className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
-									onClick={() => setSelectedItem(item)}
-								>
-									<ItemCard item={item} variant="grid" />
-									<CardContent className="p-4">
-										<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
-										{item.circles.length > 0 && (
-											<p className="text-sm text-muted-foreground truncate">
-												{item.circles[0].name}
-											</p>
-										)}
-									</CardContent>
-								</Card>
-							))}
-						</div>
+						<>
+							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+								{visibleActiveItems.map(item => (
+									<ItemSummaryCard
+										key={item.id}
+										item={item}
+										onClick={() => router.push(`/items/${item.id}`)}
+										showMediaActions
+										onEdit={setItemToEdit}
+										actions={renderItemActions(item, false)}
+									/>
+								))}
+							</div>
+							<InfiniteScrollSentinel
+								hasMore={hasMoreActiveItems}
+								onLoadMore={loadMoreActiveItems}
+								enabled={activeTab === 'active'}
+								label="Loading more active listings"
+							/>
+						</>
 					)}
-				</TabsContent>
-			</Tabs>
+				</PageTabsContent>
 
-			{/* Delete Confirmation Dialog */}
+				<PageTabsContent value="archived">
+					{isLoading ? (
+						<div className="flex flex-col items-center justify-center py-12">
+							<Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
+							<p className="text-sm text-muted-foreground">Loading archived listings...</p>
+						</div>
+					) : archivedItems.length === 0 ? (
+						<EmptyListingsState
+							title="No archived listings"
+							description="Archived items stay here until you restore or delete them."
+						/>
+					) : (
+						<>
+							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+								{visibleArchivedItems.map(item => (
+									<ItemSummaryCard
+										key={item.id}
+										item={item}
+										onClick={() => router.push(`/items/${item.id}`)}
+										showMediaActions
+										actions={renderItemActions(item, true)}
+										className="border-border/60 bg-muted/10"
+									/>
+								))}
+							</div>
+							<InfiniteScrollSentinel
+								hasMore={hasMoreArchivedItems}
+								onLoadMore={loadMoreArchivedItems}
+								enabled={activeTab === 'archived'}
+								label="Loading more archived listings"
+							/>
+						</>
+					)}
+				</PageTabsContent>
+			</PageTabs>
+
 			<Dialog
 				open={!!itemToDelete}
 				onOpenChange={open => {
@@ -230,8 +285,7 @@ export function MyListingsPage() {
 					<DialogHeader>
 						<DialogTitle>Delete Item</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be
-							undone.
+							Delete &quot;{itemToDelete?.name}&quot; permanently? This cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="gap-2 sm:gap-0">
@@ -245,14 +299,13 @@ export function MyListingsPage() {
 									Deleting...
 								</>
 							) : (
-								'Delete'
+								'Delete permanently'
 							)}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			{/* Modals */}
 			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} onItemCreated={() => refetch()} />
 			<EditItemModal
 				itemId={itemToEdit?.id || null}
@@ -262,7 +315,6 @@ export function MyListingsPage() {
 				}}
 				onSuccess={() => refetch()}
 			/>
-			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</PageShell>
 	);
 }
