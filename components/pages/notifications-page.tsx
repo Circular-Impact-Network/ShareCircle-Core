@@ -18,8 +18,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import {
 	useGetNotificationsQuery,
 	useMarkAsReadMutation,
@@ -37,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 type TabType = 'alerts' | 'requests';
 
@@ -182,12 +184,12 @@ function RequestCard({
 
 						{/* Actions */}
 						{isPending && (
-							<div className="flex gap-2 mt-3">
+							<div className="mt-3 flex flex-wrap gap-2">
 								<Button
 									size="sm"
 									onClick={() => onApprove(request.id)}
 									disabled={isLoading}
-									className="flex-1"
+									className="gap-2"
 								>
 									{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
 									Approve
@@ -197,7 +199,6 @@ function RequestCard({
 									variant="outline"
 									onClick={() => onDecline(request.id)}
 									disabled={isLoading}
-									className="flex-1"
 								>
 									Decline
 								</Button>
@@ -209,7 +210,7 @@ function RequestCard({
 									size="sm"
 									onClick={() => onConfirmReturn(request.id)}
 									disabled={isLoading}
-									className="w-full"
+									className="gap-2"
 								>
 									{isLoading ? (
 										<Loader2 className="h-4 w-4 animate-spin" />
@@ -231,12 +232,14 @@ export function NotificationsPage() {
 	const { toast } = useToast();
 	const [activeTab, setActiveTab] = useState<TabType>('alerts');
 	const [processingId, setProcessingId] = useState<string | null>(null);
+	const [alertsLimit, setAlertsLimit] = useState(20);
 
 	// Fetch all notifications (the global provider handles realtime updates)
 	const {
 		data: alertsData,
 		isLoading: alertsLoading,
-	} = useGetNotificationsQuery({ limit: 50 });
+		isFetching: alertsFetching,
+	} = useGetNotificationsQuery({ limit: alertsLimit });
 
 	// Fetch actionable borrow requests (incoming pending + return pending)
 	const { data: incomingRequests = [], isLoading: requestsLoading, refetch: refetchRequests } = useGetBorrowRequestsQuery({
@@ -247,6 +250,11 @@ export function NotificationsPage() {
 	const actionableRequests = incomingRequests.filter(
 		r => r.status === 'PENDING' || r.transaction?.status === 'RETURN_PENDING'
 	);
+	const {
+		visibleItems: visibleActionableRequests,
+		hasMore: hasMoreActionableRequests,
+		loadMore: loadMoreActionableRequests,
+	} = useProgressivePagination({ items: actionableRequests, pageSize: 8 });
 
 	// Mutations
 	const [markAsRead] = useMarkAsReadMutation();
@@ -341,6 +349,7 @@ export function NotificationsPage() {
 
 	const alerts = alertsData?.notifications || [];
 	const unreadCount = alertsData?.unreadCount || 0;
+	const hasMoreAlerts = alertsData?.pagination.hasMore ?? false;
 
 	return (
 		<PageShell className="space-y-6">
@@ -349,28 +358,22 @@ export function NotificationsPage() {
 				description="Stay updated with your circles and borrow requests"
 			/>
 
-			<Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)} className="w-full">
+			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
 				<div className="flex items-center justify-between mb-4">
-					<TabsList>
-						<TabsTrigger value="alerts" className="gap-2">
+					<PageTabsList>
+						<PageTabsTrigger value="alerts" className="gap-2" badge={unreadCount > 0 ? unreadCount : undefined}>
 							<Bell className="h-4 w-4" />
 							Alerts
-							{unreadCount > 0 && (
-								<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-									{unreadCount}
-								</Badge>
-							)}
-						</TabsTrigger>
-						<TabsTrigger value="requests" className="gap-2">
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="requests"
+							className="gap-2"
+							badge={actionableRequests.length > 0 ? actionableRequests.length : undefined}
+						>
 							<Inbox className="h-4 w-4" />
 							Requests
-							{actionableRequests.length > 0 && (
-								<Badge variant="destructive" className="h-5 min-w-[20px] px-1.5 text-xs">
-									{actionableRequests.length}
-								</Badge>
-							)}
-						</TabsTrigger>
-					</TabsList>
+						</PageTabsTrigger>
+					</PageTabsList>
 
 					<div className="flex gap-2">
 						{activeTab === 'alerts' && alerts.length > 0 && (
@@ -388,7 +391,7 @@ export function NotificationsPage() {
 				</div>
 
 				{/* Alerts Tab */}
-				<TabsContent value="alerts" className="space-y-3">
+				<PageTabsContent value="alerts" className="space-y-3">
 					{alertsLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -416,10 +419,17 @@ export function NotificationsPage() {
 							/>
 						))
 					)}
-				</TabsContent>
+					<InfiniteScrollSentinel
+						hasMore={hasMoreAlerts}
+						isLoading={alertsFetching && alerts.length > 0}
+						onLoadMore={() => setAlertsLimit(current => current + 20)}
+						enabled={activeTab === 'alerts'}
+						label="Loading more alerts"
+					/>
+				</PageTabsContent>
 
 				{/* Requests Tab */}
-				<TabsContent value="requests" className="space-y-3">
+				<PageTabsContent value="requests" className="space-y-3">
 					{requestsLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -439,7 +449,7 @@ export function NotificationsPage() {
 							</CardContent>
 						</Card>
 					) : (
-						actionableRequests.map(request => (
+						visibleActionableRequests.map(request => (
 							<RequestCard
 								key={request.id}
 								request={request}
@@ -450,8 +460,14 @@ export function NotificationsPage() {
 							/>
 						))
 					)}
-				</TabsContent>
-			</Tabs>
+					<InfiniteScrollSentinel
+						hasMore={hasMoreActionableRequests}
+						onLoadMore={loadMoreActionableRequests}
+						enabled={activeTab === 'requests'}
+						label="Loading more requests"
+					/>
+				</PageTabsContent>
+			</PageTabs>
 		</PageShell>
 	);
 }
