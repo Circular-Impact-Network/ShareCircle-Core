@@ -2,31 +2,31 @@
 
 // Browse items and create item requests with circleIds, search, filters
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ItemCard } from '@/components/cards/item-card';
-import { useGetAllItemsQuery, useSearchItemsMutation, type Item, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import { useGetAllItemsQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
+import { ItemSummaryCard } from '@/components/cards/item-summary-card';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 export function BrowseListingsPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const { toast } = useToast();
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('All Categories');
-	const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const hasShownSearchErrorRef = useRef(false);
+	const lastSearchKeyRef = useRef<string | null>(null);
 	const [startingChatId, setStartingChatId] = useState<string | null>(null);
 	
 	// Item request form state
@@ -52,6 +52,8 @@ export function BrowseListingsPage() {
 	// Semantic search mutation
 	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError, reset: resetSearch }] =
 		useSearchItemsMutation();
+	const queryFromUrl = searchParams.get('q')?.trim() ?? '';
+	const normalizedQueryFromUrl = queryFromUrl.length >= 2 ? queryFromUrl : '';
 
 	// Show toast for errors instead of blocking the UI
 	useEffect(() => {
@@ -78,18 +80,46 @@ export function BrowseListingsPage() {
 		}
 	}, [searchError, toast]);
 
-	// Execute semantic search
-	const executeSearch = useCallback(() => {
-		const trimmedQuery = searchQuery.trim();
-		if (trimmedQuery.length >= 2) {
-			setIsSearchActive(true);
-			searchItems({ 
-				query: trimmedQuery, 
-				category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
-				limit: 50 
-			});
+	const executeSearch = useCallback(
+		(queryOverride?: string) => {
+			const trimmedQuery = (queryOverride ?? searchQuery).trim();
+			if (trimmedQuery.length >= 2) {
+				if (trimmedQuery !== queryFromUrl) {
+					router.replace(`/browse?q=${encodeURIComponent(trimmedQuery)}`);
+				}
+				return;
+			}
+			if (queryFromUrl) {
+				router.replace('/browse');
+			}
+		},
+		[queryFromUrl, router, searchQuery],
+	);
+
+	useEffect(() => {
+		setSearchQuery(currentQuery => (currentQuery === queryFromUrl ? currentQuery : queryFromUrl));
+	}, [queryFromUrl]);
+
+	useEffect(() => {
+		if (!normalizedQueryFromUrl) {
+			lastSearchKeyRef.current = null;
+			setIsSearchActive(false);
+			resetSearch();
+			return;
 		}
-	}, [searchQuery, selectedCategory, searchItems]);
+
+		setIsSearchActive(true);
+		const searchKey = `${normalizedQueryFromUrl}::${selectedCategory}`;
+		if (lastSearchKeyRef.current === searchKey) {
+			return;
+		}
+		lastSearchKeyRef.current = searchKey;
+		searchItems({
+			query: normalizedQueryFromUrl,
+			category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+			limit: 50,
+		});
+	}, [normalizedQueryFromUrl, resetSearch, searchItems, selectedCategory]);
 
 	// Handle search on Enter key press
 	const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -102,20 +132,15 @@ export function BrowseListingsPage() {
 	// Clear search and reset to default items
 	const clearSearch = useCallback(() => {
 		setSearchQuery('');
-		setIsSearchActive(false);
-		resetSearch();
-	}, [resetSearch]);
+		if (queryFromUrl) {
+			router.replace('/browse');
+		}
+	}, [queryFromUrl, router]);
 
 	// Handle category change - refetch from backend
 	const handleCategoryChange = useCallback((category: string) => {
 		setSelectedCategory(category);
-		// Reset search when category changes
-		if (isSearchActive) {
-			setIsSearchActive(false);
-			resetSearch();
-		}
-		// Category filtering is now handled by the query, which will auto-refetch
-	}, [isSearchActive, resetSearch]);
+	}, []);
 
 	// Determine which items to display
 	const displayItems = useMemo(() => {
@@ -204,9 +229,10 @@ export function BrowseListingsPage() {
 	const handleResetFilters = useCallback(() => {
 		setSearchQuery('');
 		setSelectedCategory('All Categories');
-		setIsSearchActive(false);
-		resetSearch();
-	}, [resetSearch]);
+		if (queryFromUrl) {
+			router.replace('/browse');
+		}
+	}, [queryFromUrl, router]);
 
 	const handleStartChat = useCallback(
 		async (ownerId: string) => {
@@ -239,6 +265,11 @@ export function BrowseListingsPage() {
 	);
 
 	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || isSearchActive;
+	const {
+		visibleItems: visibleDisplayItems,
+		hasMore: hasMoreDisplayItems,
+		loadMore: loadMoreDisplayItems,
+	} = useProgressivePagination({ items: displayItems, pageSize: 12 });
 
 	// Combined loading state
 	const isLoadingData = isLoading || isSearching;
@@ -289,7 +320,7 @@ export function BrowseListingsPage() {
 							variant="secondary"
 							size="sm"
 							className="h-7 px-2"
-							onClick={executeSearch}
+							onClick={() => executeSearch()}
 							disabled={searchQuery.trim().length < 2 || isSearching}
 						>
 							{isSearching ? (
@@ -332,9 +363,7 @@ export function BrowseListingsPage() {
 						<Loader2 className="h-4 w-4 animate-spin" />
 						{isSearching ? 'Searching...' : 'Loading items...'}
 					</div>
-				) : (
-					<span>{getResultsText()}</span>
-				)}
+				) : <span>{getResultsText()}</span>}
 			</div>
 
 			{/* Loading State */}
@@ -375,7 +404,7 @@ export function BrowseListingsPage() {
 								Can&apos;t find what you need? Request it from your circles!
 							</p>
 							{!showRequestForm ? (
-								<div className="flex gap-2 justify-center">
+								<div className="flex flex-wrap justify-center gap-2">
 									<Button variant="outline" onClick={clearSearch}>
 										Clear Search
 									</Button>
@@ -399,11 +428,11 @@ export function BrowseListingsPage() {
 									/>
 									<div className="space-y-2">
 										{userCircles.length > 1 && (
-											<Button variant="outline" type="button" onClick={toggleAllRequestCircles} className="w-full">
+											<Button variant="outline" type="button" onClick={toggleAllRequestCircles}>
 												{allRequestCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
 											</Button>
 										)}
-										<div className="max-h-44 space-y-2 overflow-auto rounded-md border p-2">
+										<div className="app-scrollbar app-scrollbar-thin max-h-44 space-y-2 overflow-auto rounded-md border p-2">
 											{userCircles.map(circle => {
 												const isSelected = requestCircleIds.includes(circle.id);
 												return (
@@ -428,7 +457,7 @@ export function BrowseListingsPage() {
 											})}
 										</div>
 									</div>
-									<div className="flex gap-2">
+									<div className="flex flex-wrap gap-2">
 										<Button
 											variant="outline"
 											onClick={() => {
@@ -437,14 +466,13 @@ export function BrowseListingsPage() {
 												setRequestDescription('');
 												setRequestCircleIds([]);
 											}}
-											className="flex-1"
 										>
 											Cancel
 										</Button>
 										<Button
 											onClick={handleSubmitItemRequest}
 											disabled={isCreatingRequest || !requestTitle.trim() || requestCircleIds.length === 0}
-											className="flex-1 gap-2"
+											className="gap-2"
 										>
 											{isCreatingRequest ? (
 												<Loader2 className="h-4 w-4 animate-spin" />
@@ -483,86 +511,59 @@ export function BrowseListingsPage() {
 
 			{/* Items Grid */}
 			{!isLoading && displayItems.length > 0 && (
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="items-grid">
-					{displayItems.map(item => (
-						<Card
-							key={item.id}
-							className="group overflow-hidden border-border/70 hover:border-primary/50 transition-all cursor-pointer"
-							onClick={() => router.push(`/items/${item.id}`)}
-							data-testid="item-card"
-						>
-							{/* Item Image/Media Carousel */}
-							<ItemCard item={item} variant="grid" showActions />
-
-							{/* Item Details */}
-							<CardContent className="p-4">
-								<h3 className="font-semibold text-foreground truncate mb-1">{item.name}</h3>
-								{item.description && (
-									<p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-										{item.description}
-									</p>
-								)}
-
-								{/* Tags */}
-								{item.tags.length > 0 && (
-									<div className="flex flex-wrap gap-1.5 mb-3" data-testid="tags-container">
-										{item.tags.slice(0, 3).map(tag => (
-											<Badge key={tag} variant="secondary" className="text-xs" data-testid="tag">
-												{tag}
-											</Badge>
-										))}
-										{item.tags.length > 3 && (
-											<Badge variant="outline" className="text-xs">
-												+{item.tags.length - 3}
-											</Badge>
+				<>
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="items-grid">
+						{visibleDisplayItems.map(item => (
+							<ItemSummaryCard
+								key={item.id}
+								item={item}
+								onClick={() => router.push(`/items/${item.id}`)}
+								showMediaActions
+								actions={
+									<div
+										className="flex flex-wrap gap-2"
+										onClick={event => {
+											event.stopPropagation();
+										}}
+									>
+										{!item.isOwner ? (
+											<>
+												<Button
+													variant="outline"
+													size="sm"
+													className="gap-2"
+													onClick={() => handleStartChat(item.owner.id)}
+													disabled={startingChatId === item.owner.id}
+												>
+													{startingChatId === item.owner.id ? (
+														<Loader2 className="h-4 w-4 animate-spin" />
+													) : (
+														<MessageCircle className="h-4 w-4" />
+													)}
+													Chat
+												</Button>
+												<Button size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+													Borrow
+												</Button>
+											</>
+										) : (
+											<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+												View item
+											</Button>
 										)}
 									</div>
-								)}
-
-								{/* Owner & Circle */}
-								<div className="space-y-2">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<Avatar className="h-5 w-5">
-											<AvatarImage src={item.owner.image || undefined} />
-											<AvatarFallback className="text-[10px]">
-												{item.owner.name?.[0]?.toUpperCase() || '?'}
-											</AvatarFallback>
-										</Avatar>
-										<span className="truncate">{item.owner.name || 'Unknown'}</span>
-									</div>
-									{item.circles && item.circles.length > 0 && (
-										<div className="text-xs text-muted-foreground truncate">
-											in {item.circles.map(c => c.name).join(', ')}
-										</div>
-									)}
-									{!item.isOwner && (
-										<Button
-											variant="outline"
-											size="sm"
-											className="w-full gap-2"
-											onClick={event => {
-												event.stopPropagation();
-												handleStartChat(item.owner.id);
-											}}
-											disabled={startingChatId === item.owner.id}
-										>
-											{startingChatId === item.owner.id ? (
-												<Loader2 className="h-4 w-4 animate-spin" />
-											) : (
-												<MessageCircle className="h-4 w-4" />
-											)}
-											Chat with owner
-										</Button>
-									)}
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
+								}
+							/>
+						))}
+					</div>
+					<InfiniteScrollSentinel
+						hasMore={hasMoreDisplayItems}
+						isLoading={false}
+						onLoadMore={loadMoreDisplayItems}
+						label="Loading more items"
+					/>
+				</>
 			)}
-
-			{/* Item Details Modal */}
-			<ItemDetailsModal item={selectedItem} onOpenChange={open => !open && setSelectedItem(null)} />
 		</PageShell>
 	);
 }
