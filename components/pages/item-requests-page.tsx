@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
 	Dialog,
 	DialogContent,
@@ -28,9 +27,12 @@ import {
 	DialogTrigger,
 } from '@/components/ui/dialog';
 import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import {
 	useGetItemRequestsQuery,
 	useCreateItemRequestMutation,
+	useUpdateItemRequestMutation,
 	ItemRequest,
 } from '@/lib/redux/api/borrowApi';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
@@ -38,19 +40,24 @@ import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 type TabType = 'all' | 'mine';
 
 function RequestCard({
 	request,
 	onFulfill,
+	onClose,
 	isMyRequest,
 	isFulfilling,
+	isClosing,
 }: {
 	request: ItemRequest;
 	onFulfill?: (requestId: string, requesterId: string, requestTitle: string) => void;
+	onClose?: (requestId: string) => void;
 	isMyRequest: boolean;
 	isFulfilling?: boolean;
+	isClosing?: boolean;
 }) {
 	const isOpen = request.status === 'OPEN';
 	const isFulfilled = request.status === 'FULFILLED';
@@ -100,16 +107,32 @@ function RequestCard({
 
 						{/* Actions */}
 						{isOpen && !isMyRequest && onFulfill && (
-							<Button
-								size="sm"
-								variant="outline"
-								className="mt-3 gap-2"
-								disabled={isFulfilling}
-								onClick={() => onFulfill(request.id, request.requester.id, request.title)}
-							>
-								{isFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-								I have this item
-							</Button>
+							<div className="mt-3 flex flex-wrap gap-2">
+								<Button
+									size="sm"
+									variant="outline"
+									className="gap-2"
+									disabled={isFulfilling}
+									onClick={() => onFulfill(request.id, request.requester.id, request.title)}
+								>
+									{isFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+									I have this item
+								</Button>
+							</div>
+						)}
+						{isOpen && isMyRequest && onClose && (
+							<div className="mt-3 flex flex-wrap gap-2">
+								<Button
+									size="sm"
+									variant="outline"
+									className="gap-2"
+									disabled={isClosing}
+									onClick={() => onClose(request.id)}
+								>
+									{isClosing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+									Close request
+								</Button>
+							</div>
 						)}
 					</div>
 				</div>
@@ -127,6 +150,7 @@ export function ItemRequestsPage() {
 	const [requestDescription, setRequestDescription] = useState('');
 	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
 	const [startingChatForRequestId, setStartingChatForRequestId] = useState<string | null>(null);
+	const [closingRequestId, setClosingRequestId] = useState<string | null>(null);
 
 	// Fetch data
 	const { data: allRequests = [], isLoading: allLoading } = useGetItemRequestsQuery({});
@@ -139,10 +163,21 @@ export function ItemRequestsPage() {
 
 	// Mutations
 	const [createItemRequest, { isLoading: isCreating }] = useCreateItemRequestMutation();
+	const [updateItemRequest] = useUpdateItemRequestMutation();
 
 	// Filter open requests
 	const openRequests = allRequests.filter(r => r.status === 'OPEN');
 	const myOpenRequests = myRequests.filter(r => r.status === 'OPEN');
+	const {
+		visibleItems: visibleOpenRequests,
+		hasMore: hasMoreOpenRequests,
+		loadMore: loadMoreOpenRequests,
+	} = useProgressivePagination({ items: openRequests, pageSize: 8 });
+	const {
+		visibleItems: visibleMyRequests,
+		hasMore: hasMoreMyRequests,
+		loadMore: loadMoreMyRequests,
+	} = useProgressivePagination({ items: myRequests, pageSize: 8 });
 	const allCirclesSelected = circles.length > 0 && requestCircleIds.length === circles.length;
 
 	const toggleCircleSelection = (circleId: string) => {
@@ -216,6 +251,30 @@ export function ItemRequestsPage() {
 		}
 	};
 
+	const handleCloseRequest = async (requestId: string) => {
+		setClosingRequestId(requestId);
+		try {
+			await updateItemRequest({ id: requestId, status: 'CANCELLED' }).unwrap();
+			toast({
+				title: 'Request closed',
+				description: 'Your request has been closed and will no longer accept responses.',
+			});
+		} catch (error) {
+			console.error('Close request error:', error);
+			const errorMessage =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to close request'
+					: 'Failed to close request.';
+			toast({
+				title: 'Unable to close request',
+				description: errorMessage,
+				variant: 'destructive',
+			});
+		} finally {
+			setClosingRequestId(null);
+		}
+	};
+
 	const isLoading = allLoading || myLoading;
 
 	return (
@@ -262,7 +321,7 @@ export function ItemRequestsPage() {
 										{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
 									</Button>
 								)}
-								<div className="flex flex-col gap-2 max-h-44 overflow-auto rounded-md border p-2">
+								<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
 									{circles.map(circle => {
 										const isSelected = requestCircleIds.includes(circle.id);
 										return (
@@ -308,30 +367,20 @@ export function ItemRequestsPage() {
 				</Dialog>
 			</div>
 
-			<Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)} className="w-full">
-				<TabsList className="mb-4">
-					<TabsTrigger value="all" className="gap-2">
+			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
+				<PageTabsList>
+					<PageTabsTrigger value="all" className="gap-2" badge={openRequests.length > 0 ? openRequests.length : undefined}>
 						<Search className="h-4 w-4" />
 						All Requests
-						{openRequests.length > 0 && (
-							<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-								{openRequests.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-					<TabsTrigger value="mine" className="gap-2">
+					</PageTabsTrigger>
+					<PageTabsTrigger value="mine" className="gap-2" badge={myOpenRequests.length > 0 ? myOpenRequests.length : undefined}>
 						<Clock className="h-4 w-4" />
 						My Requests
-						{myOpenRequests.length > 0 && (
-							<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-								{myOpenRequests.length}
-							</Badge>
-						)}
-					</TabsTrigger>
-				</TabsList>
+					</PageTabsTrigger>
+				</PageTabsList>
 
 				{/* All Requests Tab */}
-				<TabsContent value="all" className="space-y-3">
+				<PageTabsContent value="all" className="space-y-3">
 					{isLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -352,7 +401,7 @@ export function ItemRequestsPage() {
 						</Card>
 					) : (
 						<div className="space-y-3" data-testid="requests-list">
-							{openRequests.map(request => (
+							{visibleOpenRequests.map(request => (
 								<RequestCard
 									key={request.id}
 									request={request}
@@ -361,12 +410,18 @@ export function ItemRequestsPage() {
 									isMyRequest={myRequests.some(r => r.id === request.id)}
 								/>
 							))}
+							<InfiniteScrollSentinel
+								hasMore={hasMoreOpenRequests}
+								onLoadMore={loadMoreOpenRequests}
+								enabled={activeTab === 'all'}
+								label="Loading more requests"
+							/>
 						</div>
 					)}
-				</TabsContent>
+				</PageTabsContent>
 
 				{/* My Requests Tab */}
-				<TabsContent value="mine" className="space-y-3">
+				<PageTabsContent value="mine" className="space-y-3">
 					{myLoading ? (
 						<div className="flex items-center justify-center py-12">
 							<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -391,13 +446,25 @@ export function ItemRequestsPage() {
 						</Card>
 					) : (
 						<div className="space-y-3" data-testid="my-requests-list">
-							{myRequests.map(request => (
-								<RequestCard key={request.id} request={request} isMyRequest={true} />
+							{visibleMyRequests.map(request => (
+								<RequestCard
+									key={request.id}
+									request={request}
+									isMyRequest={true}
+									onClose={handleCloseRequest}
+									isClosing={closingRequestId === request.id}
+								/>
 							))}
+							<InfiniteScrollSentinel
+								hasMore={hasMoreMyRequests}
+								onLoadMore={loadMoreMyRequests}
+								enabled={activeTab === 'mine'}
+								label="Loading more requests"
+							/>
 						</div>
 					)}
-				</TabsContent>
-			</Tabs>
+				</PageTabsContent>
+			</PageTabs>
 		</PageShell>
 	);
 }
