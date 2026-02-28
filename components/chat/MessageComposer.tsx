@@ -99,15 +99,15 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 	};
 
 	return (
-		<div className="border-t border-border bg-card px-4 py-3">
+		<div className="border-t border-border/70 bg-card/95 px-4 py-3">
 			{attachments.length > 0 && (
-				<div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+				<div className="app-scrollbar app-scrollbar-thin mb-3 flex gap-2 overflow-x-auto pb-1">
 					{attachments.map(attachment => (
-						<div key={attachment.id} className="relative shrink-0">
+						<div key={attachment.id} className="relative shrink-0 rounded-2xl border border-border/70 bg-background p-1">
 							<img
 								src={attachment.previewUrl}
 								alt="Attachment preview"
-								className="h-14 w-14 rounded-lg object-cover"
+								className="h-14 w-14 rounded-xl object-cover"
 							/>
 							<button
 								type="button"
@@ -120,10 +120,10 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 					))}
 				</div>
 			)}
-			<div className="flex items-center gap-1 rounded-full border bg-background px-2 py-1">
+			<div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-background px-2 py-1.5 shadow-sm">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon" className="h-8 w-8" disabled={disabled}>
+						<Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" disabled={disabled}>
 							<Smile className="h-4 w-4" />
 						</Button>
 					</DropdownMenuTrigger>
@@ -142,7 +142,7 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 				<Button
 					variant="ghost"
 					size="icon"
-					className="h-8 w-8"
+					className="h-9 w-9 rounded-xl"
 					disabled={disabled || isUploading || attachments.length >= 5}
 					onClick={() => fileInputRef.current?.click()}
 				>
@@ -158,7 +158,7 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 				/>
 				<Input
 					placeholder={disabled ? 'Chat disabled' : 'Type a message...'}
-					className="h-8 border-0 bg-transparent shadow-none focus-visible:ring-0"
+					className="h-9 border-0 bg-transparent shadow-none focus-visible:ring-0"
 					value={value}
 					onChange={event => {
 						onChange(event.target.value);
@@ -174,7 +174,7 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 				/>
 				<Button
 					size="icon"
-					className="h-8 w-8 rounded-full"
+					className="h-9 w-9 rounded-xl"
 					onClick={handleSendClick}
 					disabled={disabled || isUploading || (!value.trim() && attachments.length === 0)}
 				>
