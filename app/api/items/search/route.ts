@@ -156,8 +156,25 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json([], { status: 200 });
 		}
 
+		const visibleItems = await prisma.item.findMany({
+			where: {
+				id: { in: results.map(result => result.id) },
+				archivedAt: null,
+			},
+			select: {
+				id: true,
+				isAvailable: true,
+			},
+		});
+		const visibleItemMap = new Map(visibleItems.map(item => [item.id, item]));
+
+		if (visibleItemMap.size === 0) {
+			return NextResponse.json([], { status: 200 });
+		}
+
 		// Get owner info and generate signed URLs
-		const ownerIds = [...new Set(results.map(r => r.owner_id))];
+		const filteredResults = results.filter(result => visibleItemMap.has(result.id));
+		const ownerIds = [...new Set(filteredResults.map(r => r.owner_id))];
 		const owners = await prisma.user.findMany({
 			where: {
 				id: { in: ownerIds },
@@ -172,8 +189,9 @@ export async function POST(req: NextRequest) {
 		const ownerMap = new Map(owners.map(o => [o.id, o]));
 
 		const itemsWithUrls = await Promise.all(
-			results.map(async item => {
+			filteredResults.map(async item => {
 				const imageUrlSigned = await getSignedUrl(item.image_path, 'items');
+				const visibleItem = visibleItemMap.get(item.id);
 				return {
 					id: item.id,
 					name: item.name,
@@ -187,6 +205,8 @@ export async function POST(req: NextRequest) {
 					owner: ownerMap.get(item.owner_id) || { id: item.owner_id, name: null, image: null },
 					circles: [], // Search results don't include circle info for performance
 					isOwner: item.owner_id === userId,
+					isAvailable: visibleItem?.isAvailable ?? true,
+					archivedAt: null,
 				};
 			}),
 		);
