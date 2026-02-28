@@ -60,16 +60,19 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 		<NotificationsProvider>
 			<div className="min-h-[100dvh] bg-background">
 				<Sidebar />
-				<main className="lg:ml-64 min-h-[100dvh] overflow-auto">
+				<main
+					data-scroll-root="authenticated-main"
+					className="app-scrollbar min-h-[100dvh] overflow-x-hidden overflow-y-auto pt-14 lg:ml-60 lg:pt-0"
+				>
 					{/* Mobile menu button */}
 					<Button
 						type="button"
 						variant="outline"
 						size="icon"
 						onClick={() => dispatch(toggleMobileSidebar())}
-						className="fixed left-4 top-4 z-30 bg-card shadow-lg lg:hidden"
+						className="fixed left-3 top-3 z-30 h-9 w-9 bg-card shadow-lg lg:hidden"
 					>
-						<Menu className="h-5 w-5" />
+						<Menu className="h-4 w-4" />
 					</Button>
 					{children}
 				</main>
