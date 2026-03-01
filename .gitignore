@@ -90,6 +90,15 @@ next-env.d.ts
 .next
 out
 
+# PWA / next-pwa generated files (produced by `next build`)
+/public/sw.js
+/public/workbox-*.js
+/public/swe-worker-*.js
+/public/fallback-*.js
+/public/worker-*.js
+/public/sw-*.js
+!/public/sw-extra.js
+
 # Nuxt.js build / generate output
 .nuxt
 dist
@@ -156,3 +165,4 @@ vite.config.ts.timestamp-*
 # vercel
 .vercel
 .cursor/*
+.agents/
