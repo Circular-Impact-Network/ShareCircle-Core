@@ -130,6 +130,7 @@ model User {
   borrowTransactionsAsBorrower BorrowTransaction[]  @relation("Borrower")
   borrowTransactionsAsOwner BorrowTransaction[]     @relation("TransactionOwner")
   notifications           Notification[]
+  pushSubscriptions       PushSubscription[]
 
   @@map("users")
 }
@@ -483,4 +484,22 @@ model Notification {
   @@index([userId, status])
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+model PushSubscription {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  endpoint       String    @unique
+  p256dh         String
+  auth           String
+  expirationTime DateTime? @map("expiration_time")
+  userAgent      String?   @map("user_agent")
+  enabled        Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
+  @@map("push_subscriptions")
 }
