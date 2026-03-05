@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { deleteImage } from '@/lib/supabase';
 
+const ALLOWED_BUCKETS = ['items', 'media'] as const;
+
 // DELETE /api/items/cleanup - Delete an orphaned image (for cancellation)
 export async function DELETE(req: NextRequest) {
 	try {
