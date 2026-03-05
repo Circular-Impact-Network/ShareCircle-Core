@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createNotification } from '@/lib/notifications';
 import { supabaseAdmin } from '@/lib/supabase';
-import { AttachmentType } from '@prisma/client';
+import { AttachmentType, NotificationType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 
 // List/send messages with attachments (IMAGE) and delivery receipts
@@ -195,7 +196,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			include: {
 				participants: {
 					where: { leftAt: null },
-					select: { userId: true },
+					select: { userId: true, mutedUntil: true },
 				},
 			},
 		});
@@ -238,7 +239,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			}
 		}
 
+		const sender = await prisma.user.findUnique({
+			where: { id: userId },
+			select: {
+				name: true,
+			},
+		});
+
 		const recipientIds = conversation.participants.filter(p => p.userId !== userId).map(p => p.userId);
+		const now = new Date();
+		const notificationRecipientIds = conversation.participants
+			.filter(
+				participant =>
+					participant.userId !== userId &&
+					(!participant.mutedUntil || participant.mutedUntil <= now),
+			)
+			.map(participant => participant.userId);
 
 		const createdMessage = await prisma.$transaction(async tx => {
 			const created = await tx.message.create({
@@ -341,6 +357,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			// Log but don't fail the request if broadcast fails
 			console.error('Failed to broadcast message:', broadcastError);
 		}
+
+		const senderDisplayName = sender?.name?.trim() || 'New message';
+		const notificationBody =
+			createdMessage.body ||
+			(createdMessage.attachments.length === 1
+				? 'Sent a photo'
+				: createdMessage.attachments.length > 1
+					? `Sent ${createdMessage.attachments.length} photos`
+					: 'Sent a message');
+
+		await Promise.all(
+			notificationRecipientIds.map(recipientId =>
+				createNotification({
+					userId: recipientId,
+					type: NotificationType.NEW_MESSAGE,
+					entityId: createdMessage.id,
+					title: senderDisplayName,
+					body: notificationBody,
+					metadata: {
+						path: `/messages/${conversation.id}`,
+						conversationId: conversation.id,
+						messageId: createdMessage.id,
+						senderId: userId,
+					},
+				}),
+			),
+		);
 
 		return NextResponse.json(
 			{
