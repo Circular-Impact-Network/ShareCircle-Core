@@ -1,18 +1,25 @@
 'use client';
 
-import { createContext, useContext, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
+import { getBrowserPushPermission, isPushSupported, urlBase64ToUint8Array } from '@/lib/push-client';
 import { notificationsApi } from '@/lib/redux/api/notificationsApi';
 import { borrowApi } from '@/lib/redux/api/borrowApi';
 import { messagesApi } from '@/lib/redux/api/messagesApi';
 import { useAppDispatch } from '@/lib/redux/hooks';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface NotificationsContextType {
-	// Context can be extended if needed
+	pushSupported: boolean;
+	pushConfigured: boolean;
+	pushEnabled: boolean;
+	pushPermission: NotificationPermission | 'unsupported';
+	pushLoading: boolean;
+	enablePushNotifications: () => Promise<void>;
+	disablePushNotifications: () => Promise<void>;
+	refreshPushState: () => Promise<void>;
 }
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null);
