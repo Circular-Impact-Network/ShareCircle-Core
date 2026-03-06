@@ -265,7 +265,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 			if (attachments.length > 0) {
 				await tx.messageAttachment.createMany({
-					data: attachments.map(attachment => ({
+					data: attachments.map((attachment: { type: 'IMAGE'; url: string; path?: string }) => ({
 						messageId: created.id,
 						type: AttachmentType.IMAGE,
 						url: attachment.url,
