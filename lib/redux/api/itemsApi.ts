@@ -261,11 +261,11 @@ export const itemsApi = createApi({
 		}),
 
 		// Cleanup orphaned image (for cancellation)
-		cleanupImage: builder.mutation<{ message: string }, string>({
-			query: imagePath => ({
+		cleanupImage: builder.mutation<{ message: string }, CleanupUploadRequest>({
+			query: body => ({
 				url: '/items/cleanup',
 				method: 'DELETE',
-				body: { imagePath },
+				body,
 			}),
 		}),
 	}),
