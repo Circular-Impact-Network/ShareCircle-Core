@@ -61,6 +61,11 @@ export interface UploadImageResponse {
 	url: string;
 }
 
+export interface CleanupUploadRequest {
+	path: string;
+	bucket: 'items' | 'media';
+}
+
 export interface CreateItemRequest {
 	name: string;
 	description?: string;
