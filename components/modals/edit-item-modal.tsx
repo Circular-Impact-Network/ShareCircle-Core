@@ -1,7 +1,7 @@
 'use client';
 
 // Edit item name, description, categories, tags, main image, extra media, circles
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import {
 	useGetItemQuery,
@@ -45,6 +45,8 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 	const [imagePath, setImagePath] = useState('');
 	const [imageUrl, setImageUrl] = useState('');
 	const [media, setMedia] = useState<MediaEntry[]>([]);
+	const savePhaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [savePhase, setSavePhase] = useState<'idle' | 'validating' | 'saving'>('idle');
 
 	useEffect(() => {
 		if (!item || !open) return;
@@ -162,6 +164,13 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 			.map(value => value.trim())
 			.filter(Boolean);
 
+		if (savePhaseTimeoutRef.current) {
+			clearTimeout(savePhaseTimeoutRef.current);
+			savePhaseTimeoutRef.current = null;
+		}
+		setSavePhase('validating');
+		savePhaseTimeoutRef.current = setTimeout(() => setSavePhase('saving'), 1500);
+
 		try {
 			await updateItem({
 				id: itemId,
@@ -175,15 +184,36 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				circleIds: selectedCircleIds,
 			}).unwrap();
 
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+				savePhaseTimeoutRef.current = null;
+			}
+			setSavePhase('idle');
 			toast({ title: 'Listing updated', description: 'Your changes have been saved.' });
 			onOpenChange(false);
 			onSuccess?.();
 		} catch (error) {
-			const errorMessage =
-				error && typeof error === 'object' && 'data' in error
-					? ((error.data as { error?: string })?.error ?? 'Failed to update listing')
-					: 'Failed to update listing';
-			toast({ title: 'Update failed', description: errorMessage, variant: 'destructive' });
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+				savePhaseTimeoutRef.current = null;
+			}
+			const errData = error && typeof error === 'object' && 'data' in error ? (error.data as { code?: string; message?: string; error?: string; details?: { imageLabel: string; reason: string; detectedItems?: string[] }[] }) : null;
+			if (errData?.code === 'ITEM_MISMATCH') {
+				setSavePhase('validating');
+				setTimeout(() => setSavePhase('idle'), 600);
+				const detailLines = (errData.details ?? []).map(
+					d => `${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
+				);
+				toast({
+					title: errData.message ?? 'Listing does not match photo(s)',
+					description: detailLines.length > 0 ? detailLines.join('\n') : undefined,
+					variant: 'destructive',
+				});
+			} else {
+				setSavePhase('idle');
+				const errorMessage = errData?.error ?? 'Failed to update listing';
+				toast({ title: 'Update failed', description: errorMessage, variant: 'destructive' });
+			}
 		}
 	};
 
@@ -306,9 +336,9 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel
 					</Button>
-					<Button onClick={handleSave} disabled={isUpdating || isUploadingImage || isUploadingMedia || isLoadingItem}>
-						{isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-						Save changes
+					<Button onClick={handleSave} disabled={isUpdating || isUploadingImage || isUploadingMedia || isLoadingItem || savePhase !== 'idle'}>
+						{isUpdating || savePhase !== 'idle' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+						{savePhase === 'validating' ? 'Validating...' : savePhase === 'saving' ? 'Saving...' : 'Save changes'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

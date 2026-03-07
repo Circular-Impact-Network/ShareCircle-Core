@@ -74,6 +74,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		Array<{ path: string; url: string; preview: string; type: string }>
 	>([]);
 	const supportingMediaInputRef = useRef<HTMLInputElement>(null);
+	const savePhaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [savePhase, setSavePhase] = useState<'idle' | 'validating' | 'saving'>('idle');
 
 	// RTK Query mutations
 	const [uploadImage] = useUploadItemImageMutation();
@@ -499,7 +501,12 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			return;
 		}
 
-		setState('saving');
+		if (savePhaseTimeoutRef.current) {
+			clearTimeout(savePhaseTimeoutRef.current);
+			savePhaseTimeoutRef.current = null;
+		}
+		setSavePhase('validating');
+		savePhaseTimeoutRef.current = setTimeout(() => setSavePhase('saving'), 1500);
 
 		try {
 			await createItem({
@@ -513,6 +520,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				circleIds: selectedCircleIds,
 			}).unwrap();
 
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+				savePhaseTimeoutRef.current = null;
+			}
+			setSavePhase('idle');
 			toast({
 				title: 'Item Created!',
 				description: `${name} has been shared with your circles.`,
@@ -522,13 +534,31 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			resetState();
 			onOpenChange(false);
 		} catch (error) {
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+				savePhaseTimeoutRef.current = null;
+			}
 			console.error('Failed to create item:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to create item. Please try again.',
-				variant: 'destructive',
-			});
-			setState('editing');
+			const errData = error && typeof error === 'object' && 'data' in error ? (error.data as { code?: string; message?: string; details?: { imageLabel: string; reason: string; detectedItems?: string[] }[] }) : null;
+			if (errData?.code === 'ITEM_MISMATCH') {
+				setSavePhase('validating');
+				setTimeout(() => setSavePhase('idle'), 600);
+				const detailLines = (errData.details ?? []).map(
+					d => `${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
+				);
+				toast({
+					title: errData.message ?? 'Listing does not match photo(s)',
+					description: detailLines.length > 0 ? detailLines.join('\n') : undefined,
+					variant: 'destructive',
+				});
+			} else {
+				setSavePhase('idle');
+				toast({
+					title: 'Error',
+					description: 'Failed to create item. Please try again.',
+					variant: 'destructive',
+				});
+			}
 		}
 	};
 
@@ -1043,19 +1073,19 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 									resetState();
 								}}
 								className="flex-1"
-								disabled={isSaving}
+								disabled={isSaving || savePhase !== 'idle'}
 							>
 								Re-upload
 							</Button>
 							<Button
 								onClick={handleSave}
 								className="flex-1 gap-2"
-								disabled={!name.trim() || selectedCircleIds.length === 0 || isSaving}
+								disabled={!name.trim() || selectedCircleIds.length === 0 || isSaving || savePhase !== 'idle'}
 							>
-								{isSaving ? (
+								{isSaving || savePhase !== 'idle' ? (
 									<>
 										<Loader2 className="h-4 w-4 animate-spin" />
-										Creating...
+										{savePhase === 'validating' ? 'Validating...' : savePhase === 'saving' ? 'Saving...' : 'Creating...'}
 									</>
 								) : (
 									<>

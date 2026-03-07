@@ -99,6 +99,120 @@ Be lenient - it's better to allow a slightly mismatched description than to reje
 	return result.object;
 }
 
+/** Result of validating listing text against multiple images (e.g. main + supporting). */
+export interface ValidateListingFailure {
+	imageIndex: number;
+	imageLabel: string;
+	reason: string;
+	detectedItems?: string[];
+}
+
+export interface ValidateListingResult {
+	valid: boolean;
+	failures: ValidateListingFailure[];
+}
+
+/** Listing fields used for strict validation (name must match the image). */
+export interface ListingFields {
+	name: string;
+	description?: string | null;
+	categories?: string[];
+	tags?: string[];
+}
+
+/**
+ * Strict validation: check that the listing NAME matches the primary subject of the image.
+ * Used on create/update to block mismatches (e.g. name "Red shoes" but image shows tennis bags).
+ */
+async function validateListingMatchInImage(
+	imageUrl: string,
+	listing: ListingFields,
+): Promise<ItemValidation> {
+	const name = listing.name.trim();
+	const desc = listing.description?.trim() || '';
+	const cats = (listing.categories ?? []).join(', ');
+	const tagsList = (listing.tags ?? []).join(', ');
+
+	const result = await generateObject({
+		model: google('gemini-2.5-flash'),
+		schema: itemValidationSchema,
+		messages: [
+			{
+				role: 'user',
+				content: [
+					{ type: 'image', image: imageUrl },
+					{
+						type: 'text',
+						text: `An item listing has been entered with the following:
+
+NAME (required to match): "${name}"
+DESCRIPTION: ${desc || '(none)'}
+CATEGORIES: ${cats || '(none)'}
+TAGS: ${tagsList || '(none)'}
+
+Your task: Decide whether the image shows THE SAME item as described by this listing.
+
+STRICT RULES:
+1. The NAME is the primary identifier. The main subject of the image must match what the NAME describes.
+2. If the name describes something clearly different from what is in the image (e.g. name says "Red shoes" but the image shows tennis bags, or name says "Drill" but image shows a book), return isValid: false.
+3. Description/categories/tags can support the match but cannot override a name mismatch. If the name does not match the image, return isValid: false.
+4. Only return isValid: true if the image shows an item that matches the NAME (and description/tags are consistent).
+
+Return:
+- isValid: true only if the image's primary subject matches the listing NAME
+- reason: brief explanation (e.g. "Name describes shoes but image shows tennis bags")
+- detectedItems: list of main items you see in the image
+
+Be strict: reject clear mismatches between the listing name and the image content.`,
+					},
+				],
+			},
+		],
+	});
+
+	return result.object;
+}
+
+/**
+ * Validate that listing (name, description, categories, tags) matches all given images.
+ * Uses strict name-based check: the NAME must match the primary subject of each image.
+ * @param imageEntries - Array of { url, label } for main image and supporting media
+ * @param listing - Listing fields (name required; description, categories, tags optional)
+ * @returns Result with valid: false and failures list if any image does not match
+ */
+export async function validateListingAgainstImages(
+	imageEntries: { url: string; label: string }[],
+	listing: ListingFields,
+): Promise<ValidateListingResult> {
+	const failures: ValidateListingFailure[] = [];
+
+	for (let i = 0; i < imageEntries.length; i++) {
+		const { url, label } = imageEntries[i];
+		try {
+			const validation = await validateListingMatchInImage(url, listing);
+			if (!validation.isValid) {
+				failures.push({
+					imageIndex: i,
+					imageLabel: label,
+					reason: validation.reason,
+					detectedItems: validation.detectedItems,
+				});
+			}
+		} catch (err) {
+			failures.push({
+				imageIndex: i,
+				imageLabel: label,
+				reason: err instanceof Error ? err.message : 'Could not validate this media (may be video or unsupported format).',
+			});
+		}
+	}
+
+	return {
+		valid: failures.length === 0,
+		failures,
+	};
+}
+
 /**
  * Analyze an item image using Google Gemini Vision
  * @param imageUrl - The URL of the image to analyze

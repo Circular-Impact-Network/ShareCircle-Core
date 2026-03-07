@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
-import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
+import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 
 // GET/PATCH/DELETE with multi-circle and media paths
 
@@ -180,27 +180,67 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			}
 		}
 
+		// Validate listing text against main image and supporting media before updating
+		const currentItem = await prisma.item.findUnique({
+			where: { id },
+			select: { name: true, description: true, categories: true, tags: true },
+		});
+		const finalName = name !== undefined ? name.trim() : (currentItem?.name ?? '');
+		const finalDescription = description !== undefined ? description?.trim() ?? null : (currentItem?.description ?? null);
+		const finalCategories = categories !== undefined ? categories : (currentItem?.categories ?? []);
+		const finalTags = tags !== undefined ? tags : (currentItem?.tags ?? []);
+		const combinedText = buildEnrichedText({
+			name: finalName,
+			description: finalDescription,
+			categories: finalCategories,
+			tags: finalTags,
+		});
+		const imageEntries: { url: string; label: string }[] = [];
+		const mainImageUrl =
+			typeof imageUrl === 'string' && imageUrl
+				? imageUrl
+				: await getSignedUrl(item.imagePath, 'items');
+		imageEntries.push({ url: mainImageUrl, label: 'Main image' });
+		const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : (item.mediaPaths ?? []);
+		for (let i = 0; i < mediaPathsList.length; i++) {
+			try {
+				const url = await getSignedUrl(mediaPathsList[i], 'media');
+				imageEntries.push({ url, label: `Additional photo ${i + 1}` });
+			} catch {
+				// Skip if we can't get URL
+			}
+		}
+		const validation = await validateListingAgainstImages(imageEntries, {
+			name: finalName,
+			description: finalDescription,
+			categories: finalCategories,
+			tags: finalTags,
+		});
+		if (!validation.valid) {
+			return NextResponse.json(
+				{
+					error: 'Listing does not match photo(s)',
+					code: 'ITEM_MISMATCH',
+					message: 'Your description does not match one or more photos. Please update the text or photos.',
+					details: validation.failures.map(f => ({
+						imageLabel: f.imageLabel,
+						reason: f.reason,
+						detectedItems: f.detectedItems,
+					})),
+				},
+				{ status: 422 },
+			);
+		}
+
 		// Regenerate embedding if image or any text metadata changed
 		// Embedding combines image + text metadata (name, description, categories, tags)
 		let embedding: number[] | null = null;
 		const imageChanged = imagePath && imagePath !== item.imagePath;
 		const metadataChanged = name !== undefined || description !== undefined || categories !== undefined || tags !== undefined;
 		if (imageChanged || metadataChanged) {
-			// Resolve the image URL to use (new image or existing)
 			const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
 			try {
-				// We need to fetch the current item to merge with new values
-				const currentItem = await prisma.item.findUnique({
-					where: { id },
-					select: { name: true, description: true, categories: true, tags: true },
-				});
-				const enrichedText = buildEnrichedText({
-					name: (name !== undefined ? name.trim() : currentItem?.name) || '',
-					description: description !== undefined ? description?.trim() || null : currentItem?.description,
-					categories: categories !== undefined ? categories : currentItem?.categories || [],
-					tags: tags !== undefined ? tags : currentItem?.tags || [],
-				});
-				embedding = await generateDocumentEmbedding(embeddingImageUrl, enrichedText);
+				embedding = await generateDocumentEmbedding(embeddingImageUrl, combinedText);
 			} catch (embeddingError) {
 				console.error('Failed to generate embedding:', embeddingError);
 			}

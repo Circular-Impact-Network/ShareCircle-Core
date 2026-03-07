@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
-import { generateDocumentEmbedding, buildEnrichedText } from '@/lib/ai';
+import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 
 // List and create items with mediaPaths and signed media URLs
 
@@ -223,6 +223,44 @@ export async function POST(req: NextRequest) {
 
 		if (invalidCircles.length > 0) {
 			return NextResponse.json({ error: 'You are not a member of some selected circles' }, { status: 403 });
+		}
+
+		// Validate listing (name must match image) against main image and supporting media
+		const imageEntries: { url: string; label: string }[] = [];
+		if (imageUrl && typeof imageUrl === 'string') {
+			imageEntries.push({ url: imageUrl, label: 'Main image' });
+		}
+		const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : [];
+		for (let i = 0; i < mediaPathsList.length; i++) {
+			try {
+				const url = await getSignedUrl(mediaPathsList[i], 'media');
+				imageEntries.push({ url, label: `Additional photo ${i + 1}` });
+			} catch {
+				// Skip if we can't get URL (e.g. invalid path)
+			}
+		}
+		if (imageEntries.length > 0) {
+			const validation = await validateListingAgainstImages(imageEntries, {
+				name: name.trim(),
+				description: description?.trim() || null,
+				categories: categories || [],
+				tags: tags || [],
+			});
+			if (!validation.valid) {
+				return NextResponse.json(
+					{
+						error: 'Listing does not match photo(s)',
+						code: 'ITEM_MISMATCH',
+						message: 'Your description does not match one or more photos. Please update the text or photos.',
+						details: validation.failures.map(f => ({
+							imageLabel: f.imageLabel,
+							reason: f.reason,
+							detectedItems: f.detectedItems,
+						})),
+					},
+					{ status: 422 },
+				);
+			}
 		}
 
 		// Create item with circle associations in a transaction (NO BLOCKING EMBEDDING)
