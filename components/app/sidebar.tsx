@@ -50,6 +50,9 @@ export function Sidebar() {
 	const totalMessageUnread = messagesData?.unreadCount || 0;
 
 	const handleLogout = async () => {
+		if (typeof navigator !== 'undefined' && navigator.serviceWorker.controller) {
+			navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_RUNTIME_CACHES' });
+		}
 		await signOut({ callbackUrl: '/landing' });
 	};
 
