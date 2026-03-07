@@ -26,9 +26,11 @@ import {
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { useNotificationsContext } from '@/components/providers/notifications-provider';
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
+	const notifications = useNotificationsContext();
 	const [activeTab, setActiveTab] = useState('profile');
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
