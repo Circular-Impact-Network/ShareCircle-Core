@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from '@/components/ui/toaster';
 import { Provider as ReduxProvider } from 'react-redux';
+import { PWAProvider } from '@/components/pwa/pwa-provider';
 import { store } from '@/lib/redux';
 
 type ThemeContextType = {
@@ -49,6 +50,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 			<SessionProvider>
 				<ThemeContext.Provider value={{ theme, toggleTheme }}>
 					{children}
+					<PWAProvider />
 					<Toaster />
 				</ThemeContext.Provider>
 			</SessionProvider>
