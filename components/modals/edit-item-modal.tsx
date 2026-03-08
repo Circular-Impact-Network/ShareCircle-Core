@@ -1,9 +1,9 @@
 'use client';
 
-// Edit item name, description, categories, tags, main image, extra media, circles
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, Loader2, Plus, Upload, X } from 'lucide-react';
 import {
+	useCleanupImageMutation,
 	useGetItemQuery,
 	useUpdateItemMutation,
 	useUploadItemImageMutation,
