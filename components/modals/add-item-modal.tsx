@@ -12,6 +12,7 @@ import { Dropzone } from '@/components/ui/dropzone';
 import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
 	useUploadItemImageMutation,
 	useUploadMediaMutation,
