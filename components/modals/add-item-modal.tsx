@@ -12,6 +12,7 @@ import { Dropzone } from '@/components/ui/dropzone';
 import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
 	useUploadItemImageMutation,
 	useUploadMediaMutation,
@@ -21,6 +22,12 @@ import {
 	useCleanupImageMutation,
 	type DetectedItem,
 } from '@/lib/redux/api/itemsApi';
+import {
+	MAX_MEDIA_ATTACHMENTS,
+	MAX_UPLOAD_SIZE_BYTES,
+	getUploadValidationError,
+	prepareImageForUpload,
+} from '@/lib/media';
 
 type ModalState = 'capture' | 'uploading' | 'detecting' | 'selecting' | 'analyzing' | 'editing' | 'saving';
 
@@ -41,6 +48,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const { toast } = useToast();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const cameraInputRef = useRef<HTMLInputElement>(null);
+	const supportingMediaRef = useRef<Array<{ path: string; url: string; preview: string; type: string }>>([]);
 
 	// State
 	const [state, setState] = useState<ModalState>('capture');
@@ -48,6 +56,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [imagePath, setImagePath] = useState<string | null>(null);
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const isDesktop = useMediaQuery('(min-width: 768px)');
+	const isOnline = useOnlineStatus();
 
 	// Option 1 & 2 flow states
 	const [manualMode, setManualMode] = useState(false); // Toggle for Option 1 vs Option 2
@@ -84,6 +93,41 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [detectItems] = useDetectItemsMutation();
 	const [createItem, { isLoading: isSaving }] = useCreateItemMutation();
 	const [cleanupImage] = useCleanupImageMutation();
+
+	const revokePreviewUrl = useCallback((preview: string) => {
+		if (preview.startsWith('blob:')) {
+			URL.revokeObjectURL(preview);
+		}
+	}, []);
+
+	const clearSupportingMedia = useCallback(
+		(entries: Array<{ path: string; url: string; preview: string; type: string }>) => {
+			entries.forEach(entry => revokePreviewUrl(entry.preview));
+		},
+		[revokePreviewUrl],
+	);
+
+	const cleanupTemporaryUploads = useCallback(async () => {
+		const cleanupTasks: Promise<unknown>[] = [];
+
+		if (imagePath) {
+			cleanupTasks.push(
+				cleanupImage({ path: imagePath, bucket: 'items' }).catch(error => {
+					console.error('Failed to cleanup image:', error);
+				}),
+			);
+		}
+
+		for (const media of supportingMediaRef.current) {
+			cleanupTasks.push(
+				cleanupImage({ path: media.path, bucket: 'media' }).catch(error => {
+					console.error('Failed to cleanup media:', error);
+				}),
+			);
+		}
+
+		await Promise.all(cleanupTasks);
+	}, [cleanupImage, imagePath]);
 
 	// Fetch circles when modal opens
 	useEffect(() => {
@@ -133,22 +177,34 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setTags([]);
 		setTagInput('');
 		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
-		setSupportingMedia([]);
+		setSupportingMedia(prev => {
+			clearSupportingMedia(prev);
+			return [];
+		});
 		// Reset Option 1 & 2 states
 		setUserHint('');
 		setDetectedItems([]);
 		setSelectedItemName(null);
 		setManualItemName('');
-	}, [currentCircleId]);
+	}, [clearSupportingMedia, currentCircleId]);
+
+	useEffect(() => {
+		supportingMediaRef.current = supportingMedia;
+	}, [supportingMedia]);
+
+	useEffect(() => {
+		return () => {
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+			}
+			clearSupportingMedia(supportingMediaRef.current);
+		};
+	}, [clearSupportingMedia]);
 
 	// Handle modal close - cleanup uploaded image if not saved
 	const handleClose = async () => {
-		if (imagePath && state !== 'saving') {
-			try {
-				await cleanupImage(imagePath);
-			} catch (error) {
-				console.error('Failed to cleanup image:', error);
-			}
+		if (state !== 'saving') {
+			await cleanupTemporaryUploads();
 		}
 		resetState();
 		onOpenChange(false);
@@ -156,12 +212,42 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	const handleFile = async (file: File) => {
 		if (!file) return;
+		if (!isOnline) {
+			toast({
+				title: 'Connection required',
+				description: 'You need an internet connection to upload listing photos.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		const typeError = getUploadValidationError(file, { maxSizeBytes: Number.MAX_SAFE_INTEGER });
+		if (typeError) {
+			toast({
+				title: 'Unsupported image',
+				description: typeError,
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		const preparedFile = await prepareImageForUpload(file);
+		const validationError = getUploadValidationError(preparedFile);
+		if (validationError) {
+			toast({
+				title: 'Image too large',
+				description: validationError,
+				variant: 'destructive',
+			});
+			return;
+		}
+
 		const reader = new FileReader();
 		reader.onload = e => {
 			setImagePreview(e.target?.result as string);
 		};
-		reader.readAsDataURL(file);
-		await uploadAndProcess(file);
+		reader.readAsDataURL(preparedFile);
+		await uploadAndProcess(preparedFile);
 	};
 
 	// File upload handler
@@ -224,6 +310,9 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 							}, 500);
 						}
 						// Go back to capture state so user can try again with different description
+						await cleanupImage({ path: uploadResult.path, bucket: 'items' }).catch(cleanupError => {
+							console.error('Failed to cleanup rejected image:', cleanupError);
+						});
 						setState('capture');
 						setImagePreview(null);
 						setImagePath(null);
@@ -428,25 +517,22 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	// Handle supporting media upload
 	const handleSupportingMediaUpload = async (files: FileList | null) => {
 		if (!files || files.length === 0) return;
-
-		const filesArray = Array.from(files);
-		const totalFiles = supportingMedia.length + filesArray.length;
-
-		if (totalFiles > 5) {
+		if (!isOnline) {
 			toast({
-				title: 'Too Many Files',
-				description: 'You can upload a maximum of 5 supporting media files.',
+				title: 'Connection required',
+				description: 'Supporting media uploads need an internet connection.',
 				variant: 'destructive',
 			});
 			return;
 		}
 
-		const maxSize = 5 * 1024 * 1024; // 5MB
-		const oversizedFiles = filesArray.filter(file => file.size > maxSize);
-		if (oversizedFiles.length > 0) {
+		const filesArray = Array.from(files);
+		const totalFiles = supportingMedia.length + filesArray.length;
+
+		if (totalFiles > MAX_MEDIA_ATTACHMENTS) {
 			toast({
-				title: 'File Too Large',
-				description: 'Each file must be less than 5MB.',
+				title: 'Too Many Files',
+				description: `You can upload a maximum of ${MAX_MEDIA_ATTACHMENTS} supporting media files.`,
 				variant: 'destructive',
 			});
 			return;
@@ -454,8 +540,34 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 		for (const file of filesArray) {
 			try {
-				const uploadResult = await uploadMedia(file).unwrap();
-				const preview = file.type.startsWith('video/') ? URL.createObjectURL(file) : URL.createObjectURL(file);
+				const typeError = getUploadValidationError(file, {
+					allowVideo: true,
+					maxSizeBytes: file.type.startsWith('image/') ? Number.MAX_SAFE_INTEGER : MAX_UPLOAD_SIZE_BYTES,
+				});
+				if (typeError) {
+					toast({
+						title: 'Unsupported media',
+						description: typeError,
+						variant: 'destructive',
+					});
+					continue;
+				}
+
+				const preparedFile = file.type.startsWith('image/')
+					? await prepareImageForUpload(file)
+					: file;
+				const validationError = getUploadValidationError(preparedFile, { allowVideo: true });
+				if (validationError) {
+					toast({
+						title: 'File too large',
+						description: validationError,
+						variant: 'destructive',
+					});
+					continue;
+				}
+
+				const uploadResult = await uploadMedia(preparedFile).unwrap();
+				const preview = URL.createObjectURL(preparedFile);
 
 				setSupportingMedia(prev => [
 					...prev,
@@ -463,7 +575,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						path: uploadResult.path,
 						url: uploadResult.url,
 						preview,
-						type: file.type,
+						type: preparedFile.type,
 					},
 				]);
 			} catch (error) {
@@ -482,10 +594,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		const media = supportingMedia[index];
 		if (media) {
 			try {
-				await cleanupImage(media.path);
+				await cleanupImage({ path: media.path, bucket: 'media' });
 			} catch (error) {
 				console.error('Failed to cleanup media:', error);
 			}
+			revokePreviewUrl(media.preview);
 			setSupportingMedia(prev => prev.filter((_, i) => i !== index));
 		}
 	};
@@ -612,6 +725,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 					{/* Capture State */}
 					{state === 'capture' && (
 						<div className="space-y-4">
+							{!isOnline && (
+								<div className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100">
+									You&apos;re offline. Reconnect before uploading listing photos or supporting media.
+								</div>
+							)}
 							{/* Option 1: Optional Text Input (when manualMode is ON) */}
 							{manualMode && (
 								<div className="space-y-2">
@@ -638,7 +756,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 							<input
 								ref={fileInputRef}
 								type="file"
-								accept="image/jpeg,image/png,image/gif,image/webp"
+									accept="image/*"
 								onChange={handleFileSelect}
 								className="hidden"
 							/>
@@ -1065,11 +1183,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 						<div className="flex gap-3">
 							<Button
 								variant="outline"
-								onClick={() => {
-									if (imagePath) cleanupImage(imagePath);
-									supportingMedia.forEach(media => {
-										cleanupImage(media.path).catch(console.error);
-									});
+								onClick={async () => {
+									await cleanupTemporaryUploads();
 									resetState();
 								}}
 								className="flex-1"

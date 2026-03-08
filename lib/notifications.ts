@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { sendPushToUser } from '@/lib/push';
 import { NotificationType, NotificationStatus, Prisma } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 
@@ -76,6 +77,22 @@ export async function createNotification({
 			console.error('Failed to broadcast notification:', error);
 		}
 	}
+
+	const targetPath =
+		metadata && typeof metadata.path === 'string' ? metadata.path : '/notifications';
+
+	await sendPushToUser(userId, {
+		title: notification.title,
+		body: notification.body,
+		url: targetPath,
+		tag: notification.type,
+		data: {
+			notificationId: notification.id,
+			type: notification.type,
+			entityId: notification.entityId,
+			path: targetPath,
+		},
+	});
 
 	return notification;
 }

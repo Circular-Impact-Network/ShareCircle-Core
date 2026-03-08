@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 import { ThemeProvider } from './providers';
@@ -32,8 +32,32 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-display' });
 
 export const metadata: Metadata = {
+	applicationName: 'ShareCircle',
 	title: 'ShareCircle - Share Items with Your Community',
 	description: 'Share, lend, and borrow items with trusted circles',
+	manifest: '/manifest.webmanifest',
+	appleWebApp: {
+		capable: true,
+		statusBarStyle: 'default',
+		title: 'ShareCircle',
+	},
+	formatDetection: {
+		telephone: false,
+	},
+	icons: {
+		icon: '/icon',
+		apple: '/apple-icon',
+	},
+};
+
+export const viewport: Viewport = {
+	width: 'device-width',
+	initialScale: 1,
+	viewportFit: 'cover',
+	themeColor: [
+		{ media: '(prefers-color-scheme: light)', color: '#eff6ff' },
+		{ media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+	],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

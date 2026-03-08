@@ -26,9 +26,11 @@ import {
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
+import { useNotificationsContext } from '@/components/providers/notifications-provider';
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
+	const notifications = useNotificationsContext();
 	const [activeTab, setActiveTab] = useState('profile');
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -419,6 +421,16 @@ export function SettingsPage() {
 			.slice(0, 2);
 	};
 
+	const notificationDescription = !notifications?.pushSupported
+		? 'Install the app in a supported browser to enable push notifications.'
+		: !notifications.pushConfigured
+			? 'Push notifications are not configured yet.'
+			: notifications.pushEnabled
+				? 'Background push notifications are enabled for this device.'
+				: notifications.pushPermission === 'denied'
+					? 'Notification permission is blocked in this browser.'
+					: 'Receive updates about messages, requests, and item activity.';
+
 	return (
 		<PageShell className="max-w-5xl space-y-8">
 			<PageHeader title="Settings" description="Manage your account settings and preferences." />
@@ -648,10 +660,26 @@ export function SettingsPage() {
 										Notifications
 									</div>
 									<div className="text-sm text-muted-foreground">
-										Receive updates about your circles and items
+										{notificationDescription}
 									</div>
 								</div>
-								<Switch defaultChecked data-testid="notification-toggle" />
+								<Switch
+									checked={Boolean(notifications?.pushEnabled)}
+									disabled={
+										!notifications?.pushSupported ||
+										!notifications.pushConfigured ||
+										notifications.pushLoading
+									}
+									data-testid="notification-toggle"
+									onCheckedChange={checked => {
+										if (!notifications) return;
+										if (checked) {
+											void notifications.enablePushNotifications();
+											return;
+										}
+										void notifications.disablePushNotifications();
+									}}
+								/>
 							</div>
 						</CardContent>
 					</Card>

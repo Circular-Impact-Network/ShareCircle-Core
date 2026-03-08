@@ -1,9 +1,9 @@
 'use client';
 
-// Edit item name, description, categories, tags, main image, extra media, circles
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, Loader2, Plus, Upload, X } from 'lucide-react';
 import {
+	useCleanupImageMutation,
 	useGetItemQuery,
 	useUpdateItemMutation,
 	useUploadItemImageMutation,
@@ -16,6 +16,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import {
+	MAX_MEDIA_ATTACHMENTS,
+	MAX_UPLOAD_SIZE_BYTES,
+	getUploadValidationError,
+	prepareImageForUpload,
+} from '@/lib/media';
 
 type EditItemModalProps = {
 	itemId: string | null;
@@ -36,6 +44,15 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 	const [updateItem, { isLoading: isUpdating }] = useUpdateItemMutation();
 	const [uploadItemImage, { isLoading: isUploadingImage }] = useUploadItemImageMutation();
 	const [uploadMedia, { isLoading: isUploadingMedia }] = useUploadMediaMutation();
+	const [cleanupImage] = useCleanupImageMutation();
+	const isDesktop = useMediaQuery('(min-width: 768px)');
+	const isOnline = useOnlineStatus();
+	const mainImageFileInputRef = useRef<HTMLInputElement>(null);
+	const mainImageCameraInputRef = useRef<HTMLInputElement>(null);
+	const mediaFileInputRef = useRef<HTMLInputElement>(null);
+	const mediaCameraInputRef = useRef<HTMLInputElement>(null);
+	const initialImagePathRef = useRef('');
+	const initialMediaPathsRef = useRef<string[]>([]);
 
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
@@ -66,12 +83,46 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				url: existingMediaUrls[index] || '',
 			})),
 		);
+		initialImagePathRef.current = item.imagePath;
+		initialMediaPathsRef.current = existingMediaPaths;
 	}, [item, open]);
+
+	useEffect(() => {
+		return () => {
+			if (savePhaseTimeoutRef.current) {
+				clearTimeout(savePhaseTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const allCirclesSelected = useMemo(
 		() => circles.length > 0 && selectedCircleIds.length === circles.length,
 		[circles.length, selectedCircleIds.length],
 	);
+
+	const cleanupTemporaryUploads = useCallback(async () => {
+		const cleanupTasks: Promise<unknown>[] = [];
+
+		if (imagePath && imagePath !== initialImagePathRef.current) {
+			cleanupTasks.push(
+				cleanupImage({ path: imagePath, bucket: 'items' }).catch(error => {
+					console.error('Failed to cleanup replaced image:', error);
+				}),
+			);
+		}
+
+		for (const entry of media) {
+			if (!initialMediaPathsRef.current.includes(entry.path)) {
+				cleanupTasks.push(
+					cleanupImage({ path: entry.path, bucket: 'media' }).catch(error => {
+						console.error('Failed to cleanup added media:', error);
+					}),
+				);
+			}
+		}
+
+		await Promise.all(cleanupTasks);
+	}, [cleanupImage, imagePath, media]);
 
 	const toggleCircle = (circleId: string) => {
 		setSelectedCircleIds(prev =>
@@ -87,33 +138,96 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 		setSelectedCircleIds(circles.map(circle => circle.id));
 	};
 
-	const handleMainImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
+	const prepareImageFile = async (file: File, allowVideo = false) => {
 		if (!file) return;
 
+		const typeError = getUploadValidationError(file, {
+			allowVideo,
+			maxSizeBytes: file.type.startsWith('image/') ? Number.MAX_SAFE_INTEGER : MAX_UPLOAD_SIZE_BYTES,
+		});
+		if (typeError) {
+			toast({
+				title: 'Unsupported media',
+				description: typeError,
+				variant: 'destructive',
+			});
+			return null;
+		}
+
+		const preparedFile = file.type.startsWith('image/')
+			? await prepareImageForUpload(file)
+			: file;
+		const validationError = getUploadValidationError(preparedFile, { allowVideo });
+		if (validationError) {
+			toast({
+				title: 'File too large',
+				description: validationError,
+				variant: 'destructive',
+			});
+			return null;
+		}
+
+		return preparedFile;
+	};
+
+	const handleMainImageFile = async (file: File) => {
+		if (!isOnline) {
+			toast({
+				title: 'Connection required',
+				description: 'You need to be online to replace the main image.',
+				variant: 'destructive',
+			});
+			return;
+		}
+
+		const preparedFile = await prepareImageFile(file);
+		if (!preparedFile) return;
+
 		try {
-			const uploaded = await uploadItemImage(file).unwrap();
+			const previousImagePath = imagePath;
+			const uploaded = await uploadItemImage(preparedFile).unwrap();
 			setImagePath(uploaded.path);
 			setImageUrl(uploaded.url);
+
+			if (previousImagePath && previousImagePath !== initialImagePathRef.current) {
+				await cleanupImage({ path: previousImagePath, bucket: 'items' }).catch(error => {
+					console.error('Failed to cleanup previous replacement image:', error);
+				});
+			}
 		} catch {
 			toast({
 				title: 'Upload failed',
 				description: 'Could not upload item image.',
 				variant: 'destructive',
 			});
-		} finally {
-			event.target.value = '';
 		}
+	};
+
+	const handleMainImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		if (file) {
+			await handleMainImageFile(file);
+		}
+		event.target.value = '';
 	};
 
 	const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(event.target.files || []);
 		if (files.length === 0) return;
+		if (!isOnline) {
+			toast({
+				title: 'Connection required',
+				description: 'You need to be online to upload additional media.',
+				variant: 'destructive',
+			});
+			event.target.value = '';
+			return;
+		}
 
-		if (media.length + files.length > 5) {
+		if (media.length + files.length > MAX_MEDIA_ATTACHMENTS) {
 			toast({
 				title: 'Too many files',
-				description: 'You can upload up to 5 additional media files.',
+				description: `You can upload up to ${MAX_MEDIA_ATTACHMENTS} additional media files.`,
 				variant: 'destructive',
 			});
 			event.target.value = '';
@@ -121,13 +235,28 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 		}
 
 		try {
-			const uploads = await Promise.all(files.map(file => uploadMedia(file).unwrap()));
-			setMedia(prev => [
-				...prev,
-				...uploads.map(upload => ({
+			const uploads: MediaEntry[] = [];
+			for (const file of files) {
+				const preparedFile = await prepareImageFile(file, true);
+				if (!preparedFile) {
+					continue;
+				}
+
+				const upload = await uploadMedia(preparedFile).unwrap();
+				uploads.push({
 					path: upload.path,
 					url: upload.url,
-				})),
+				});
+			}
+
+			if (uploads.length === 0) {
+				event.target.value = '';
+				return;
+			}
+
+			setMedia(prev => [
+				...prev,
+				...uploads,
 			]);
 		} catch {
 			toast({
@@ -138,6 +267,21 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 		} finally {
 			event.target.value = '';
 		}
+	};
+
+	const removeMediaEntry = async (entry: MediaEntry) => {
+		if (!initialMediaPathsRef.current.includes(entry.path)) {
+			await cleanupImage({ path: entry.path, bucket: 'media' }).catch(error => {
+				console.error('Failed to cleanup added media:', error);
+			});
+		}
+
+		setMedia(prev => prev.filter(existing => existing.path !== entry.path));
+	};
+
+	const handleCancel = async () => {
+		await cleanupTemporaryUploads();
+		onOpenChange(false);
 	};
 
 	const handleSave = async () => {
@@ -218,7 +362,16 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={nextOpen => {
+				if (!nextOpen) {
+					void handleCancel();
+					return;
+				}
+				onOpenChange(nextOpen);
+			}}
+		>
 			<DialogContent className="max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Edit Listing</DialogTitle>
@@ -231,6 +384,11 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 					</div>
 				) : (
 					<div className="space-y-4">
+						{!isOnline && (
+							<div className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100">
+								You&apos;re offline. Edits to images or media need a connection before they can be saved.
+							</div>
+						)}
 						<div className="space-y-2">
 							<Label htmlFor="edit-name">Item name</Label>
 							<Input id="edit-name" value={name} onChange={event => setName(event.target.value)} />
@@ -269,13 +427,51 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 						<div className="space-y-2">
 							<Label>Main image</Label>
 							{imageUrl ? (
-								<img src={imageUrl} alt={name || 'Item image'} className="h-40 w-full rounded-md object-contain bg-muted" />
+								<img
+									src={imageUrl}
+									alt={name || 'Item image'}
+									className="h-40 w-full rounded-md object-contain bg-muted"
+								/>
 							) : null}
-							<label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
-								<Upload className="h-4 w-4" />
-								{isUploadingImage ? 'Uploading...' : 'Replace main image'}
-								<input type="file" accept="image/*" className="hidden" onChange={handleMainImageUpload} />
-							</label>
+							<input
+								ref={mainImageFileInputRef}
+								type="file"
+								accept="image/*"
+								className="hidden"
+								onChange={handleMainImageUpload}
+							/>
+							<input
+								ref={mainImageCameraInputRef}
+								type="file"
+								accept="image/*"
+								capture="environment"
+								className="hidden"
+								onChange={handleMainImageUpload}
+							/>
+							<div className="flex flex-col gap-2 sm:flex-row">
+								<Button
+									type="button"
+									variant="outline"
+									className="gap-2"
+									disabled={isUploadingImage}
+									onClick={() => mainImageFileInputRef.current?.click()}
+								>
+									<Upload className="h-4 w-4" />
+									{isUploadingImage ? 'Uploading...' : 'Choose photo'}
+								</Button>
+								{!isDesktop && (
+									<Button
+										type="button"
+										variant="outline"
+										className="gap-2"
+										disabled={isUploadingImage}
+										onClick={() => mainImageCameraInputRef.current?.click()}
+									>
+										<Camera className="h-4 w-4" />
+										Take photo
+									</Button>
+								)}
+							</div>
 						</div>
 
 						<div className="space-y-2">
@@ -283,24 +479,74 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 							<div className="grid grid-cols-2 gap-2">
 								{media.map(entry => (
 									<div key={entry.path} className="relative rounded-md border p-1">
-										<img src={entry.url} alt="Additional media" className="h-24 w-full rounded object-cover" />
+										{entry.url.match(/\.(mp4|webm|mov)(\?|$)/i) ? (
+											<video
+												src={entry.url}
+												className="h-24 w-full rounded object-cover"
+												muted
+												playsInline
+											/>
+										) : (
+											<img
+												src={entry.url}
+												alt="Additional media"
+												className="h-24 w-full rounded object-cover"
+											/>
+										)}
 										<Button
 											variant="destructive"
 											size="icon"
 											className="absolute right-1 top-1 h-6 w-6"
-											onClick={() => setMedia(prev => prev.filter(existing => existing.path !== entry.path))}
+											onClick={() => void removeMediaEntry(entry)}
 										>
 											<X className="h-3 w-3" />
 										</Button>
 									</div>
 								))}
 							</div>
-							{media.length < 5 && (
-								<label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
-									<Upload className="h-4 w-4" />
-									{isUploadingMedia ? 'Uploading...' : 'Add media'}
-									<input type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaUpload} />
-								</label>
+							{media.length < MAX_MEDIA_ATTACHMENTS && (
+								<>
+									<input
+										ref={mediaFileInputRef}
+										type="file"
+										accept="image/*,video/*"
+										multiple
+										className="hidden"
+										onChange={handleMediaUpload}
+									/>
+									<input
+										ref={mediaCameraInputRef}
+										type="file"
+										accept="image/*"
+										capture="environment"
+										className="hidden"
+										onChange={handleMediaUpload}
+									/>
+									<div className="flex flex-col gap-2 sm:flex-row">
+										<Button
+											type="button"
+											variant="outline"
+											className="gap-2"
+											disabled={isUploadingMedia}
+											onClick={() => mediaFileInputRef.current?.click()}
+										>
+											<Plus className="h-4 w-4" />
+											{isUploadingMedia ? 'Uploading...' : 'Add media'}
+										</Button>
+										{!isDesktop && (
+											<Button
+												type="button"
+												variant="outline"
+												className="gap-2"
+												disabled={isUploadingMedia}
+												onClick={() => mediaCameraInputRef.current?.click()}
+											>
+												<Camera className="h-4 w-4" />
+												Take photo
+											</Button>
+										)}
+									</div>
+								</>
 							)}
 						</div>
 
@@ -333,7 +579,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				)}
 
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Button variant="outline" onClick={() => void handleCancel()}>
 						Cancel
 					</Button>
 					<Button onClick={handleSave} disabled={isUpdating || isUploadingImage || isUploadingMedia || isLoadingItem || savePhase !== 'idle'}>

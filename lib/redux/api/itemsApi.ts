@@ -61,6 +61,11 @@ export interface UploadImageResponse {
 	url: string;
 }
 
+export interface CleanupUploadRequest {
+	path: string;
+	bucket: 'items' | 'media';
+}
+
 export interface CreateItemRequest {
 	name: string;
 	description?: string;
@@ -256,11 +261,11 @@ export const itemsApi = createApi({
 		}),
 
 		// Cleanup orphaned image (for cancellation)
-		cleanupImage: builder.mutation<{ message: string }, string>({
-			query: imagePath => ({
+		cleanupImage: builder.mutation<{ message: string }, CleanupUploadRequest>({
+			query: body => ({
 				url: '/items/cleanup',
 				method: 'DELETE',
-				body: { imagePath },
+				body,
 			}),
 		}),
 	}),
