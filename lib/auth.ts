@@ -6,6 +6,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
 import { RATE_LIMITS } from './rate-limit';
 import { getOtpIdentifier, hashOtp, normalizeEmail, timingSafeEqualHex } from './otp';
+import { isSupportedPhoneCountry, validatePhoneByCountry } from './phone';
 
 // Simple in-memory rate limit check for auth (can't use request headers in authorize)
 const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -48,6 +49,7 @@ export const authOptions: NextAuthOptions = {
 				email: { label: 'Email', type: 'email' },
 				password: { label: 'Password', type: 'password' },
 				phone: { label: 'Phone', type: 'text' },
+				country: { label: 'Country', type: 'text' },
 				code: { label: 'Code', type: 'text' }, // For OTP if we implement it later
 			},
 			async authorize(credentials) {
@@ -114,7 +116,7 @@ export const authOptions: NextAuthOptions = {
 
 					return {
 						id: user.id,
-						email: user.email,
+						email: user.email || undefined,
 						name: user.name,
 						image: user.image,
 					};
@@ -122,9 +124,10 @@ export const authOptions: NextAuthOptions = {
 
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
+					const normalizedEmail = normalizeEmail(credentials.email);
 					const user = await prisma.user.findUnique({
 						where: {
-							email: credentials.email,
+							email: normalizedEmail,
 						},
 					});
 
@@ -144,20 +147,101 @@ export const authOptions: NextAuthOptions = {
 
 					return {
 						id: user.id,
-						email: user.email,
+						email: user.email || undefined,
 						name: user.name,
 						image: user.image,
 					};
 				}
 
-				// Phone login is DISABLED for security reasons
-				// The mock implementation without OTP verification is insecure
-				// To re-enable, implement proper OTP verification first
-				if (credentials?.phone) {
-					// Phone login disabled - requires OTP implementation
-					throw new Error(
-						'Phone login is temporarily disabled. Please use email/password or Google sign-in.',
-					);
+				// Phone + OTP login
+				if (credentials?.phone && credentials?.code) {
+					const normalizedCountry = credentials.country?.toUpperCase() || '';
+					if (!normalizedCountry || !isSupportedPhoneCountry(normalizedCountry)) {
+						throw new Error('Please select a supported country.');
+					}
+
+					const validated = validatePhoneByCountry(credentials.phone, normalizedCountry);
+					if (!validated.valid || !validated.normalized) {
+						throw new Error(validated.error || 'Please enter a valid phone number.');
+					}
+
+					const phoneE164 = validated.normalized.e164;
+					const loginOtpIdentifier = getOtpIdentifier(phoneE164, 'phone_login');
+					const signupOtpIdentifier = getOtpIdentifier(phoneE164, 'phone_signup');
+					let otpIdentifier = loginOtpIdentifier;
+					let otpPurpose: 'phone_login' | 'phone_signup' = 'phone_login';
+					let verificationToken = await prisma.verificationToken.findFirst({
+						where: { identifier: loginOtpIdentifier },
+					});
+					if (!verificationToken) {
+						verificationToken = await prisma.verificationToken.findFirst({
+							where: { identifier: signupOtpIdentifier },
+						});
+						if (verificationToken) {
+							otpIdentifier = signupOtpIdentifier;
+							otpPurpose = 'phone_signup';
+						}
+					}
+
+					if (!verificationToken) {
+						throw new Error('Invalid or expired code. Please request a new one.');
+					}
+
+					if (new Date() > verificationToken.expires) {
+						await prisma.verificationToken.delete({
+							where: {
+								identifier_token: {
+									identifier: otpIdentifier,
+									token: verificationToken.token,
+								},
+							},
+						});
+						throw new Error('Code expired. Please request a new one.');
+					}
+
+					const expected = hashOtp(credentials.code, phoneE164, otpPurpose);
+					const matches =
+						verificationToken.token.length <= 8
+							? verificationToken.token === credentials.code
+							: timingSafeEqualHex(verificationToken.token, expected);
+					if (!matches) {
+						throw new Error('Invalid code. Please try again.');
+					}
+
+					const user = await prisma.user.findFirst({
+						where: { phone_number: phoneE164 },
+					});
+
+					if (!user) {
+						throw new Error('No account found for this phone number.');
+					}
+
+					if (!user.phoneVerified && otpPurpose !== 'phone_signup') {
+						throw new Error('Phone number not verified. Please verify your phone number first.');
+					}
+
+					if (!user.phoneVerified && otpPurpose === 'phone_signup') {
+						await prisma.user.update({
+							where: { id: user.id },
+							data: { phoneVerified: new Date() },
+						});
+					}
+
+					await prisma.verificationToken.delete({
+						where: {
+							identifier_token: {
+								identifier: otpIdentifier,
+								token: verificationToken.token,
+							},
+						},
+					});
+
+					return {
+						id: user.id,
+						email: user.email || undefined,
+						name: user.name,
+						image: user.image,
+					};
 				}
 
 				return null;
