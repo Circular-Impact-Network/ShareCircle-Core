@@ -1,0 +1,5 @@
+ALTER TABLE "users"
+ALTER COLUMN "email" DROP NOT NULL;
+
+ALTER TABLE "users"
+ADD COLUMN "phone_verified" TIMESTAMP(3);

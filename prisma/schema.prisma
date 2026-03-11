@@ -92,8 +92,9 @@ enum NotificationStatus {
 model User {
   id                String    @id @default(cuid())
   name              String?
-  email             String    @unique
+  email             String?   @unique
   emailVerified     DateTime? @map("email_verified")
+  phoneVerified     DateTime? @map("phone_verified")
   image             String?
   hashed_password   String?
   phone_number      String?   @unique
