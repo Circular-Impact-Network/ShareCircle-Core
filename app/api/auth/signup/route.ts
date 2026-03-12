@@ -4,34 +4,33 @@ import bcrypt from 'bcryptjs';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { validatePassword, getPasswordRequirementsText } from '@/lib/password-validation';
 import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { sendOtpSms } from '@/lib/sms';
+import { isSupportedPhoneCountry, validatePhoneByCountry } from '@/lib/phone';
 import { getOtpIdentifier, hashOtp, normalizeEmail } from '@/lib/otp';
 
 export async function POST(req: NextRequest) {
 	try {
-		// Rate limiting for auth endpoints to prevent abuse
 		const clientIdentifier = getClientIdentifier(req);
 		const rateLimitResult = checkRateLimit(clientIdentifier, 'auth-signup', RATE_LIMITS.auth);
 		if (!rateLimitResult.success) {
 			return rateLimitResponse(rateLimitResult);
 		}
 
-		const body = await req.json();
-		const { name, email, password, phoneNumber, countryCode } = body;
-		const normalizedEmail = email ? normalizeEmail(email) : '';
+		const body = (await req.json()) as {
+			name?: string;
+			email?: string;
+			password?: string;
+			phoneNumber?: string;
+			country?: string;
+		};
+		const normalizedEmail = body.email ? normalizeEmail(body.email) : '';
+		const normalizedName = body.name?.trim() || 'User';
+		const normalizedCountry = body.country?.toUpperCase() || '';
 
-		// Validation
-		if (!name || (!email && !phoneNumber) || !password) {
-			return NextResponse.json(
-				{ error: 'Name, password, and either email or phone number are required' },
-				{ status: 400 },
-			);
+		if (!normalizedEmail && !body.phoneNumber) {
+			return NextResponse.json({ error: 'Either email or phone number is required' }, { status: 400 });
 		}
 
-		if (!normalizedEmail) {
-			return NextResponse.json({ error: 'Email signup is required at this time' }, { status: 400 });
-		}
-
-		// Validate email format if provided
 		if (normalizedEmail) {
 			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 			if (!emailRegex.test(normalizedEmail)) {
@@ -39,57 +38,70 @@ export async function POST(req: NextRequest) {
 			}
 		}
 
-		// Validate password strength
-		const passwordValidation = validatePassword(password);
-		if (!passwordValidation.isValid) {
-			return NextResponse.json(
-				{
-					error: passwordValidation.errors[0],
-					details: passwordValidation.errors,
-					requirements: getPasswordRequirementsText(),
-				},
-				{ status: 400 },
-			);
+		if ((normalizedEmail || !body.phoneNumber) && !body.password) {
+			return NextResponse.json({ error: 'Password is required for this signup method' }, { status: 400 });
 		}
 
-		// Check if user already exists
-		if (normalizedEmail) {
-			const existingUser = await prisma.user.findUnique({
-				where: { email: normalizedEmail },
-			});
+		if (body.password) {
+			const passwordValidation = validatePassword(body.password);
+			if (!passwordValidation.isValid) {
+				return NextResponse.json(
+					{
+						error: passwordValidation.errors[0],
+						details: passwordValidation.errors,
+						requirements: getPasswordRequirementsText(),
+					},
+					{ status: 400 },
+				);
+			}
+		}
 
+		const hasPhone = Boolean(body.phoneNumber);
+		let phoneE164: string | undefined;
+		let dialCode: string | undefined;
+
+		if (hasPhone) {
+			if (!normalizedCountry || !isSupportedPhoneCountry(normalizedCountry)) {
+				return NextResponse.json({ error: 'A supported country is required for phone signup' }, { status: 400 });
+			}
+
+			const validated = validatePhoneByCountry(body.phoneNumber!, normalizedCountry);
+			if (!validated.valid || !validated.normalized) {
+				return NextResponse.json({ error: validated.error || 'Invalid phone number' }, { status: 400 });
+			}
+
+			phoneE164 = validated.normalized.e164;
+			dialCode = validated.normalized.dialCode;
+		}
+
+		if (normalizedEmail) {
+			const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 			if (existingUser) {
 				return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
 			}
 		}
 
-		if (phoneNumber) {
-			// Note: phone_number is not unique in schema currently, but we should check
-			const existingUserByPhone = await prisma.user.findFirst({
-				where: { phone_number: phoneNumber },
-			});
-
+		if (phoneE164) {
+			const existingUserByPhone = await prisma.user.findFirst({ where: { phone_number: phoneE164 } });
 			if (existingUserByPhone) {
 				return NextResponse.json({ error: 'User with this phone number already exists' }, { status: 409 });
 			}
 		}
 
-		// Hash password
-		const hashedPassword = await bcrypt.hash(password, 12);
+		const hashedPassword = body.password ? await bcrypt.hash(body.password, 12) : undefined;
+		const isAutoVerified = process.env.E2E_AUTO_VERIFY === 'true';
+		const emailVerified = normalizedEmail && isAutoVerified ? new Date() : undefined;
+		const phoneVerified = phoneE164 && isAutoVerified ? new Date() : undefined;
 
-		// In e2e tests, auto-verify so test users can log in without going through OTP
-		const emailVerified =
-			process.env.E2E_AUTO_VERIFY === 'true' ? new Date() : undefined;
-
-		// Create user (emailVerified is null until OTP is verified, unless E2E_AUTO_VERIFY)
 		const user = await prisma.user.create({
 			data: {
-				name,
-				email: normalizedEmail || `${phoneNumber}@phone.sharecircle.com`,
+				name: normalizedName,
+				email: normalizedEmail || undefined,
 				hashed_password: hashedPassword,
-				phone_number: phoneNumber,
-				country_code: countryCode,
+				phone_number: phoneE164,
+				country_code: dialCode,
 				...(emailVerified && { emailVerified }),
+				...(phoneVerified && { phoneVerified }),
 			},
 			select: {
 				id: true,
@@ -99,30 +111,43 @@ export async function POST(req: NextRequest) {
 			},
 		});
 
-		// Generate OTP and store hashed token
 		const otp = generateOTP();
-		const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-		const identifier = getOtpIdentifier(normalizedEmail, 'email_verification');
+		const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+		const purpose = phoneE164 ? 'phone_signup' : 'email_verification';
+		const otpTarget = phoneE164 || normalizedEmail;
+		const identifier = getOtpIdentifier(otpTarget, purpose);
 
-		await prisma.verificationToken.deleteMany({
-			where: { identifier },
-		});
-
+		await prisma.verificationToken.deleteMany({ where: { identifier } });
 		await prisma.verificationToken.create({
 			data: {
 				identifier,
-				token: hashOtp(otp, normalizedEmail, 'email_verification'),
+				token: hashOtp(otp, otpTarget, purpose),
 				expires: otpExpiry,
 			},
 		});
 
-		// Send OTP email (only if GMAIL credentials are configured)
-		if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+		if (phoneE164) {
+			try {
+				await sendOtpSms({ toE164: phoneE164, code: otp, context: 'signup' });
+			} catch (smsError) {
+				console.error('Failed to send OTP SMS:', smsError);
+				await prisma.verificationToken.deleteMany({ where: { identifier } });
+				await prisma.user.delete({ where: { id: user.id } });
+				return NextResponse.json(
+					{
+						error:
+							smsError instanceof Error
+								? smsError.message
+								: 'Failed to send verification SMS. Please try again.',
+					},
+					{ status: 502 },
+				);
+			}
+		} else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
 			try {
 				await sendOTPEmail(normalizedEmail, otp, 'email_verification');
 			} catch (emailError) {
 				console.error('Failed to send OTP email:', emailError);
-				// Don't fail signup if email fails - user can request resend
 			}
 		} else {
 			console.warn('GMAIL credentials not configured - OTP email not sent');
@@ -130,9 +155,12 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json(
 			{
-				message: 'User created successfully. Please verify your email.',
+				message: phoneE164
+					? 'User created successfully. Please verify your phone number.'
+					: 'User created successfully. Please verify your email.',
 				requiresVerification: true,
 				email: user.email,
+				phoneNumber: phoneE164,
 				user,
 			},
 			{ status: 201 },
