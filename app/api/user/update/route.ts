@@ -14,14 +14,19 @@ export async function PATCH(req: NextRequest) {
 		const body = await req.json();
 		const { name, image, phoneNumber, countryCode } = body;
 
+		if (phoneNumber !== undefined || countryCode !== undefined) {
+			return NextResponse.json(
+				{ error: 'Phone number updates must be verified via OTP before saving.' },
+				{ status: 400 },
+			);
+		}
+
 		// Update user profile
 		const updatedUser = await prisma.user.update({
 			where: { id: session.user.id },
 			data: {
 				...(name !== undefined && { name }),
 				...(image !== undefined && { image }),
-				...(phoneNumber !== undefined && { phone_number: phoneNumber }),
-				...(countryCode !== undefined && { country_code: countryCode }),
 				// Note: bio field doesn't exist in current schema, would need to add it
 			},
 			select: {
