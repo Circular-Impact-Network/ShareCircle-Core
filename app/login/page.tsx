@@ -12,9 +12,15 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Loader2, Mail, ArrowLeft, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
+import {
+	PHONE_COUNTRIES,
+	SupportedPhoneCountry,
+	getDialCodeForCountry,
+	isSupportedPhoneCountry,
+	validatePhoneByCountry,
+} from '@/lib/phone';
 
 type LoginMode = 'login' | 'forgot' | 'reset';
 
@@ -29,7 +35,7 @@ function LoginContent() {
 	const [isOtpVerifying, setIsOtpVerifying] = useState(false);
 	const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 	const [phoneNumber, setPhoneNumber] = useState('');
-	const [countryCode, setCountryCode] = useState('+91');
+	const [country, setCountry] = useState<SupportedPhoneCountry>('IN');
 	const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
 	const [mode, setMode] = useState<LoginMode>('login');
 	const [resetToken, setResetToken] = useState('');
@@ -141,58 +147,36 @@ function LoginContent() {
 		setIsLoading(true);
 
 		try {
-			// Prevent phone login (disabled for MVP)
-			if (loginMethod === 'phone') {
-				setError('');
+			if (!email || !password) {
+				setError('Please fill in all fields');
 				setIsLoading(false);
 				return;
 			}
 
-			if (loginMethod === 'email') {
-				if (!email || !password) {
-					setError('Please fill in all fields');
-					setIsLoading(false);
-					return;
-				}
-
-				if (!email.includes('@')) {
-					setError('Please enter a valid email');
-					setIsLoading(false);
-					return;
-				}
-
-				const result = await signIn('credentials', {
-					email,
-					password,
-					redirect: false,
-				});
-
-				if (result?.error) {
-					const message = result.error === 'CredentialsSignin' ? 'Invalid email or password.' : result.error;
-					setError(message);
-					setIsLoading(false);
-					return;
-				}
-
-				if (typeof window !== 'undefined') {
-					window.localStorage.setItem('sc:lastLoginMethod', 'email_password');
-					setLastLoginMethod('email_password');
-				}
-				setIsLoading(false);
-			} else {
-				// Phone login logic
-				if (!phoneNumber) {
-					setError('Please enter your phone number');
-					setIsLoading(false);
-					return;
-				}
-
-				// TODO: Implement actual phone auth provider
-				// For now, we'll just simulate a delay or show an error
-				setError('Phone authentication is not yet fully implemented on the backend.');
+			if (!email.includes('@')) {
+				setError('Please enter a valid email');
 				setIsLoading(false);
 				return;
 			}
+
+			const result = await signIn('credentials', {
+				email,
+				password,
+				redirect: false,
+			});
+
+			if (result?.error) {
+				const message = result.error === 'CredentialsSignin' ? 'Invalid email or password.' : result.error;
+				setError(message);
+				setIsLoading(false);
+				return;
+			}
+
+			if (typeof window !== 'undefined') {
+				window.localStorage.setItem('sc:lastLoginMethod', 'email_password');
+				setLastLoginMethod('email_password');
+			}
+			setIsLoading(false);
 
 			// Redirect to callbackUrl if present, otherwise dashboard
 			router.push(callbackUrl);
@@ -220,25 +204,50 @@ function LoginContent() {
 		setError('');
 		setSuccessMessage('');
 
-		if (!email || !email.includes('@')) {
-			setError('Please enter a valid email address');
-			return;
-		}
-
 		setIsOtpSending(true);
 		try {
-			const response = await fetch('/api/auth/resend-otp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email: email.toLowerCase().trim(), purpose: 'login_otp' }),
-			});
+			let response: Response;
+			if (loginMethod === 'email') {
+				if (!email || !email.includes('@')) {
+					setError('Please enter a valid email address');
+					setIsOtpSending(false);
+					return;
+				}
+
+				response = await fetch('/api/auth/resend-otp', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email: email.toLowerCase().trim(), purpose: 'login_otp' }),
+				});
+			} else {
+				const validation = validatePhoneByCountry(phoneNumber, country);
+				if (!validation.valid) {
+					setError(validation.error || 'Please enter a valid phone number.');
+					setIsOtpSending(false);
+					return;
+				}
+
+				response = await fetch('/api/auth/send-phone-otp', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						country,
+						phoneNumber,
+						purpose: 'phone_login',
+					}),
+				});
+			}
 			const data = await response.json();
 			if (!response.ok) {
 				setError(data.error || 'Failed to send login code.');
 				setIsOtpSending(false);
 				return;
 			}
-			setSuccessMessage('A login code has been sent to your email.');
+			setSuccessMessage(
+				loginMethod === 'email'
+					? 'A login code has been sent to your email.'
+					: 'A login code has been sent to your phone.',
+			);
 			setOtpCooldown(60);
 			setOtpCode(['', '', '', '', '', '']);
 			otpInputRefs.current[0]?.focus();
@@ -279,11 +288,6 @@ function LoginContent() {
 		setError('');
 		setSuccessMessage('');
 
-		if (!email || !email.includes('@')) {
-			setError('Please enter a valid email address');
-			return;
-		}
-
 		const code = otpCode.join('');
 		if (code.length !== 6) {
 			setError('Please enter the 6-digit code');
@@ -292,11 +296,39 @@ function LoginContent() {
 
 		setIsOtpVerifying(true);
 		try {
-			const result = await signIn('credentials', {
-				email,
-				code,
-				redirect: false,
-			});
+			let result;
+			if (loginMethod === 'email') {
+				if (!email || !email.includes('@')) {
+					setError('Please enter a valid email address');
+					setIsOtpVerifying(false);
+					return;
+				}
+				result = await signIn('credentials', {
+					email,
+					code,
+					redirect: false,
+				});
+			} else {
+				if (!isSupportedPhoneCountry(country)) {
+					setError('Please select a valid country');
+					setIsOtpVerifying(false);
+					return;
+				}
+				const validation = validatePhoneByCountry(phoneNumber, country);
+				if (!validation.valid) {
+					setError(validation.error || 'Please enter a valid phone number.');
+					setIsOtpVerifying(false);
+					return;
+				}
+
+				result = await signIn('credentials', {
+					phone: phoneNumber,
+					country,
+					code,
+					redirect: false,
+				});
+			}
+
 			if (result?.error) {
 				const message = result.error === 'CredentialsSignin' ? 'Invalid code. Please try again.' : result.error;
 				setError(message);
@@ -305,8 +337,8 @@ function LoginContent() {
 			}
 			setIsOtpVerifying(false);
 			if (typeof window !== 'undefined') {
-				window.localStorage.setItem('sc:lastLoginMethod', 'email_otp');
-				setLastLoginMethod('email_otp');
+				window.localStorage.setItem('sc:lastLoginMethod', loginMethod === 'email' ? 'email_otp' : 'phone_otp');
+				setLastLoginMethod(loginMethod === 'email' ? 'email_otp' : 'phone_otp');
 			}
 			router.push(callbackUrl);
 			router.refresh();
@@ -414,6 +446,8 @@ function LoginContent() {
 				return 'Email + password';
 			case 'email_otp':
 				return 'Email + OTP';
+			case 'phone_otp':
+				return 'Phone + OTP';
 			default:
 				return '';
 		}
@@ -613,113 +647,7 @@ function LoginContent() {
 				</div>
 
 				{loginFlow === 'password' ? (
-					<Tabs
-						defaultValue="email"
-						className="w-full"
-						onValueChange={v => {
-							if (v === 'phone') return; // Prevent switching to phone tab
-							setLoginMethod(v as 'email' | 'phone');
-						}}
-					>
-						<TabsList className="grid w-full grid-cols-2 mb-6">
-							<TabsTrigger value="email">Email</TabsTrigger>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className="flex w-full">
-										<TabsTrigger value="phone" disabled className="flex-1">
-											Phone
-										</TabsTrigger>
-									</div>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Coming soon</p>
-								</TooltipContent>
-							</Tooltip>
-						</TabsList>
-
-						<form onSubmit={handleLogin} className="space-y-4">
-							<TabsContent value="email" className="space-y-4 mt-0">
-								<div>
-									<label className="block text-sm font-medium mb-2">Email</label>
-									<Input
-										type="email"
-										placeholder="you@example.com"
-										value={email}
-										onChange={e => setEmail(e.target.value)}
-										className="w-full"
-										disabled={isLoading}
-									/>
-								</div>
-
-								<div>
-									<div className="flex items-center justify-between mb-2">
-										<label className="block text-sm font-medium">Password</label>
-										<button
-											type="button"
-											onClick={() => updateMode('forgot', { email })}
-											className="text-sm text-primary hover:underline"
-										>
-											Forgot Password?
-										</button>
-									</div>
-									<PasswordInput
-										placeholder="••••••••"
-										value={password}
-										onChange={e => setPassword(e.target.value)}
-										className="w-full"
-										disabled={isLoading}
-									/>
-								</div>
-							</TabsContent>
-
-							<TabsContent value="phone" className="space-y-4 mt-0">
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div>
-											<label className="block text-sm font-medium mb-2">Phone Number</label>
-											<div className="flex gap-2">
-												<Select value={countryCode} onValueChange={setCountryCode} disabled>
-													<SelectTrigger className="w-[100px]">
-														<SelectValue placeholder="Code" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="+1">🇺🇸 +1</SelectItem>
-														<SelectItem value="+44">🇬🇧 +44</SelectItem>
-														<SelectItem value="+91">🇮🇳 +91</SelectItem>
-														<SelectItem value="+61">🇦🇺 +61</SelectItem>
-														<SelectItem value="+81">🇯🇵 +81</SelectItem>
-														<SelectItem value="+49">🇩🇪 +49</SelectItem>
-													</SelectContent>
-												</Select>
-												<Input
-													type="tel"
-													placeholder="1234567890"
-													value={phoneNumber}
-													onChange={e => setPhoneNumber(e.target.value)}
-													className="flex-1"
-													disabled
-												/>
-											</div>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Coming soon</p>
-									</TooltipContent>
-								</Tooltip>
-							</TabsContent>
-
-							<Button
-								type="submit"
-								className="w-full bg-primary hover:bg-primary/90 text-lg h-11"
-								disabled={isLoading}
-							>
-								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-								{isLoading ? 'Logging in...' : 'Login'}
-							</Button>
-						</form>
-					</Tabs>
-				) : (
-					<div className="space-y-4">
+					<form onSubmit={handleLogin} className="space-y-4">
 						<div>
 							<label className="block text-sm font-medium mb-2">Email</label>
 							<Input
@@ -728,9 +656,104 @@ function LoginContent() {
 								value={email}
 								onChange={e => setEmail(e.target.value)}
 								className="w-full"
-								disabled={isOtpSending || isOtpVerifying}
+								disabled={isLoading}
 							/>
 						</div>
+
+						<div>
+							<div className="flex items-center justify-between mb-2">
+								<label className="block text-sm font-medium">Password</label>
+								<button
+									type="button"
+									onClick={() => updateMode('forgot', { email })}
+									className="text-sm text-primary hover:underline"
+								>
+									Forgot Password?
+								</button>
+							</div>
+							<PasswordInput
+								placeholder="••••••••"
+								value={password}
+								onChange={e => setPassword(e.target.value)}
+								className="w-full"
+								disabled={isLoading}
+							/>
+						</div>
+
+						<Button
+							type="submit"
+							className="w-full bg-primary hover:bg-primary/90 text-lg h-11"
+							disabled={isLoading}
+						>
+							{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							{isLoading ? 'Logging in...' : 'Login'}
+						</Button>
+					</form>
+				) : (
+					<div className="space-y-4">
+						<Tabs
+							value={loginMethod}
+							onValueChange={value => {
+								setLoginMethod(value as 'email' | 'phone');
+								setError('');
+								setSuccessMessage('');
+								setOtpCode(['', '', '', '', '', '']);
+							}}
+							className="w-full"
+						>
+							<TabsList className="grid w-full grid-cols-2 mb-4">
+								<TabsTrigger value="email">Email OTP</TabsTrigger>
+								<TabsTrigger value="phone">Phone OTP</TabsTrigger>
+							</TabsList>
+						</Tabs>
+
+						{loginMethod === 'email' ? (
+							<div>
+								<label className="block text-sm font-medium mb-2">Email</label>
+								<Input
+									type="email"
+									placeholder="you@example.com"
+									value={email}
+									onChange={e => setEmail(e.target.value)}
+									className="w-full"
+									disabled={isOtpSending || isOtpVerifying}
+								/>
+							</div>
+						) : (
+							<div className="space-y-2">
+								<label className="block text-sm font-medium">Phone Number</label>
+								<div className="flex gap-2">
+									<Select
+										value={country}
+										onValueChange={value => {
+											if (isSupportedPhoneCountry(value)) {
+												setCountry(value);
+											}
+										}}
+										disabled={isOtpSending || isOtpVerifying}
+									>
+										<SelectTrigger className="w-[130px]">
+											<SelectValue placeholder="Country" />
+										</SelectTrigger>
+										<SelectContent>
+											{PHONE_COUNTRIES.map(phoneCountry => (
+												<SelectItem key={phoneCountry.iso2} value={phoneCountry.iso2}>
+													{phoneCountry.flag} {getDialCodeForCountry(phoneCountry.iso2)}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<Input
+										type="tel"
+										placeholder="Phone number"
+										value={phoneNumber}
+										onChange={e => setPhoneNumber(e.target.value)}
+										className="flex-1"
+										disabled={isOtpSending || isOtpVerifying}
+									/>
+								</div>
+							</div>
+						)}
 						<div className="flex items-center justify-between text-sm">
 							<span className="text-muted-foreground">Enter the 6-digit code</span>
 							<button
