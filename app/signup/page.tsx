@@ -13,8 +13,14 @@ import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
+import {
+	PHONE_COUNTRIES,
+	SupportedPhoneCountry,
+	getDialCodeForCountry,
+	isSupportedPhoneCountry,
+	validatePhoneByCountry,
+} from '@/lib/phone';
 
 type SignupMode = 'signup' | 'verify';
 
@@ -24,8 +30,11 @@ function SignupContent() {
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [phoneNumber, setPhoneNumber] = useState('');
-	const [countryCode, setCountryCode] = useState('+91');
+	const [country, setCountry] = useState<SupportedPhoneCountry>('IN');
 	const [signupMethod, setSignupMethod] = useState<'email' | 'phone'>('email');
+	const [verificationMethod, setVerificationMethod] = useState<'email' | 'phone'>('email');
+	const [verificationPhone, setVerificationPhone] = useState('');
+	const [verificationCountry, setVerificationCountry] = useState<SupportedPhoneCountry>('IN');
 	const [error, setError] = useState('');
 	const [successMessage, setSuccessMessage] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
@@ -99,13 +108,6 @@ function SignupContent() {
 		setIsLoading(true);
 
 		try {
-			// Prevent phone signup (disabled for MVP)
-			if (signupMethod === 'phone') {
-				setError('');
-				setIsLoading(false);
-				return;
-			}
-
 			if (signupMethod === 'email') {
 				if (!name || !email || !password || !confirmPassword) {
 					setError('Please fill in all fields');
@@ -150,6 +152,7 @@ function SignupContent() {
 
 				// If email verification is required, switch to verify mode
 				if (data.requiresVerification) {
+					setVerificationMethod('email');
 					updateMode('verify', { email });
 					setError('');
 					setSuccessMessage('We sent a verification code to your email.');
@@ -168,16 +171,40 @@ function SignupContent() {
 					setIsLoading(false);
 					return;
 				}
-			} else {
-				// Phone signup logic
-				if (!name || !phoneNumber) {
-					setError('Please fill in all fields');
+			}
+
+			if (signupMethod === 'phone') {
+				const phoneValidation = validatePhoneByCountry(phoneNumber, country);
+				if (!phoneValidation.valid) {
+					setError(phoneValidation.error || 'Please enter a valid phone number.');
 					setIsLoading(false);
 					return;
 				}
 
-				// TODO: Implement actual phone signup provider/API
-				setError('Phone signup is not yet fully implemented on the backend.');
+				const response = await fetch('/api/auth/signup', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						name: name.trim() || 'User',
+						phoneNumber,
+						country,
+					}),
+				});
+
+				const data = await response.json();
+				if (!response.ok) {
+					setError(data.error || 'Signup failed. Please try again.');
+					setIsLoading(false);
+					return;
+				}
+
+				setVerificationMethod('phone');
+				setVerificationPhone(phoneNumber);
+				setVerificationCountry(country);
+				updateMode('verify');
+				setSuccessMessage('We sent a verification code to your phone.');
 				setIsLoading(false);
 				return;
 			}
@@ -241,16 +268,39 @@ function SignupContent() {
 			return;
 		}
 
-		if (!email) {
-			setError('Missing email. Please start signup again.');
-			return;
-		}
-
 		setIsVerifying(true);
 		setVerificationStatus('verifying');
 		setError('');
 
 		try {
+			if (verificationMethod === 'phone') {
+				setVerificationStatus('signing-in');
+				const signInResult = await signIn('credentials', {
+					phone: verificationPhone,
+					country: verificationCountry,
+					code: codeToVerify,
+					redirect: false,
+				});
+
+				if (signInResult?.error) {
+					setError(signInResult.error === 'CredentialsSignin' ? 'Invalid code. Please try again.' : signInResult.error);
+					setIsVerifying(false);
+					setVerificationStatus('idle');
+					return;
+				}
+
+				router.push(callbackUrl);
+				router.refresh();
+				return;
+			}
+
+			if (!email) {
+				setError('Missing email. Please start signup again.');
+				setIsVerifying(false);
+				setVerificationStatus('idle');
+				return;
+			}
+
 			const response = await fetch('/api/auth/verify-otp', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -293,20 +343,33 @@ function SignupContent() {
 	const handleResend = async () => {
 		if (resendCooldown > 0) return;
 
-		if (!email) {
-			setError('Please enter your email first.');
-			return;
-		}
-
 		setIsResending(true);
 		setError('');
 
 		try {
-			const response = await fetch('/api/auth/resend-otp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, purpose: 'email_verification' }),
-			});
+			let response: Response;
+			if (verificationMethod === 'phone') {
+				response = await fetch('/api/auth/resend-otp', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						phoneNumber: verificationPhone,
+						country: verificationCountry,
+						purpose: 'phone_signup',
+					}),
+				});
+			} else {
+				if (!email) {
+					setError('Please enter your email first.');
+					setIsResending(false);
+					return;
+				}
+				response = await fetch('/api/auth/resend-otp', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email, purpose: 'email_verification' }),
+				});
+			}
 
 			const data = await response.json();
 
@@ -340,10 +403,16 @@ function SignupContent() {
 					<div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
 						<Mail className="w-6 h-6 text-primary" />
 					</div>
-					<h1 className="text-3xl font-display font-bold mb-2">Check your email</h1>
+					<h1 className="text-3xl font-display font-bold mb-2">
+						{verificationMethod === 'phone' ? 'Check your phone' : 'Check your email'}
+					</h1>
 					<p className="text-muted-foreground">
 						We sent a verification code to{' '}
-						<span className="font-medium text-foreground">{email || 'your email'}</span>
+						<span className="font-medium text-foreground">
+							{verificationMethod === 'phone'
+								? `${getDialCodeForCountry(verificationCountry)} ${verificationPhone || 'your phone'}`
+								: email || 'your email'}
+						</span>
 					</p>
 				</div>
 			);
@@ -399,7 +468,11 @@ function SignupContent() {
 							className="w-full h-11 mb-4"
 						>
 							{isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-							{verificationStatus === 'verifying' ? 'Verifying...' : 'Verify Email'}
+							{verificationStatus === 'verifying'
+								? 'Verifying...'
+								: verificationMethod === 'phone'
+									? 'Verify Phone'
+									: 'Verify Email'}
 						</Button>
 					</div>
 
@@ -431,27 +504,13 @@ function SignupContent() {
 		return (
 			<>
 				<Tabs
-					defaultValue="email"
+					value={signupMethod}
 					className="w-full"
-					onValueChange={v => {
-						if (v === 'phone') return;
-						setSignupMethod(v as 'email' | 'phone');
-					}}
+					onValueChange={v => setSignupMethod(v as 'email' | 'phone')}
 				>
 					<TabsList className="grid w-full grid-cols-2 mb-6">
 						<TabsTrigger value="email">Email</TabsTrigger>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<div className="flex w-full">
-									<TabsTrigger value="phone" disabled className="flex-1">
-										Phone
-									</TabsTrigger>
-								</div>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Coming soon</p>
-							</TooltipContent>
-						</Tooltip>
+						<TabsTrigger value="phone">Phone</TabsTrigger>
 					</TabsList>
 
 					<form onSubmit={handleSignup} className="space-y-4">
@@ -504,53 +563,56 @@ function SignupContent() {
 						</TabsContent>
 
 						<TabsContent value="phone" className="space-y-4 mt-0">
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className="space-y-4">
-										<div>
-											<label className="block text-sm font-medium mb-2">Full Name</label>
-											<Input
-												type="text"
-												placeholder="John Doe"
-												value={name}
-												onChange={e => setName(e.target.value)}
-												className="w-full"
-												disabled
-											/>
-										</div>
+							<div className="space-y-4">
+								<div>
+									<label className="block text-sm font-medium mb-2">Full Name (optional)</label>
+									<Input
+										type="text"
+										placeholder="User"
+										value={name}
+										onChange={e => setName(e.target.value)}
+										className="w-full"
+										disabled={isLoading}
+									/>
+								</div>
 
-										<div>
-											<label className="block text-sm font-medium mb-2">Phone Number</label>
-											<div className="flex gap-2">
-												<Select value={countryCode} onValueChange={setCountryCode} disabled>
-													<SelectTrigger className="w-[100px]">
-														<SelectValue placeholder="Code" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="+1">🇺🇸 +1</SelectItem>
-														<SelectItem value="+44">🇬🇧 +44</SelectItem>
-														<SelectItem value="+91">🇮🇳 +91</SelectItem>
-														<SelectItem value="+61">🇦🇺 +61</SelectItem>
-														<SelectItem value="+81">🇯🇵 +81</SelectItem>
-														<SelectItem value="+49">🇩🇪 +49</SelectItem>
-													</SelectContent>
-												</Select>
-												<Input
-													type="tel"
-													placeholder="1234567890"
-													value={phoneNumber}
-													onChange={e => setPhoneNumber(e.target.value)}
-													className="flex-1"
-													disabled
-												/>
-											</div>
-										</div>
+								<div>
+									<label className="block text-sm font-medium mb-2">Phone Number</label>
+									<div className="flex gap-2">
+										<Select
+											value={country}
+											onValueChange={value => {
+												if (isSupportedPhoneCountry(value)) {
+													setCountry(value);
+												}
+											}}
+											disabled={isLoading}
+										>
+											<SelectTrigger className="w-[130px]">
+												<SelectValue placeholder="Country" />
+											</SelectTrigger>
+											<SelectContent>
+												{PHONE_COUNTRIES.map(phoneCountry => (
+													<SelectItem key={phoneCountry.iso2} value={phoneCountry.iso2}>
+														{phoneCountry.flag} {getDialCodeForCountry(phoneCountry.iso2)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Input
+											type="tel"
+											placeholder="Phone number"
+											value={phoneNumber}
+											onChange={e => setPhoneNumber(e.target.value)}
+											className="flex-1"
+											disabled={isLoading}
+										/>
 									</div>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Coming soon</p>
-								</TooltipContent>
-							</Tooltip>
+									<p className="text-xs text-muted-foreground mt-1">
+										You can sign up with phone only. If name is empty we will use &quot;User&quot;.
+									</p>
+								</div>
+							</div>
 						</TabsContent>
 
 						<Button
