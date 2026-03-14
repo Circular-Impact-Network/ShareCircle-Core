@@ -12,9 +12,15 @@ import { Switch } from '@/components/ui/switch';
 import { Bell, Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/lib/redux/hooks';
+import {
+	PHONE_COUNTRIES,
+	SupportedPhoneCountry,
+	getDialCodeForCountry,
+	isSupportedPhoneCountry,
+	validatePhoneByCountry,
+} from '@/lib/phone';
 import {
 	selectUserImage,
 	selectUserName,
@@ -27,6 +33,11 @@ import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/u
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { useNotificationsContext } from '@/components/providers/notifications-provider';
+
+function getCountryFromDialCode(dialCode: string | null | undefined): SupportedPhoneCountry {
+	const match = PHONE_COUNTRIES.find(country => getDialCodeForCountry(country.iso2) === dialCode);
+	return match?.iso2 || 'IN';
+}
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
@@ -51,8 +62,15 @@ export function SettingsPage() {
 	const [bio, setBio] = useState('');
 	const [email, setEmail] = useState('');
 	const [phone, setPhone] = useState('');
-	const [countryCode, setCountryCode] = useState('+91');
+	const [phoneCountry, setPhoneCountry] = useState<SupportedPhoneCountry>('IN');
 	const [profileImage, setProfileImage] = useState('');
+	const [contactStep, setContactStep] = useState<'idle' | 'verify'>('idle');
+	const [contactError, setContactError] = useState('');
+	const [contactSuccess, setContactSuccess] = useState('');
+	const [contactIsLoading, setContactIsLoading] = useState(false);
+	const [contactCooldown, setContactCooldown] = useState(0);
+	const [contactOtp, setContactOtp] = useState(['', '', '', '', '', '']);
+	const contactOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
 	const [passwordStep, setPasswordStep] = useState<'idle' | 'request' | 'verify' | 'reset' | 'success'>('idle');
 	const [passwordError, setPasswordError] = useState('');
 	const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -72,7 +90,7 @@ export function SettingsPage() {
 			if (userBio !== null) setBio(userBio);
 			if (userEmail !== null) setEmail(userEmail);
 			if (userPhone !== null) setPhone(userPhone);
-			if (userCountryCode !== null) setCountryCode(userCountryCode);
+			if (userCountryCode !== null) setPhoneCountry(getCountryFromDialCode(userCountryCode));
 			if (userImage !== null) setProfileImage(userImage);
 			initializedRef.current = true;
 		}
@@ -85,6 +103,13 @@ export function SettingsPage() {
 			return () => clearTimeout(timer);
 		}
 	}, [resendCooldown]);
+
+	useEffect(() => {
+		if (contactCooldown > 0) {
+			const timer = setTimeout(() => setContactCooldown(contactCooldown - 1), 1000);
+			return () => clearTimeout(timer);
+		}
+	}, [contactCooldown]);
 
 	useEffect(() => {
 		if (passwordStep === 'verify') {
@@ -138,8 +163,108 @@ export function SettingsPage() {
 	};
 
 	const handleUpdateContactInfo = async () => {
-		// Phone number updates disabled for MVP
-		return;
+		setContactError('');
+		setContactSuccess('');
+
+		const validation = validatePhoneByCountry(phone, phoneCountry);
+		if (!validation.valid) {
+			setContactError(validation.error || 'Please enter a valid phone number.');
+			return;
+		}
+
+		setContactIsLoading(true);
+		try {
+			const response = await fetch('/api/auth/send-phone-otp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					country: phoneCountry,
+					phoneNumber: phone,
+					purpose: 'phone_update',
+				}),
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				setContactError(data.error || 'Failed to send verification code.');
+				setContactIsLoading(false);
+				return;
+			}
+
+			setContactStep('verify');
+			setContactCooldown(60);
+			setContactOtp(['', '', '', '', '', '']);
+			setContactSuccess('We sent a verification code to your phone.');
+			contactOtpRefs.current[0]?.focus();
+		} catch {
+			setContactError('Failed to send verification code. Please try again.');
+		} finally {
+			setContactIsLoading(false);
+		}
+	};
+
+	const handleContactOtpInputChange = (index: number, value: string) => {
+		if (!/^\d*$/.test(value)) return;
+		const next = [...contactOtp];
+		next[index] = value.slice(-1);
+		setContactOtp(next);
+		setContactError('');
+		if (value && index < 5) {
+			contactOtpRefs.current[index + 1]?.focus();
+		}
+	};
+
+	const handleContactOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Backspace' && !contactOtp[index] && index > 0) {
+			contactOtpRefs.current[index - 1]?.focus();
+		}
+	};
+
+	const handleContactOtpPaste = (e: React.ClipboardEvent) => {
+		e.preventDefault();
+		const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+		if (pasted.length === 6) {
+			setContactOtp(pasted.split(''));
+		}
+	};
+
+	const handleVerifyContactOtp = async () => {
+		const fullCode = contactOtp.join('');
+		if (fullCode.length !== 6) {
+			setContactError('Please enter the 6-digit code.');
+			return;
+		}
+
+		setContactIsLoading(true);
+		setContactError('');
+		try {
+			const response = await fetch('/api/auth/verify-phone-otp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					country: phoneCountry,
+					phoneNumber: phone,
+					code: fullCode,
+					purpose: 'phone_update',
+				}),
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				setContactError(data.error || 'Failed to verify code.');
+				setContactIsLoading(false);
+				return;
+			}
+
+			await updateUser({}).unwrap();
+			setContactStep('idle');
+			setContactOtp(['', '', '', '', '', '']);
+			setContactSuccess('Phone number updated successfully.');
+			toast.success('Phone number updated successfully');
+		} catch (error) {
+			console.error('Phone verification error:', error);
+			setContactError('Failed to verify code. Please try again.');
+		} finally {
+			setContactIsLoading(false);
+		}
 	};
 
 	const accountEmail = userEmail || email;
@@ -540,56 +665,104 @@ export function SettingsPage() {
 
 								<div className="space-y-2">
 									<Label htmlFor="phone">Phone Number</Label>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<div className="flex gap-2">
-												<Select value={countryCode} onValueChange={setCountryCode} disabled>
-													<SelectTrigger className="w-[100px]">
-														<SelectValue placeholder="Code" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="+1">🇺🇸 +1</SelectItem>
-														<SelectItem value="+44">🇬🇧 +44</SelectItem>
-														<SelectItem value="+91">🇮🇳 +91</SelectItem>
-														<SelectItem value="+61">🇦🇺 +61</SelectItem>
-														<SelectItem value="+81">🇯🇵 +81</SelectItem>
-														<SelectItem value="+49">🇩🇪 +49</SelectItem>
-													</SelectContent>
-												</Select>
-												<div className="relative flex-1">
-													<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-													<Input
-														id="phone"
-														value={phone}
-														onChange={e => setPhone(e.target.value)}
-														placeholder="1234567890"
-														className="pl-9"
-														disabled
-													/>
-												</div>
-											</div>
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>Coming soon</p>
-										</TooltipContent>
-									</Tooltip>
+									<div className="flex gap-2">
+										<Select
+											value={phoneCountry}
+											onValueChange={value => {
+												if (isSupportedPhoneCountry(value)) {
+													setPhoneCountry(value);
+												}
+											}}
+											disabled={contactIsLoading}
+										>
+											<SelectTrigger className="w-[130px]">
+												<SelectValue placeholder="Code" />
+											</SelectTrigger>
+											<SelectContent>
+												{PHONE_COUNTRIES.map(phoneCountryOption => (
+													<SelectItem key={phoneCountryOption.iso2} value={phoneCountryOption.iso2}>
+														{phoneCountryOption.flag} {getDialCodeForCountry(phoneCountryOption.iso2)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<div className="relative flex-1">
+											<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+											<Input
+												id="phone"
+												value={phone}
+												onChange={e => setPhone(e.target.value)}
+												placeholder="Phone number"
+												className="pl-9"
+												disabled={contactIsLoading}
+											/>
+										</div>
+									</div>
+									{contactError && (
+										<p className="text-xs text-destructive">{contactError}</p>
+									)}
+									{contactSuccess && (
+										<p className="text-xs text-green-600 dark:text-green-300">{contactSuccess}</p>
+									)}
 								</div>
 							</div>
 
 							<div className="flex justify-end pt-4">
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<span>
-											<Button onClick={handleUpdateContactInfo} disabled>
-												Update Contact Info
-											</Button>
-										</span>
-									</TooltipTrigger>
-									<TooltipContent>
-										<p>Coming soon</p>
-									</TooltipContent>
-								</Tooltip>
+								<Button onClick={handleUpdateContactInfo} disabled={contactIsLoading}>
+									{contactIsLoading ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Sending code...
+										</>
+									) : (
+										'Update Contact Info'
+									)}
+								</Button>
 							</div>
+
+							{contactStep === 'verify' && (
+								<div className="rounded-lg border p-4 space-y-4">
+									<div className="text-sm text-muted-foreground">
+										Enter the 6-digit code sent to {getDialCodeForCountry(phoneCountry)} {phone}.
+									</div>
+									<div className="flex gap-2 justify-center" onPaste={handleContactOtpPaste}>
+										{contactOtp.map((digit, index) => (
+											<Input
+												key={index}
+												ref={el => {
+													contactOtpRefs.current[index] = el;
+												}}
+												type="text"
+												inputMode="numeric"
+												maxLength={1}
+												value={digit}
+												onChange={e => handleContactOtpInputChange(index, e.target.value)}
+												onKeyDown={e => handleContactOtpKeyDown(index, e)}
+												className="w-10 h-12 text-center text-lg font-semibold"
+												disabled={contactIsLoading}
+											/>
+										))}
+									</div>
+									<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+										<Button
+											type="button"
+											onClick={handleVerifyContactOtp}
+											disabled={contactIsLoading || contactOtp.join('').length !== 6}
+										>
+											{contactIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+											Verify Code
+										</Button>
+										<Button
+											type="button"
+											variant="ghost"
+											onClick={handleUpdateContactInfo}
+											disabled={contactCooldown > 0 || contactIsLoading}
+										>
+											{contactCooldown > 0 ? `Resend in ${contactCooldown}s` : 'Resend code'}
+										</Button>
+									</div>
+								</div>
+							)}
 						</CardContent>
 					</Card>
 
