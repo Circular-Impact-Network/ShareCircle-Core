@@ -73,6 +73,16 @@ test.describe('authentication flows', () => {
 			
 			expect(hasLink || hasText).toBeTruthy();
 		});
+
+		test('phone OTP tab is accessible in OTP login mode', async ({ page }) => {
+			await page.goto('/login');
+			await page.waitForLoadState('networkidle');
+
+			await page.getByRole('button', { name: 'Login with OTP' }).click();
+			await expect(page.getByRole('tab', { name: 'Phone OTP' })).toBeVisible();
+			await page.getByRole('tab', { name: 'Phone OTP' }).click();
+			await expect(page.getByPlaceholder('Phone number')).toBeVisible();
+		});
 	});
 
 	test.describe('signup page', () => {
@@ -144,6 +154,17 @@ test.describe('authentication flows', () => {
 				// Check for password strength warning
 				await page.waitForTimeout(500);
 			}
+		});
+
+		test('phone signup shows validation for invalid number', async ({ page }) => {
+			await page.goto('/signup');
+			await page.waitForLoadState('networkidle');
+
+			await page.getByRole('tab', { name: 'Phone' }).click();
+			await page.getByPlaceholder('Phone number').fill('123');
+			await page.getByRole('button', { name: 'Create Account' }).click();
+
+			await expect(page.getByText(/valid phone number/i)).toBeVisible();
 		});
 	});
 
@@ -246,7 +267,7 @@ test.describe('authentication flows', () => {
 			expect(page.url()).toContain('/login');
 		});
 
-		test('protected API returns 401 when not authenticated', async ({ page, request }) => {
+		test('protected API returns 401 when not authenticated', async ({ request }) => {
 			// Make request without auth
 			const response = await request.get('/api/circles', {
 				headers: {
