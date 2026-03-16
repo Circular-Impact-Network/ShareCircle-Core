@@ -25,7 +25,7 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true, // Allow reusing existing server for local development
 		timeout: 120_000,
-		env: { E2E_AUTO_VERIFY: 'true' }, // So signup creates verified users and e2e login works
+		env: { E2E_AUTO_VERIFY: 'true' }, // Keep OTP flows testable without external email/SMS providers
 	},
 	projects: [
 		{
