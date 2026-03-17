@@ -132,6 +132,7 @@ model User {
   borrowTransactionsAsOwner BorrowTransaction[]     @relation("TransactionOwner")
   notifications           Notification[]
   pushSubscriptions       PushSubscription[]
+  notificationPreference  UserNotificationPreference?
 
   @@map("users")
 }
@@ -503,4 +504,18 @@ model PushSubscription {
 
   @@index([userId, enabled])
   @@map("push_subscriptions")
+}
+
+// Per-user in-app vs push notification toggles (global, category, type)
+model UserNotificationPreference {
+  userId            String   @id @map("user_id")
+  globalInApp       Boolean  @default(true) @map("global_in_app")
+  globalPush        Boolean  @default(true) @map("global_push")
+  categoryOverrides Json     @default("{}") @map("category_overrides")
+  typeOverrides     Json     @default("{}") @map("type_overrides")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
 }
