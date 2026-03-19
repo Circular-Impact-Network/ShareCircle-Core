@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
+import { getEffectiveNotificationChannels } from '@/lib/notification-preferences';
 import { sendPushToUser } from '@/lib/push';
-import { NotificationType, NotificationStatus, Prisma } from '@prisma/client';
+import { NotificationType, NotificationStatus, Prisma, type Notification } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,7 +35,7 @@ interface NotifyCircleMembersParams {
 }
 
 /**
- * Creates a notification and broadcasts it via realtime
+ * Creates a notification and broadcasts it via realtime (in-app), and/or sends Web Push, per user preferences.
  */
 export async function createNotification({
 	userId,
@@ -43,56 +44,73 @@ export async function createNotification({
 	title,
 	body,
 	metadata,
-}: CreateNotificationParams) {
-	const notification = await prisma.notification.create({
-		data: {
-			userId,
-			type,
-			entityId,
-			title,
-			body,
-			metadata: (metadata || {}) as Prisma.InputJsonValue,
-			status: NotificationStatus.UNREAD,
-		},
-	});
-
-	// Broadcast notification via Supabase Realtime
-	const supabase = getSupabaseClient();
-	if (supabase) {
-		try {
-			await supabase.channel(`notifications:${userId}`).send({
-				type: 'broadcast',
-				event: 'new_notification',
-				payload: {
-					id: notification.id,
-					type: notification.type,
-					entityId: notification.entityId,
-					title: notification.title,
-					body: notification.body,
-					metadata: notification.metadata,
-					createdAt: notification.createdAt.toISOString(),
-				},
-			});
-		} catch (error) {
-			console.error('Failed to broadcast notification:', error);
-		}
+}: CreateNotificationParams): Promise<Notification | null> {
+	const channels = await getEffectiveNotificationChannels(userId, type);
+	if (!channels.inApp && !channels.push) {
+		return null;
 	}
 
 	const targetPath =
 		metadata && typeof metadata.path === 'string' ? metadata.path : '/notifications';
 
-	await sendPushToUser(userId, {
-		title: notification.title,
-		body: notification.body,
-		url: targetPath,
-		tag: notification.type,
-		data: {
-			notificationId: notification.id,
-			type: notification.type,
-			entityId: notification.entityId,
-			path: targetPath,
-		},
-	});
+	let notification: Notification | null = null;
+
+	if (channels.inApp) {
+		notification = await prisma.notification.create({
+			data: {
+				userId,
+				type,
+				entityId,
+				title,
+				body,
+				metadata: (metadata || {}) as Prisma.InputJsonValue,
+				status: NotificationStatus.UNREAD,
+			},
+		});
+
+		const supabase = getSupabaseClient();
+		if (supabase) {
+			try {
+				await supabase.channel(`notifications:${userId}`).send({
+					type: 'broadcast',
+					event: 'new_notification',
+					payload: {
+						id: notification.id,
+						type: notification.type,
+						entityId: notification.entityId,
+						title: notification.title,
+						body: notification.body,
+						metadata: notification.metadata,
+						createdAt: notification.createdAt.toISOString(),
+					},
+				});
+			} catch (error) {
+				console.error('Failed to broadcast notification:', error);
+			}
+		}
+	}
+
+	if (channels.push) {
+		await sendPushToUser(userId, {
+			title,
+			body,
+			url: targetPath,
+			tag: type,
+			data: {
+				...(notification
+					? {
+							notificationId: notification.id,
+							type: notification.type,
+							entityId: notification.entityId,
+						}
+					: {
+							type,
+							entityId: entityId ?? null,
+						}),
+				path: targetPath,
+			},
+		});
+	}
 
 	return notification;
 }
