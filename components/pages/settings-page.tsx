@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
+import { Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ import {
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
 import { PageHeader, PageShell } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
-import { useNotificationsContext } from '@/components/providers/notifications-provider';
+import { NotificationPreferencesPanel } from '@/components/settings/notification-preferences-panel';
 
 function getCountryFromDialCode(dialCode: string | null | undefined): SupportedPhoneCountry {
 	const match = PHONE_COUNTRIES.find(country => getDialCodeForCountry(country.iso2) === dialCode);
@@ -41,7 +41,6 @@ function getCountryFromDialCode(dialCode: string | null | undefined): SupportedP
 
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
-	const notifications = useNotificationsContext();
 	const [activeTab, setActiveTab] = useState('profile');
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -546,24 +545,15 @@ export function SettingsPage() {
 			.slice(0, 2);
 	};
 
-	const notificationDescription = !notifications?.pushSupported
-		? 'Install the app in a supported browser to enable push notifications.'
-		: !notifications.pushConfigured
-			? 'Push notifications are not configured yet.'
-			: notifications.pushEnabled
-				? 'Background push notifications are enabled for this device.'
-				: notifications.pushPermission === 'denied'
-					? 'Notification permission is blocked in this browser.'
-					: 'Receive updates about messages, requests, and item activity.';
-
 	return (
 		<PageShell className="max-w-5xl space-y-8">
 			<PageHeader title="Settings" description="Manage your account settings and preferences." />
 
 			<PageTabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
-				<PageTabsList className="grid grid-cols-3">
+				<PageTabsList className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-0">
 					<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
 					<PageTabsTrigger value="account">Account</PageTabsTrigger>
+					<PageTabsTrigger value="notifications">Notifications</PageTabsTrigger>
 					<PageTabsTrigger value="appearance">Appearance</PageTabsTrigger>
 				</PageTabsList>
 
@@ -806,6 +796,10 @@ export function SettingsPage() {
 					</Card>
 				</PageTabsContent>
 
+				<PageTabsContent value="notifications" className="space-y-6">
+					<NotificationPreferencesPanel />
+				</PageTabsContent>
+
 				<PageTabsContent value="appearance" className="space-y-6">
 					<Card>
 						<CardHeader>
@@ -824,35 +818,6 @@ export function SettingsPage() {
 									</div>
 								</div>
 								<Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-							</div>
-
-							<div className="flex items-center justify-between" data-testid="notification-preferences">
-								<div className="space-y-0.5">
-									<div className="font-medium flex items-center gap-2">
-										<Bell className="w-4 h-4" />
-										Notifications
-									</div>
-									<div className="text-sm text-muted-foreground">
-										{notificationDescription}
-									</div>
-								</div>
-								<Switch
-									checked={Boolean(notifications?.pushEnabled)}
-									disabled={
-										!notifications?.pushSupported ||
-										!notifications.pushConfigured ||
-										notifications.pushLoading
-									}
-									data-testid="notification-toggle"
-									onCheckedChange={checked => {
-										if (!notifications) return;
-										if (checked) {
-											void notifications.enablePushNotifications();
-											return;
-										}
-										void notifications.disablePushNotifications();
-									}}
-								/>
 							</div>
 						</CardContent>
 					</Card>
