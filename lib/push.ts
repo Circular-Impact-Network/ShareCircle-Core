@@ -10,7 +10,7 @@ type PushPayload = {
 };
 
 export type SendPushOptions = {
-	purpose?: 'notification' | 'test';
+	purpose?: string;
 };
 
 type WebPushSubscriptionRecord = {
@@ -118,8 +118,20 @@ async function recordPushSendAttempt(input: {
 
 export async function sendPushToUser(userId: string, payload: PushPayload, options?: SendPushOptions) {
 	const purpose = options?.purpose ?? 'notification';
+	const payloadTag = payload.tag ?? null;
 
 	if (!isPushConfigured()) {
+		await recordPushSendAttempt({
+			userId,
+			pushSubscriptionId: null,
+			endpointHost: 'push-not-configured',
+			success: false,
+			statusCode: null,
+			errorMessage: 'Push notifications are not configured on the server.',
+			errorBody: null,
+			payloadTag,
+			purpose,
+		});
 		return;
 	}
 
@@ -138,10 +150,19 @@ export async function sendPushToUser(userId: string, payload: PushPayload, optio
 	});
 
 	if (subscriptions.length === 0) {
+		await recordPushSendAttempt({
+			userId,
+			pushSubscriptionId: null,
+			endpointHost: 'no-enabled-subscriptions',
+			success: false,
+			statusCode: null,
+			errorMessage: 'No enabled push subscriptions found for this user.',
+			errorBody: null,
+			payloadTag,
+			purpose,
+		});
 		return;
 	}
-
-	const payloadTag = payload.tag ?? null;
 
 	await Promise.all(
 		subscriptions.map(async subscription => {

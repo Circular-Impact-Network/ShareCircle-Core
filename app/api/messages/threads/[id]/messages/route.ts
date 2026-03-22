@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createNotification } from '@/lib/notifications';
+import { getEffectiveNotificationChannels } from '@/lib/notification-preferences';
+import { sendPushToUser } from '@/lib/push';
 import { supabaseAdmin } from '@/lib/supabase';
 import { AttachmentType, NotificationType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
@@ -368,21 +370,72 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 					: 'Sent a message');
 
 		await Promise.all(
-			notificationRecipientIds.map(recipientId =>
-				createNotification({
+			notificationRecipientIds.map(async recipientId => {
+				const metadata = {
+					path: `/messages/${conversation.id}`,
+					conversationId: conversation.id,
+					messageId: createdMessage.id,
+					senderId: userId,
+				};
+				const pushTag = `${NotificationType.NEW_MESSAGE}:${createdMessage.id}`;
+				const channels = await getEffectiveNotificationChannels(recipientId, NotificationType.NEW_MESSAGE);
+				const pushAttemptsBefore = channels.push
+					? await prisma.pushSendAttempt.count({
+							where: {
+								userId: recipientId,
+								payloadTag: pushTag,
+							},
+						})
+					: 0;
+
+				await createNotification({
 					userId: recipientId,
 					type: NotificationType.NEW_MESSAGE,
 					entityId: createdMessage.id,
 					title: senderDisplayName,
 					body: notificationBody,
-					metadata: {
-						path: `/messages/${conversation.id}`,
-						conversationId: conversation.id,
-						messageId: createdMessage.id,
-						senderId: userId,
+					metadata,
+				});
+
+				if (!channels.push) {
+					return;
+				}
+
+				const pushAttemptsAfter = await prisma.pushSendAttempt.count({
+					where: {
+						userId: recipientId,
+						payloadTag: pushTag,
 					},
-				}),
-			),
+				});
+				if (pushAttemptsAfter > pushAttemptsBefore) {
+					return;
+				}
+
+				console.warn('Falling back to explicit message push send', {
+					recipientId,
+					messageId: createdMessage.id,
+					pushTag,
+				});
+
+				await sendPushToUser(
+					recipientId,
+					{
+						title: senderDisplayName,
+						body: notificationBody,
+						url: `/messages/${conversation.id}`,
+						tag: pushTag,
+						data: {
+							messageId: createdMessage.id,
+							conversationId: conversation.id,
+							senderId: userId,
+							path: `/messages/${conversation.id}`,
+							type: NotificationType.NEW_MESSAGE,
+							entityId: createdMessage.id,
+						},
+					},
+					{ purpose: 'message-fallback' },
+				);
+			}),
 		);
 
 		return NextResponse.json(
