@@ -132,6 +132,7 @@ model User {
   borrowTransactionsAsOwner BorrowTransaction[]     @relation("TransactionOwner")
   notifications           Notification[]
   pushSubscriptions       PushSubscription[]
+  pushSendAttempts        PushSendAttempt[]
   notificationPreference  UserNotificationPreference?
 
   @@map("users")
@@ -501,9 +502,30 @@ model PushSubscription {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sendAttempts PushSendAttempt[]
 
   @@index([userId, enabled])
   @@map("push_subscriptions")
+}
+
+model PushSendAttempt {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  pushSubscriptionId String?  @map("push_subscription_id")
+  endpointHost       String   @map("endpoint_host") @db.VarChar(255)
+  success            Boolean
+  statusCode         Int?     @map("status_code")
+  errorMessage       String?  @map("error_message") @db.Text
+  errorBody          String?  @map("error_body") @db.Text
+  payloadTag         String?  @map("payload_tag") @db.VarChar(128)
+  purpose            String   @default("notification") @map("purpose") @db.VarChar(32)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushSubscription PushSubscription? @relation(fields: [pushSubscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("push_send_attempts")
 }
 
 // Per-user in-app vs push notification toggles (global, category, type)

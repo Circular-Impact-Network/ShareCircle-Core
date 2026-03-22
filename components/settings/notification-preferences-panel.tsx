@@ -14,6 +14,7 @@ import {
 	type NotificationChannelOverride,
 } from '@/lib/redux/api/notificationPreferencesApi';
 import { useNotificationsContext } from '@/components/providers/notifications-provider';
+import { PushDeliveryDebugCard } from '@/components/settings/push-delivery-debug-card';
 
 function cloneOverrides(m: Record<string, NotificationChannelOverride>) {
 	return JSON.parse(JSON.stringify(m)) as Record<string, NotificationChannelOverride>;
@@ -210,6 +211,8 @@ export function NotificationPreferencesPanel() {
 					</div>
 				</CardContent>
 			</Card>
+
+			<PushDeliveryDebugCard />
 
 			<Card>
 				<CardHeader>

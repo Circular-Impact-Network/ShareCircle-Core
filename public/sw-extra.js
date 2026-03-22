@@ -62,6 +62,16 @@ self.addEventListener('push', event => {
 					...(payload.data && typeof payload.data === 'object' ? payload.data : {}),
 				},
 			});
+
+			const receivedAt = new Date().toISOString();
+			const debugTag = typeof payload.tag === 'string' ? payload.tag : null;
+			for (const client of windowClients) {
+				client.postMessage({
+					type: 'SC_PUSH_DEBUG',
+					receivedAt,
+					tag: debugTag,
+				});
+			}
 		})(),
 	);
 });

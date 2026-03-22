@@ -11,12 +11,16 @@ import { borrowApi } from '@/lib/redux/api/borrowApi';
 import { messagesApi } from '@/lib/redux/api/messagesApi';
 import { useAppDispatch } from '@/lib/redux/hooks';
 
+const PUSH_DEBUG_STORAGE_KEY = 'sharecircle_sw_last_push_at';
+
 interface NotificationsContextType {
 	pushSupported: boolean;
 	pushConfigured: boolean;
 	pushEnabled: boolean;
 	pushPermission: NotificationPermission | 'unsupported';
 	pushLoading: boolean;
+	swLastPushReceivedAt: string | null;
+	refreshSwPushReceivedAt: () => void;
 	enablePushNotifications: () => Promise<void>;
 	disablePushNotifications: () => Promise<void>;
 	refreshPushState: () => Promise<void>;
@@ -46,10 +50,50 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 	const [pushEnabled, setPushEnabled] = useState(false);
 	const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('unsupported');
 	const [pushLoading, setPushLoading] = useState(false);
+	const [swLastPushReceivedAt, setSwLastPushReceivedAt] = useState<string | null>(null);
+
+	const readSwPushDebugFromStorage = useCallback(() => {
+		if (typeof window === 'undefined') {
+			return null;
+		}
+		return window.localStorage.getItem(PUSH_DEBUG_STORAGE_KEY);
+	}, []);
+
+	const refreshSwPushReceivedAt = useCallback(() => {
+		setSwLastPushReceivedAt(readSwPushDebugFromStorage());
+	}, [readSwPushDebugFromStorage]);
 
 	useEffect(() => {
 		lastSyncedPushEndpointRef.current = null;
 	}, [userId]);
+
+	useEffect(() => {
+		if (!userId || process.env.NODE_ENV !== 'production') {
+			setSwLastPushReceivedAt(null);
+			return;
+		}
+		setSwLastPushReceivedAt(readSwPushDebugFromStorage());
+	}, [userId, readSwPushDebugFromStorage]);
+
+	useEffect(() => {
+		if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+			return;
+		}
+
+		const onMessage = (event: MessageEvent) => {
+			if (event.data?.type === 'SC_PUSH_DEBUG' && typeof event.data.receivedAt === 'string') {
+				try {
+					window.localStorage.setItem(PUSH_DEBUG_STORAGE_KEY, event.data.receivedAt);
+					setSwLastPushReceivedAt(event.data.receivedAt);
+				} catch {
+					setSwLastPushReceivedAt(event.data.receivedAt);
+				}
+			}
+		};
+
+		navigator.serviceWorker.addEventListener('message', onMessage);
+		return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+	}, []);
 
 	// Invalidate notification queries to refresh data
 	const invalidateNotificationQueries = useCallback(() => {
@@ -106,6 +150,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			setPushConfigured(false);
 			setPushEnabled(false);
 			setPushPermission('unsupported');
+			setSwLastPushReceivedAt(null);
 			return;
 		}
 
@@ -358,6 +403,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			setPushConfigured(false);
 			setPushEnabled(false);
 			setPushPermission('unsupported');
+			setSwLastPushReceivedAt(null);
 			return;
 		}
 
@@ -388,6 +434,8 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 				pushEnabled,
 				pushPermission,
 				pushLoading,
+				swLastPushReceivedAt,
+				refreshSwPushReceivedAt,
 				enablePushNotifications,
 				disablePushNotifications,
 				refreshPushState,
