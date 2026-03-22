@@ -10,6 +10,8 @@ const mockPrismaNotificationCreate = vi.hoisted(() => vi.fn());
 const mockPrismaCircleMemberFindMany = vi.hoisted(() => vi.fn());
 const mockSupabaseChannel = vi.hoisted(() => vi.fn());
 const mockSupabaseSend = vi.hoisted(() => vi.fn());
+const mockGetEffectiveNotificationChannels = vi.hoisted(() => vi.fn());
+const mockSendPushToUser = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/prisma', () => ({
 	prisma: {
@@ -33,6 +35,14 @@ vi.mock('@supabase/supabase-js', () => ({
 	}),
 }));
 
+vi.mock('@/lib/notification-preferences', () => ({
+	getEffectiveNotificationChannels: mockGetEffectiveNotificationChannels,
+}));
+
+vi.mock('@/lib/push', () => ({
+	sendPushToUser: mockSendPushToUser,
+}));
+
 // Mock environment variables must be set before importing the module
 vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://test.supabase.co');
 vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key');
@@ -43,6 +53,8 @@ describe('Notification Utilities', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockSupabaseSend.mockResolvedValue(undefined);
+		mockGetEffectiveNotificationChannels.mockResolvedValue({ inApp: true, push: true });
+		mockSendPushToUser.mockResolvedValue(undefined);
 	});
 
 	describe('createNotification', () => {
@@ -83,6 +95,75 @@ describe('Notification Utilities', () => {
 			});
 
 			expect(result).toEqual(mockNotification);
+			expect(mockSendPushToUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns null and skips DB and push when both channels are disabled', async () => {
+			mockGetEffectiveNotificationChannels.mockResolvedValue({ inApp: false, push: false });
+
+			const result = await createNotification({
+				userId: 'user-1',
+				type: 'NEW_MESSAGE',
+				title: 'Hi',
+				body: 'Hello',
+			});
+
+			expect(result).toBeNull();
+			expect(mockPrismaNotificationCreate).not.toHaveBeenCalled();
+			expect(mockSupabaseSend).not.toHaveBeenCalled();
+			expect(mockSendPushToUser).not.toHaveBeenCalled();
+		});
+
+		it('sends push only when in-app is disabled', async () => {
+			mockGetEffectiveNotificationChannels.mockResolvedValue({ inApp: false, push: true });
+
+			const result = await createNotification({
+				userId: 'user-1',
+				type: 'NEW_MESSAGE',
+				title: 'Hi',
+				body: 'Hello',
+				metadata: { path: '/messages/abc' },
+			});
+
+			expect(result).toBeNull();
+			expect(mockPrismaNotificationCreate).not.toHaveBeenCalled();
+			expect(mockSendPushToUser).toHaveBeenCalledWith(
+				'user-1',
+				expect.objectContaining({
+					title: 'Hi',
+					body: 'Hello',
+					url: '/messages/abc',
+					tag: 'NEW_MESSAGE',
+				}),
+			);
+		});
+
+		it('creates in-app only when push is disabled', async () => {
+			mockGetEffectiveNotificationChannels.mockResolvedValue({ inApp: true, push: false });
+
+			const mockNotification = {
+				id: 'notification-1',
+				userId: 'user-1',
+				type: 'BORROW_REQUEST_RECEIVED',
+				entityId: 'r1',
+				title: 'Borrow',
+				body: 'Body',
+				metadata: {},
+				status: 'UNREAD',
+				createdAt: new Date(),
+			};
+			mockPrismaNotificationCreate.mockResolvedValue(mockNotification);
+
+			const result = await createNotification({
+				userId: 'user-1',
+				type: 'BORROW_REQUEST_RECEIVED',
+				entityId: 'r1',
+				title: 'Borrow',
+				body: 'Body',
+			});
+
+			expect(result).toEqual(mockNotification);
+			expect(mockSendPushToUser).not.toHaveBeenCalled();
 		});
 
 		it('handles empty metadata gracefully', async () => {
