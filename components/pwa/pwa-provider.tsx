@@ -32,20 +32,39 @@ export function PWAProvider() {
 			return;
 		}
 
-		const timer = window.setTimeout(() => {
+		const syncInstallPromptVisibility = () => {
 			const installed = isStandaloneDisplayMode();
-			const dismissedInstallPrompt =
-				window.localStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === 'true';
-			const dismissedIosPrompt =
-				window.localStorage.getItem(IOS_PROMPT_DISMISS_KEY) === 'true';
-
 			setIsInstalled(installed);
+
+			// Uninstalling the PWA does not clear origin storage. Drop stale dismiss flags whenever
+			// we are in a normal browser tab so the install prompt can appear again.
+			if (!installed) {
+				window.localStorage.removeItem(INSTALL_PROMPT_DISMISS_KEY);
+				window.localStorage.removeItem(IOS_PROMPT_DISMISS_KEY);
+			}
+
+			// "Not now" / close only lasts for this tab session so each new visit can prompt again.
+			const dismissedInstallPrompt =
+				window.sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === 'true';
+			const dismissedIosPrompt = window.sessionStorage.getItem(IOS_PROMPT_DISMISS_KEY) === 'true';
+
 			setShowIosPrompt(isIosBrowser() && !dismissedIosPrompt && !installed);
 			setShowInstallPrompt(!dismissedInstallPrompt);
-		}, 0);
+		};
+
+		syncInstallPromptVisibility();
+
+		window.addEventListener('pageshow', syncInstallPromptVisibility);
+		const onVisibility = () => {
+			if (document.visibilityState === 'visible') {
+				syncInstallPromptVisibility();
+			}
+		};
+		document.addEventListener('visibilitychange', onVisibility);
 
 		return () => {
-			window.clearTimeout(timer);
+			window.removeEventListener('pageshow', syncInstallPromptVisibility);
+			document.removeEventListener('visibilitychange', onVisibility);
 		};
 	}, []);
 
@@ -122,7 +141,7 @@ export function PWAProvider() {
 			setInstallPrompt(null);
 			setIsInstalled(true);
 			setShowInstallPrompt(false);
-			window.localStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, 'true');
+			setShowIosPrompt(false);
 		};
 
 		window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -136,14 +155,14 @@ export function PWAProvider() {
 
 	const dismissInstallPrompt = () => {
 		if (typeof window !== 'undefined') {
-			window.localStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, 'true');
+			window.sessionStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, 'true');
 		}
 		setShowInstallPrompt(false);
 	};
 
 	const dismissIosPrompt = () => {
 		if (typeof window !== 'undefined') {
-			window.localStorage.setItem(IOS_PROMPT_DISMISS_KEY, 'true');
+			window.sessionStorage.setItem(IOS_PROMPT_DISMISS_KEY, 'true');
 		}
 		setShowIosPrompt(false);
 	};

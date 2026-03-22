@@ -30,18 +30,34 @@ export async function GET() {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const subscriptions = await prisma.pushSubscription.count({
+		const rows = await prisma.pushSubscription.findMany({
 			where: {
 				userId,
 				enabled: true,
 			},
+			select: { endpoint: true },
 		});
+
+		const endpointHosts = [
+			...new Set(
+				rows
+					.map(r => {
+						try {
+							return new URL(r.endpoint).hostname;
+						} catch {
+							return null;
+						}
+					})
+					.filter((h): h is string => Boolean(h)),
+			),
+		];
 
 		return NextResponse.json(
 			{
 				configured: isPushConfigured(),
 				publicKey: getPushPublicKey(),
-				subscriptions,
+				subscriptions: rows.length,
+				endpointHosts,
 			},
 			{ status: 200 },
 		);

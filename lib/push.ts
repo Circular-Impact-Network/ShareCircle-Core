@@ -95,6 +95,13 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 
 	await Promise.all(
 		subscriptions.map(async subscription => {
+			let endpointHost = '';
+			try {
+				endpointHost = new URL(subscription.endpoint).hostname;
+			} catch {
+				/* ignore */
+			}
+
 			try {
 				await webpush.sendNotification(
 					toWebPushSubscription(subscription),
@@ -105,9 +112,21 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
 						tag: payload.tag,
 						data: payload.data ?? {},
 					}),
+					{
+						urgency: 'high',
+						TTL: 86_400,
+					},
 				);
 			} catch (error) {
-				console.error('Failed to send push notification:', error);
+				const statusCode =
+					error && typeof error === 'object' && 'statusCode' in error
+						? (error as { statusCode?: number }).statusCode
+						: undefined;
+				console.error('Failed to send push notification:', {
+					statusCode,
+					endpointHost,
+					message: error instanceof Error ? error.message : String(error),
+				});
 
 				if (isExpiredSubscriptionError(error)) {
 					await prisma.pushSubscription.delete({

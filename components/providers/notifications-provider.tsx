@@ -38,12 +38,18 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 	const dispatch = useAppDispatch();
 	const notificationChannelRef = useRef<RealtimeChannel | null>(null);
 	const messageChannelRef = useRef<RealtimeChannel | null>(null);
+	/** Avoid duplicate upserts; reset when user logs out or endpoint changes. */
+	const lastSyncedPushEndpointRef = useRef<string | null>(null);
 	const userId = session?.user?.id;
 	const [pushSupported, setPushSupported] = useState(false);
 	const [pushConfigured, setPushConfigured] = useState(false);
 	const [pushEnabled, setPushEnabled] = useState(false);
 	const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('unsupported');
 	const [pushLoading, setPushLoading] = useState(false);
+
+	useEffect(() => {
+		lastSyncedPushEndpointRef.current = null;
+	}, [userId]);
 
 	// Invalidate notification queries to refresh data
 	const invalidateNotificationQueries = useCallback(() => {
@@ -89,11 +95,13 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			configured: boolean;
 			publicKey: string | null;
 			subscriptions: number;
+			endpointHosts?: string[];
 		};
 	}, []);
 
 	const refreshPushState = useCallback(async () => {
 		if (!userId || process.env.NODE_ENV !== 'production') {
+			lastSyncedPushEndpointRef.current = null;
 			setPushSupported(false);
 			setPushConfigured(false);
 			setPushEnabled(false);
@@ -123,6 +131,24 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			const registration = await navigator.serviceWorker.ready;
 			const subscription = await registration.pushManager.getSubscription();
 			setPushEnabled(Boolean(subscription));
+
+			// Keep the server row aligned with *this* browser/PWA registration. Otherwise the DB can
+			// hold another device's endpoint (e.g. desktop) while this phone still shows "push on".
+			if (
+				subscription &&
+				Notification.permission === 'granted' &&
+				subscription.endpoint !== lastSyncedPushEndpointRef.current
+			) {
+				const syncRes = await fetch('/api/push/subscriptions', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(subscription.toJSON()),
+				});
+				if (syncRes.ok) {
+					lastSyncedPushEndpointRef.current = subscription.endpoint;
+				}
+			}
 		} catch (error) {
 			console.error('Failed to refresh push state:', error);
 			setPushConfigured(false);
@@ -188,6 +214,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 				throw new Error('Failed to save your push subscription.');
 			}
 
+			lastSyncedPushEndpointRef.current = subscription.endpoint;
 			setPushConfigured(true);
 			setPushEnabled(true);
 			toast({
@@ -229,6 +256,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 				await subscription.unsubscribe();
 			}
 
+			lastSyncedPushEndpointRef.current = null;
 			setPushEnabled(false);
 			toast({
 				title: 'Push disabled',

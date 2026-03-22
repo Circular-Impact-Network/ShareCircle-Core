@@ -24,7 +24,16 @@ self.addEventListener('push', event => {
 		return;
 	}
 
-	const payload = event.data.json();
+	let payload;
+	try {
+		payload = event.data.json();
+	} catch {
+		return;
+	}
+
+	const title = typeof payload.title === 'string' && payload.title.trim() ? payload.title : 'ShareCircle';
+	const body = typeof payload.body === 'string' ? payload.body : '';
+	const openPath = typeof payload.url === 'string' && payload.url.trim() ? payload.url : '/notifications';
 
 	event.waitUntil(
 		(async () => {
@@ -39,15 +48,18 @@ self.addEventListener('push', event => {
 					type: 'SC_PUSH_EVENT',
 					payload,
 				});
-				return;
 			}
 
-			await self.registration.showNotification(payload.title, {
-				body: payload.body,
+			// Always show a system notification. Previously we returned early when a window
+			// was visible, so the PWA open on a phone never surfaced pushes in the OS tray.
+			await self.registration.showNotification(title, {
+				body,
 				tag: payload.tag || 'sharecircle-notification',
+				icon: '/icon',
+				badge: '/icon',
 				data: {
-					url: payload.url || '/notifications',
-					...(payload.data || {}),
+					url: openPath,
+					...(payload.data && typeof payload.data === 'object' ? payload.data : {}),
 				},
 			});
 		})(),
@@ -55,7 +67,10 @@ self.addEventListener('push', event => {
 });
 
 self.addEventListener('notificationclick', event => {
-	const targetUrl = event.notification.data?.url || '/notifications';
+	const rawUrl = event.notification.data?.url || '/notifications';
+	const absoluteUrl = /^https?:\/\//i.test(rawUrl)
+		? rawUrl
+		: new URL(rawUrl, self.registration.scope).href;
 
 	event.notification.close();
 	event.waitUntil(
@@ -65,15 +80,17 @@ self.addEventListener('notificationclick', event => {
 				includeUncontrolled: true,
 			});
 
+			const targetPath = new URL(absoluteUrl).pathname;
+
 			for (const client of windowClients) {
 				const clientUrl = new URL(client.url);
-				if (clientUrl.pathname === targetUrl) {
+				if (clientUrl.pathname === targetPath) {
 					await client.focus();
 					return;
 				}
 			}
 
-			await self.clients.openWindow(targetUrl);
+			await self.clients.openWindow(absoluteUrl);
 		})(),
 	);
 });
