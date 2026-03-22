@@ -91,11 +91,13 @@ export async function createNotification({
 	}
 
 	if (channels.push) {
+		// Unique tag per entity when possible so Android does not replace every message with one tray item.
+		const pushTag = entityId ? `${type}:${entityId}` : type;
 		await sendPushToUser(userId, {
 			title,
 			body,
 			url: targetPath,
-			tag: type,
+			tag: pushTag,
 			data: {
 				...(notification
 					? {

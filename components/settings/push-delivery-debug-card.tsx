@@ -45,6 +45,8 @@ type PushDebugResponse = {
 		payloadTag: string | null;
 		createdAt: string;
 	} | null;
+	effectiveChannelsByType?: Record<string, { inApp: boolean; push: boolean }>;
+	messagePushHint?: string | null;
 };
 
 type TestPushSuccessResponse = {
@@ -330,6 +332,20 @@ export function PushDeliveryDebugCard() {
 
 						{debug && (
 							<div className="space-y-2 rounded-lg border bg-muted/20 p-3 text-sm">
+								{debug.messagePushHint && (
+									<p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-950 dark:text-amber-100">
+										{debug.messagePushHint}
+									</p>
+								)}
+								{debug.effectiveChannelsByType?.NEW_MESSAGE && (
+									<p>
+										<span className="text-muted-foreground">NEW_MESSAGE channels: </span>
+										<span className="font-mono">
+											inApp={String(debug.effectiveChannelsByType.NEW_MESSAGE.inApp)} push=
+											{String(debug.effectiveChannelsByType.NEW_MESSAGE.push)}
+										</span>
+									</p>
+								)}
 								<p>
 									<span className="text-muted-foreground">Server status: </span>
 									<span className="font-mono font-medium">{debug.computedStatus}</span>

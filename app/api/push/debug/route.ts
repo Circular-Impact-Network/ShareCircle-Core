@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { NotificationType } from '@prisma/client';
 import { authOptions } from '@/lib/auth';
 import { isPushConfigured } from '@/lib/push';
 import { prisma } from '@/lib/prisma';
+import { buildEffectiveByType, ensureNotificationPreferences } from '@/lib/notification-preferences';
 
 const RECENT_LIMIT = 25;
 
@@ -53,6 +55,10 @@ export async function GET() {
 			},
 		});
 
+		const prefRow = await ensureNotificationPreferences(userId);
+		const allTypes = Object.values(NotificationType) as NotificationType[];
+		const effectiveChannelsByType = buildEffectiveByType(prefRow, allTypes);
+
 		const last = recentAttempts[0];
 		let computedStatus: string;
 		if (!configured) {
@@ -93,6 +99,13 @@ export async function GET() {
 							createdAt: last.createdAt.toISOString(),
 						}
 					: null,
+				effectiveChannelsByType,
+				messagePushHint:
+					!effectiveChannelsByType.NEW_MESSAGE?.push && effectiveChannelsByType.NEW_MESSAGE?.inApp
+						? 'Chat messages are allowed in-app but push is off for NEW_MESSAGE in your notification preferences. Test push ignores these toggles.'
+						: !effectiveChannelsByType.NEW_MESSAGE?.push
+							? 'Push for new messages (NEW_MESSAGE) is off in your notification preferences.'
+							: null,
 			},
 			{ status: 200 },
 		);
