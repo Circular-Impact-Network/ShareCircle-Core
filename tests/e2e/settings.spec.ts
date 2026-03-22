@@ -94,11 +94,10 @@ test.describe('settings and profile', () => {
 	test('settings page has notification preferences', async ({ page }) => {
 		await page.goto('/settings');
 		await page.waitForLoadState('networkidle');
-		
-		// Navigate to Appearance tab where notification settings are
-		const appearanceTab = page.getByRole('tab', { name: /Appearance/i });
-		if (await appearanceTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-			await appearanceTab.click();
+
+		const notificationsTab = page.getByRole('tab', { name: /^Notifications$/i });
+		if (await notificationsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+			await notificationsTab.click();
 			await page.waitForTimeout(500);
 		}
 		
