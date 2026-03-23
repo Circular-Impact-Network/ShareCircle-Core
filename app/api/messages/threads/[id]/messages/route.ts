@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createNotification } from '@/lib/notifications';
-import { getEffectiveNotificationChannels } from '@/lib/notification-preferences';
-import { sendPushToUser } from '@/lib/push';
+import { runAfterNewChatMessagePersisted } from '@/lib/chat-message-side-effects';
 import { supabaseAdmin } from '@/lib/supabase';
-import { AttachmentType, NotificationType } from '@prisma/client';
+import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 
 // List/send messages with attachments (IMAGE) and delivery receipts
@@ -144,9 +143,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		const nextCursor = messages.length === limit ? messages[messages.length - 1]?.id : null;
 
 		const otherUserId =
-			conversation.type === 'DIRECT'
-				? await getDirectConversationOtherUserId(conversation.id, userId)
-				: null;
+			conversation.type === 'DIRECT' ? await getDirectConversationOtherUserId(conversation.id, userId) : null;
 		const canMessage =
 			otherUserId && conversation.type === 'DIRECT' ? await canUsersChat(userId, otherUserId) : true;
 
@@ -174,20 +171,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		const body = await req.json();
 		const messageBody = typeof body?.body === 'string' ? body.body.trim() : '';
 		const clientId = typeof body?.clientId === 'string' ? body.clientId : null;
-		const attachments =
-			Array.isArray(body?.attachments)
-				? body.attachments
-						.filter((attachment: unknown) => {
-							if (!attachment || typeof attachment !== 'object') return false;
-							const candidate = attachment as { type?: unknown; url?: unknown };
-							return candidate.type === 'IMAGE' && typeof candidate.url === 'string' && candidate.url.length > 0;
-						})
-						.map((attachment: { type: 'IMAGE'; url: string; path?: string }) => ({
-							type: attachment.type,
-							url: attachment.url,
-							path: attachment.path,
-						}))
-				: [];
+		const attachments = Array.isArray(body?.attachments)
+			? body.attachments
+					.filter((attachment: unknown) => {
+						if (!attachment || typeof attachment !== 'object') return false;
+						const candidate = attachment as { type?: unknown; url?: unknown };
+						return (
+							candidate.type === 'IMAGE' && typeof candidate.url === 'string' && candidate.url.length > 0
+						);
+					})
+					.map((attachment: { type: 'IMAGE'; url: string; path?: string }) => ({
+						type: attachment.type,
+						url: attachment.url,
+						path: attachment.path,
+					}))
+			: [];
 
 		if (!messageBody && attachments.length === 0) {
 			return NextResponse.json({ error: 'Message body or attachment is required' }, { status: 400 });
@@ -241,20 +239,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			}
 		}
 
-		const sender = await prisma.user.findUnique({
-			where: { id: userId },
-			select: {
-				name: true,
-			},
-		});
-
 		const recipientIds = conversation.participants.filter(p => p.userId !== userId).map(p => p.userId);
 		const now = new Date();
 		const notificationRecipientIds = conversation.participants
 			.filter(
 				participant =>
-					participant.userId !== userId &&
-					(!participant.mutedUntil || participant.mutedUntil <= now),
+					participant.userId !== userId && (!participant.mutedUntil || participant.mutedUntil <= now),
 			)
 			.map(participant => participant.userId);
 
@@ -322,121 +312,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			where: { messageId: createdMessage.id },
 		});
 
-		// Broadcast the new message via Supabase realtime
-		const messagePayload = {
-			id: createdMessage.id,
-			conversationId: createdMessage.conversationId,
-			senderId: createdMessage.senderId,
-			body: createdMessage.body,
-			createdAt: createdMessage.createdAt.toISOString(),
-			clientId: createdMessage.clientId,
-			sender: createdMessage.sender,
-			receipts,
-			attachments: createdMessage.attachments,
-		};
-
-		try {
-			// Broadcast to conversation channel (for users viewing this specific chat)
-			const conversationChannel = supabaseAdmin.channel(`messages:${conversation.id}`);
-			await conversationChannel.send({
-				type: 'broadcast',
-				event: 'new_message',
-				payload: messagePayload,
-			});
-			await supabaseAdmin.removeChannel(conversationChannel);
-
-			// Also broadcast to each recipient's personal channel (for users on chat list or elsewhere)
-			for (const recipientId of recipientIds) {
-				const userChannel = supabaseAdmin.channel(`user:${recipientId}:messages`);
-				await userChannel.send({
-					type: 'broadcast',
-					event: 'new_message',
-					payload: messagePayload,
-				});
-				await supabaseAdmin.removeChannel(userChannel);
-			}
-		} catch (broadcastError) {
-			// Log but don't fail the request if broadcast fails
-			console.error('Failed to broadcast message:', broadcastError);
-		}
-
-		const senderDisplayName = sender?.name?.trim() || 'New message';
-		const notificationBody =
-			createdMessage.body ||
-			(createdMessage.attachments.length === 1
-				? 'Sent a photo'
-				: createdMessage.attachments.length > 1
-					? `Sent ${createdMessage.attachments.length} photos`
-					: 'Sent a message');
-
-		await Promise.all(
-			notificationRecipientIds.map(async recipientId => {
-				const metadata = {
-					path: `/messages/${conversation.id}`,
+		after(async () => {
+			try {
+				await runAfterNewChatMessagePersisted({
 					conversationId: conversation.id,
-					messageId: createdMessage.id,
 					senderId: userId,
-				};
-				const pushTag = `${NotificationType.NEW_MESSAGE}:${createdMessage.id}`;
-				const channels = await getEffectiveNotificationChannels(recipientId, NotificationType.NEW_MESSAGE);
-				const pushAttemptsBefore = channels.push
-					? await prisma.pushSendAttempt.count({
-							where: {
-								userId: recipientId,
-								payloadTag: pushTag,
-							},
-						})
-					: 0;
-
-				await createNotification({
-					userId: recipientId,
-					type: NotificationType.NEW_MESSAGE,
-					entityId: createdMessage.id,
-					title: senderDisplayName,
-					body: notificationBody,
-					metadata,
+					recipientIds,
+					notificationRecipientIds,
+					createdMessage,
+					receipts,
 				});
-
-				if (!channels.push) {
-					return;
-				}
-
-				const pushAttemptsAfter = await prisma.pushSendAttempt.count({
-					where: {
-						userId: recipientId,
-						payloadTag: pushTag,
-					},
-				});
-				if (pushAttemptsAfter > pushAttemptsBefore) {
-					return;
-				}
-
-				console.warn('Falling back to explicit message push send', {
-					recipientId,
-					messageId: createdMessage.id,
-					pushTag,
-				});
-
-				await sendPushToUser(
-					recipientId,
-					{
-						title: senderDisplayName,
-						body: notificationBody,
-						url: `/messages/${conversation.id}`,
-						tag: pushTag,
-						data: {
-							messageId: createdMessage.id,
-							conversationId: conversation.id,
-							senderId: userId,
-							path: `/messages/${conversation.id}`,
-							type: NotificationType.NEW_MESSAGE,
-							entityId: createdMessage.id,
-						},
-					},
-					{ purpose: 'message-fallback' },
-				);
-			}),
-		);
+			} catch (error) {
+				console.error('Message side-effects failed:', error);
+			}
+		});
 
 		return NextResponse.json(
 			{
