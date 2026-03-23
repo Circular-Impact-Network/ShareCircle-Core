@@ -1,19 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { getEffectiveNotificationChannels } from '@/lib/notification-preferences';
 import { sendPushToUser } from '@/lib/push';
+import { supabaseAdmin } from '@/lib/supabase';
 import { NotificationType, NotificationStatus, Prisma, type Notification } from '@prisma/client';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function getSupabaseClient() {
-	if (!supabaseUrl || !supabaseServiceKey) {
-		console.warn('Supabase URL or Service Role Key not configured');
-		return null;
-	}
-	return createClient(supabaseUrl, supabaseServiceKey);
-}
 
 interface CreateNotificationParams {
 	userId: string;
@@ -50,8 +39,7 @@ export async function createNotification({
 		return null;
 	}
 
-	const targetPath =
-		metadata && typeof metadata.path === 'string' ? metadata.path : '/notifications';
+	const targetPath = metadata && typeof metadata.path === 'string' ? metadata.path : '/notifications';
 
 	let notification: Notification | null = null;
 
@@ -68,25 +56,24 @@ export async function createNotification({
 			},
 		});
 
-		const supabase = getSupabaseClient();
-		if (supabase) {
-			try {
-				await supabase.channel(`notifications:${userId}`).send({
-					type: 'broadcast',
-					event: 'new_notification',
-					payload: {
-						id: notification.id,
-						type: notification.type,
-						entityId: notification.entityId,
-						title: notification.title,
-						body: notification.body,
-						metadata: notification.metadata,
-						createdAt: notification.createdAt.toISOString(),
-					},
-				});
-			} catch (error) {
-				console.error('Failed to broadcast notification:', error);
-			}
+		try {
+			const channel = supabaseAdmin.channel(`notifications:${userId}`);
+			await channel.send({
+				type: 'broadcast',
+				event: 'new_notification',
+				payload: {
+					id: notification.id,
+					type: notification.type,
+					entityId: notification.entityId,
+					title: notification.title,
+					body: notification.body,
+					metadata: notification.metadata,
+					createdAt: notification.createdAt.toISOString(),
+				},
+			});
+			await supabaseAdmin.removeChannel(channel);
+		} catch (error) {
+			console.error('Failed to broadcast notification:', error);
 		}
 	}
 
@@ -149,8 +136,8 @@ export async function notifyCircleMembers({
 				title,
 				body,
 				metadata,
-			})
-		)
+			}),
+		),
 	);
 
 	return notifications;
@@ -182,11 +169,9 @@ interface BroadcastItemRequestParams {
  * Broadcast a new item request to the circle channel
  */
 export async function broadcastItemRequest({ circleId, request }: BroadcastItemRequestParams) {
-	const supabase = getSupabaseClient();
-	if (!supabase) return;
-
 	try {
-		await supabase.channel(`circle-requests:${circleId}`).send({
+		const channel = supabaseAdmin.channel(`circle-requests:${circleId}`);
+		await channel.send({
 			type: 'broadcast',
 			event: 'new_item_request',
 			payload: {
@@ -201,6 +186,7 @@ export async function broadcastItemRequest({ circleId, request }: BroadcastItemR
 				circle: request.circle,
 			},
 		});
+		await supabaseAdmin.removeChannel(channel);
 	} catch (error) {
 		console.error('Failed to broadcast item request:', error);
 	}
@@ -210,16 +196,19 @@ export async function broadcastItemRequest({ circleId, request }: BroadcastItemR
  * Broadcast a status change event to a user's channel
  * This triggers UI refresh for borrow requests, transactions, etc.
  */
-export async function broadcastStatusChange(userId: string, event: 'request_status_changed' | 'transaction_updated', data?: Record<string, unknown>) {
-	const supabase = getSupabaseClient();
-	if (!supabase) return;
-
+export async function broadcastStatusChange(
+	userId: string,
+	event: 'request_status_changed' | 'transaction_updated',
+	data?: Record<string, unknown>,
+) {
 	try {
-		await supabase.channel(`notifications:${userId}`).send({
+		const channel = supabaseAdmin.channel(`notifications:${userId}`);
+		await channel.send({
 			type: 'broadcast',
 			event,
 			payload: data || {},
 		});
+		await supabaseAdmin.removeChannel(channel);
 	} catch (error) {
 		console.error(`Failed to broadcast ${event}:`, error);
 	}
