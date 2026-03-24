@@ -178,26 +178,32 @@ export function ChatContainer({
 		setMessages(prev => [...prev, optimistic]);
 		setMessageInput('');
 
-		const response = await fetch(`/api/messages/threads/${activeId}/messages`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ body: optimistic.body, clientId, attachments }),
-		});
+		try {
+			const response = await fetch(`/api/messages/threads/${activeId}/messages`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ body: optimistic.body, clientId, attachments }),
+			});
 
-		if (!response.ok) {
+			if (!response.ok) {
+				setMessages(prev =>
+					prev.map(message =>
+						message.clientId === clientId ? { ...message, localStatus: 'failed' } : message,
+					),
+				);
+				return;
+			}
+
+			const saved = (await response.json()) as ChatMessage;
 			setMessages(prev =>
-				prev.map(message =>
-					message.clientId === clientId ? { ...message, localStatus: 'failed' } : message,
-				),
+				prev.map(message => (message.clientId === clientId ? { ...saved, localStatus: undefined } : message)),
 			);
-			return;
+			fetchThreads();
+		} catch {
+			setMessages(prev =>
+				prev.map(message => (message.clientId === clientId ? { ...message, localStatus: 'failed' } : message)),
+			);
 		}
-
-		const saved = (await response.json()) as ChatMessage;
-		setMessages(prev =>
-			prev.map(message => (message.clientId === clientId ? { ...saved, localStatus: undefined } : message)),
-		);
-		fetchThreads();
 	};
 
 	const handleRetry = async (message: ChatMessage) => {
@@ -205,22 +211,28 @@ export function ChatContainer({
 		setMessages(prev =>
 			prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'sending' } : item)),
 		);
-		const response = await fetch(`/api/messages/threads/${activeId}/retry`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ body: message.body, clientId: message.clientId }),
-		});
-		if (!response.ok) {
+		try {
+			const response = await fetch(`/api/messages/threads/${activeId}/retry`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ body: message.body, clientId: message.clientId }),
+			});
+			if (!response.ok) {
+				setMessages(prev =>
+					prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'failed' } : item)),
+				);
+				return;
+			}
+			const saved = (await response.json()) as ChatMessage;
+			setMessages(prev =>
+				prev.map(item => (item.clientId === message.clientId ? { ...saved, localStatus: undefined } : item)),
+			);
+			fetchThreads();
+		} catch {
 			setMessages(prev =>
 				prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'failed' } : item)),
 			);
-			return;
 		}
-		const saved = (await response.json()) as ChatMessage;
-		setMessages(prev =>
-			prev.map(item => (item.clientId === message.clientId ? { ...saved, localStatus: undefined } : item)),
-		);
-		fetchThreads();
 	};
 
 	const handleToggleSearch = () => {
@@ -370,10 +382,12 @@ export function ChatContainer({
 				)}
 
 				{showThreadPanel && (
-					<div className={cn(
-						'flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70',
-						fullBleed ? 'bg-card' : 'bg-background/40',
-					)}>
+					<div
+						className={cn(
+							'flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70',
+							fullBleed ? 'bg-card' : 'bg-background/40',
+						)}
+					>
 						{activeUser ? (
 							<>
 								<ChatHeader
@@ -387,12 +401,17 @@ export function ChatContainer({
 									isArchived={Boolean(activeThread?.archivedAt)}
 									isSearchOpen={isMessageSearchOpen}
 									searchValue={messageSearch}
-									onTogglePin={() => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt)}
+									onTogglePin={() =>
+										activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt)
+									}
 									onToggleMute={() =>
 										activeThread &&
 										handleMute(
 											activeThread.id,
-											!(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date()),
+											!(
+												activeThread.mutedUntil &&
+												new Date(activeThread.mutedUntil) > new Date()
+											),
 										)
 									}
 									onToggleArchive={() =>
