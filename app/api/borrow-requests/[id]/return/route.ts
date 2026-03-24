@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowTransactionStatus, NotificationType } from '@prisma/client';
-import { createNotification, broadcastStatusChange } from '@/lib/notifications';
+import { queueNotification, queueBroadcast } from '@/lib/notify';
 
 // POST /api/borrow-requests/[id]/return - Borrower marks item as returned
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -73,8 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			},
 		});
 
-		// Notify owner to confirm return
-		await createNotification({
+		queueNotification({
 			userId: borrowRequest.ownerId,
 			type: NotificationType.RETURN_REQUESTED,
 			entityId: borrowRequest.id,
@@ -90,18 +89,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			},
 		});
 
-		// Broadcast status change to both parties for realtime UI update
-		await Promise.all([
-			broadcastStatusChange(borrowRequest.requesterId, 'transaction_updated', { transactionId: updatedTransaction.id, status: 'RETURN_PENDING' }),
-			broadcastStatusChange(borrowRequest.ownerId, 'transaction_updated', { transactionId: updatedTransaction.id, status: 'RETURN_PENDING' }),
-		]);
+		queueBroadcast(`notifications:${borrowRequest.requesterId}`, 'transaction_updated', {
+			transactionId: updatedTransaction.id,
+			status: 'RETURN_PENDING',
+		});
+		queueBroadcast(`notifications:${borrowRequest.ownerId}`, 'transaction_updated', {
+			transactionId: updatedTransaction.id,
+			status: 'RETURN_PENDING',
+		});
 
 		return NextResponse.json(
 			{
 				message: 'Return marked successfully. Waiting for owner confirmation.',
 				transaction: updatedTransaction,
 			},
-			{ status: 200 }
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error('Mark return error:', error);

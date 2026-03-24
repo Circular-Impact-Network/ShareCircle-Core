@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowRequestStatus, BorrowQueueStatus, NotificationType } from '@prisma/client';
-import { createNotification } from '@/lib/notifications';
+import { queueNotification } from '@/lib/notify';
 import { getSignedUrl } from '@/lib/supabase';
 
 // GET /api/borrow-requests - Get borrow requests
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 					...request.item,
 					imageUrl: await getSignedUrl(request.item.imagePath, 'items'),
 				},
-			}))
+			})),
 		);
 
 		return NextResponse.json(requestsWithUrls, { status: 200 });
@@ -242,8 +242,7 @@ export async function POST(req: NextRequest) {
 				},
 			});
 
-			// Notify owner about queue entry
-			await createNotification({
+			queueNotification({
 				userId: item.ownerId,
 				type: NotificationType.QUEUE_POSITION_UPDATED,
 				entityId: queueEntry.id,
@@ -270,7 +269,7 @@ export async function POST(req: NextRequest) {
 						},
 					},
 				},
-				{ status: 201 }
+				{ status: 201 },
 			);
 		}
 
@@ -278,7 +277,7 @@ export async function POST(req: NextRequest) {
 		if (!item.isAvailable && !joinQueue) {
 			return NextResponse.json(
 				{ error: 'Item is not available. You can join the queue instead.' },
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
@@ -319,8 +318,7 @@ export async function POST(req: NextRequest) {
 			},
 		});
 
-		// Notify owner about the borrow request
-		await createNotification({
+		queueNotification({
 			userId: item.ownerId,
 			type: NotificationType.BORROW_REQUEST_RECEIVED,
 			entityId: borrowRequest.id,
@@ -348,7 +346,7 @@ export async function POST(req: NextRequest) {
 					},
 				},
 			},
-			{ status: 201 }
+			{ status: 201 },
 		);
 	} catch (error) {
 		console.error('Create borrow request error:', error);

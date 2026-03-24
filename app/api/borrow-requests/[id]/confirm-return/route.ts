@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowTransactionStatus, BorrowQueueStatus, NotificationType } from '@prisma/client';
-import { createNotification, broadcastStatusChange } from '@/lib/notifications';
+import { queueNotification, queueBroadcast } from '@/lib/notify';
 
 // POST /api/borrow-requests/[id]/confirm-return - Owner confirms item return
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -112,8 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return { updatedTransaction, nextInQueue };
 		});
 
-		// Notify borrower that return is confirmed
-		await createNotification({
+		queueNotification({
 			userId: borrowRequest.requesterId,
 			type: NotificationType.RETURN_CONFIRMED,
 			entityId: borrowRequest.id,
@@ -127,9 +126,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			},
 		});
 
-		// Notify next person in queue if exists
 		if (result.nextInQueue) {
-			await createNotification({
+			queueNotification({
 				userId: result.nextInQueue.requesterId,
 				type: NotificationType.QUEUE_ITEM_READY,
 				entityId: result.nextInQueue.id,
@@ -143,17 +141,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			});
 		}
 
-		// Broadcast status change to both parties for realtime UI update
-		const broadcastPromises = [
-			broadcastStatusChange(borrowRequest.requesterId, 'transaction_updated', { transactionId: result.updatedTransaction.id, status: 'COMPLETED' }),
-			broadcastStatusChange(borrowRequest.ownerId, 'transaction_updated', { transactionId: result.updatedTransaction.id, status: 'COMPLETED' }),
-		];
+		queueBroadcast(`notifications:${borrowRequest.requesterId}`, 'transaction_updated', {
+			transactionId: result.updatedTransaction.id,
+			status: 'COMPLETED',
+		});
+		queueBroadcast(`notifications:${borrowRequest.ownerId}`, 'transaction_updated', {
+			transactionId: result.updatedTransaction.id,
+			status: 'COMPLETED',
+		});
 		if (result.nextInQueue) {
-			broadcastPromises.push(
-				broadcastStatusChange(result.nextInQueue.requesterId, 'request_status_changed', { queueEntryId: result.nextInQueue.id, status: 'READY' })
-			);
+			queueBroadcast(`notifications:${result.nextInQueue.requesterId}`, 'request_status_changed', {
+				queueEntryId: result.nextInQueue.id,
+				status: 'READY',
+			});
 		}
-		await Promise.all(broadcastPromises);
 
 		return NextResponse.json(
 			{
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 						}
 					: null,
 			},
-			{ status: 200 }
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error('Confirm return error:', error);

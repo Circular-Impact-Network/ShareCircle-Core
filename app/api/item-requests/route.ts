@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ItemRequestStatus, NotificationType } from '@prisma/client';
-import { notifyCircleMembers, broadcastItemRequest } from '@/lib/notifications';
+import { queueCircleNotification, queueBroadcast } from '@/lib/notify';
 
 // GET/POST item requests with multi-circle (circleIds) and per-circle notify/broadcast
 // GET /api/item-requests - Get item requests for user's circles
@@ -120,7 +120,9 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'At least one circle is required' }, { status: 400 });
 		}
 
-		const uniqueCircleIds = [...new Set(requestedCircleIds.filter((id: unknown) => typeof id === 'string'))] as string[];
+		const uniqueCircleIds = [
+			...new Set(requestedCircleIds.filter((id: unknown) => typeof id === 'string')),
+		] as string[];
 		if (uniqueCircleIds.length === 0) {
 			return NextResponse.json({ error: 'At least one valid circle is required' }, { status: 400 });
 		}
@@ -190,7 +192,10 @@ export async function POST(req: NextRequest) {
 			// Check for specific Prisma errors
 			if (dbError instanceof Error) {
 				if (dbError.message.includes('Unique constraint')) {
-					return NextResponse.json({ error: 'An item request with this title already exists in one of the selected circles' }, { status: 409 });
+					return NextResponse.json(
+						{ error: 'An item request with this title already exists in one of the selected circles' },
+						{ status: 409 },
+					);
 				}
 				if (dbError.message.includes('Foreign key constraint')) {
 					return NextResponse.json({ error: 'Invalid circle or user' }, { status: 400 });
@@ -204,65 +209,68 @@ export async function POST(req: NextRequest) {
 			circle: itemRequest.circles[0]!.circle,
 		};
 
-		// Notify circle members about the new item request (non-blocking)
-		Promise.all(
-			uniqueCircleIds.map(selectedCircleId =>
-				notifyCircleMembers({
-					circleId: selectedCircleId,
-					actorId: userId,
-					type: NotificationType.ITEM_REQUEST_CREATED,
-					entityId: itemRequest.id,
-					title: 'New Item Request',
-					body: `${session.user.name || 'Someone'} is looking for "${title}" in ${circleNameById.get(selectedCircleId) || 'your circle'}`,
-					metadata: {
-						itemRequestId: itemRequest.id,
-						requesterId: userId,
-						requesterName: session.user.name,
-						circleIds: uniqueCircleIds,
-						circleNames: circles.map(circle => circle.name),
-					},
-				}),
-			),
-		).catch(err => {
-			console.error('Failed to notify circle members:', err);
-		});
+		for (const selectedCircleId of uniqueCircleIds) {
+			queueCircleNotification({
+				circleId: selectedCircleId,
+				actorId: userId,
+				type: NotificationType.ITEM_REQUEST_CREATED,
+				entityId: itemRequest.id,
+				title: 'New Item Request',
+				body: `${session.user.name || 'Someone'} is looking for "${title}" in ${circleNameById.get(selectedCircleId) || 'your circle'}`,
+				metadata: {
+					itemRequestId: itemRequest.id,
+					requesterId: userId,
+					requesterName: session.user.name,
+					circleIds: uniqueCircleIds,
+					circleNames: circles.map(circle => circle.name),
+				},
+			});
 
-		// Broadcast to circle channel for realtime updates (non-blocking)
-		Promise.all(
-			uniqueCircleIds.map(selectedCircleId =>
-				broadcastItemRequest({
-					circleId: selectedCircleId,
-					request: response,
-				}),
-			),
-		).catch(err => {
-			console.error('Failed to broadcast item request:', err);
-			// Don't fail the request if broadcast fails
-		});
+			queueBroadcast(`circle-requests:${selectedCircleId}`, 'new_item_request', {
+				id: response.id,
+				title: response.title,
+				description: response.description,
+				status: response.status,
+				desiredFrom: response.desiredFrom?.toISOString() || null,
+				desiredTo: response.desiredTo?.toISOString() || null,
+				createdAt: response.createdAt.toISOString(),
+				requester: response.requester,
+				circle: response.circle,
+			});
+		}
 
 		return NextResponse.json(response, { status: 201 });
 	} catch (error) {
 		console.error('Create item request error:', error);
-		
+
 		// Provide more specific error messages
 		if (error instanceof Error) {
 			// Prisma errors
 			if (error.message.includes('Unique constraint')) {
-				return NextResponse.json({ error: 'An item request with this title already exists in one of the selected circles' }, { status: 409 });
+				return NextResponse.json(
+					{ error: 'An item request with this title already exists in one of the selected circles' },
+					{ status: 409 },
+				);
 			}
 			if (error.message.includes('Foreign key constraint')) {
-				return NextResponse.json({ error: 'Invalid circle or user. Please refresh and try again.' }, { status: 400 });
+				return NextResponse.json(
+					{ error: 'Invalid circle or user. Please refresh and try again.' },
+					{ status: 400 },
+				);
 			}
 			if (error.message.includes('Record to create not found')) {
 				return NextResponse.json({ error: 'Circle not found. Please refresh and try again.' }, { status: 404 });
 			}
-			
+
 			// Return the error message if it's informative
-			return NextResponse.json({ 
-				error: error.message || 'Failed to create item request' 
-			}, { status: 500 });
+			return NextResponse.json(
+				{
+					error: error.message || 'Failed to create item request',
+				},
+				{ status: 500 },
+			);
 		}
-		
+
 		return NextResponse.json({ error: 'Failed to create item request. Please try again.' }, { status: 500 });
 	}
 }

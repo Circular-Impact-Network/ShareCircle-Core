@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowQueueStatus, NotificationType } from '@prisma/client';
-import { createNotification } from '@/lib/notifications';
+import { queueNotification } from '@/lib/notify';
 
 // DELETE /api/borrow-queue/[id] - Leave queue (requester) or remove from queue (owner)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -60,9 +60,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 			  AND status = 'WAITING'
 		`;
 
-		// Notify if owner removed someone from queue
 		if (queueEntry.item.ownerId === userId && queueEntry.requesterId !== userId) {
-			await createNotification({
+			queueNotification({
 				userId: queueEntry.requesterId,
 				type: NotificationType.QUEUE_POSITION_UPDATED,
 				entityId: queueEntry.id,
@@ -151,8 +150,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return borrowRequest;
 		});
 
-		// Notify owner
-		await createNotification({
+		queueNotification({
 			userId: queueEntry.item.ownerId,
 			type: NotificationType.BORROW_REQUEST_RECEIVED,
 			entityId: result.id,
@@ -171,7 +169,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 				message: 'Borrow request created from queue entry',
 				borrowRequest: result,
 			},
-			{ status: 201 }
+			{ status: 201 },
 		);
 	} catch (error) {
 		console.error('Convert queue entry error:', error);

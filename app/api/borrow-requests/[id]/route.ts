@@ -2,12 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import {
-	BorrowRequestStatus,
-	BorrowTransactionStatus,
-	NotificationType,
-} from '@prisma/client';
-import { createNotification, broadcastStatusChange } from '@/lib/notifications';
+import { BorrowRequestStatus, BorrowTransactionStatus, NotificationType } from '@prisma/client';
+import { queueNotification, queueBroadcast } from '@/lib/notify';
 import { getSignedUrl } from '@/lib/supabase';
 
 // GET /api/borrow-requests/[id] - Get a single borrow request
@@ -69,7 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 					imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items'),
 				},
 			},
-			{ status: 200 }
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error('Get borrow request error:', error);
@@ -164,8 +160,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				},
 			});
 
-			// Notify requester
-			await createNotification({
+			queueNotification({
 				userId: borrowRequest.requesterId,
 				type: NotificationType.BORROW_REQUEST_DECLINED,
 				entityId: borrowRequest.id,
@@ -180,11 +175,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				},
 			});
 
-			// Broadcast status change to both parties for realtime UI update
-			await Promise.all([
-				broadcastStatusChange(borrowRequest.requesterId, 'request_status_changed', { requestId: id, status: 'DECLINED' }),
-				broadcastStatusChange(borrowRequest.ownerId, 'request_status_changed', { requestId: id, status: 'DECLINED' }),
-			]);
+			queueBroadcast(`notifications:${borrowRequest.requesterId}`, 'request_status_changed', {
+				requestId: id,
+				status: 'DECLINED',
+			});
+			queueBroadcast(`notifications:${borrowRequest.ownerId}`, 'request_status_changed', {
+				requestId: id,
+				status: 'DECLINED',
+			});
 
 			return NextResponse.json(
 				{
@@ -194,7 +192,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 						imageUrl: await getSignedUrl(updatedRequest.item.imagePath, 'items'),
 					},
 				},
-				{ status: 200 }
+				{ status: 200 },
 			);
 		}
 
@@ -233,8 +231,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				return { updatedRequest, transaction };
 			});
 
-			// Notify requester
-			await createNotification({
+			queueNotification({
 				userId: borrowRequest.requesterId,
 				type: NotificationType.BORROW_REQUEST_APPROVED,
 				entityId: borrowRequest.id,
@@ -250,11 +247,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				},
 			});
 
-			// Broadcast status change to both parties for realtime UI update
-			await Promise.all([
-				broadcastStatusChange(borrowRequest.requesterId, 'request_status_changed', { requestId: id, status: 'APPROVED' }),
-				broadcastStatusChange(borrowRequest.ownerId, 'request_status_changed', { requestId: id, status: 'APPROVED' }),
-			]);
+			queueBroadcast(`notifications:${borrowRequest.requesterId}`, 'request_status_changed', {
+				requestId: id,
+				status: 'APPROVED',
+			});
+			queueBroadcast(`notifications:${borrowRequest.ownerId}`, 'request_status_changed', {
+				requestId: id,
+				status: 'APPROVED',
+			});
 
 			return NextResponse.json(
 				{
@@ -266,7 +266,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 						isAvailable: false,
 					},
 				},
-				{ status: 200 }
+				{ status: 200 },
 			);
 		}
 

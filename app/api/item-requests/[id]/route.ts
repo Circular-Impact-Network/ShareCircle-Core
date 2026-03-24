@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ItemRequestStatus, NotificationType } from '@prisma/client';
-import { createNotification } from '@/lib/notifications';
+import { queueNotification } from '@/lib/notify';
 
 // GET/PATCH with circles relation and fulfilledBy in request circle
 // GET /api/item-requests/[id] - Get a single item request
@@ -182,9 +182,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			},
 		});
 
-		// Notify the requester if their request was fulfilled
 		if (status === ItemRequestStatus.FULFILLED && itemRequest.requesterId !== userId) {
-			await createNotification({
+			queueNotification({
 				userId: itemRequest.requesterId,
 				type: NotificationType.ITEM_REQUEST_FULFILLED,
 				entityId: itemRequest.id,
