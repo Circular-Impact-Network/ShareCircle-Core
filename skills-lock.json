@@ -5,6 +5,11 @@
       "source": "jwynia/agent-skills",
       "sourceType": "github",
       "computedHash": "b2ef095d9ab54b7686bb07e9681ccbbe6af5889e806ee2231650c9e6c9089e1f"
+    },
+    "retroactive-commit-history": {
+      "source": "nitin-1926/retroactive-commit-history",
+      "sourceType": "github",
+      "computedHash": "65bfa484ee5e0c9d984e1cf2386d6d3ab167d7c1bce9c9d049972909fe5e3f07"
     }
   }
 }

@@ -40,6 +40,26 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Claude Code Setup
+
+This repository includes comprehensive Claude Code configuration for AI-assisted development.
+
+### Quick Start
+
+1. Ensure you have [Claude Code](https://code.claude.com/) installed
+2. The project guide is in [CLAUDE.md](CLAUDE.md) - Claude will automatically reference it
+3. Recommended skills are listed in [CLAUDE.md](CLAUDE.md) - install via `/install <skill-name>`
+4. Permissions and hooks are configured in [.claude/settings.local.json](.claude/settings.local.json)
+
+### What's Configured
+
+- **[CLAUDE.md](CLAUDE.md)**: Complete project guide (architecture, patterns, gotchas)
+- **Skills**: UI/UX, frontend design, React best practices, code review
+- **Hooks**: Auto-lint and format check before commits
+- **Permissions**: Pre-approved commands for linting, testing, database
+
+See [CLAUDE.md](CLAUDE.md) for full details on project architecture and development patterns.
+
 ## Licensing
 
 Dual-licensed under MIT and GPL-3. See `LICENSE` for details.

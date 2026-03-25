@@ -166,3 +166,7 @@ vite.config.ts.timestamp-*
 .vercel
 .cursor/*
 .agents/
+
+# Claude Code (user-specific cache only)
+.claude/cache/
+.claude/skills/
