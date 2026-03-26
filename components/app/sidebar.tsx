@@ -3,6 +3,7 @@
 import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History, HandHelping } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -82,17 +83,21 @@ export function Sidebar() {
 	const sidebarContent = (
 		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
-			<div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-				<Link href="/home" className="flex items-center gap-2.5" onClick={handleNavClick}>
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
-						<span className="text-primary-foreground font-bold text-sm">SC</span>
-					</div>
-					<span className="font-display text-base font-semibold">ShareCircle</span>
+			<div className="flex items-center justify-center gap-3 border-b border-border">
+				<Link href="/home" className="flex-1 items-center justify-center" onClick={handleNavClick}>
+					<Image
+							src="/share-circle-logo-1.png"
+							alt="ShareCircle"
+							width={160}
+							height={48}
+							// className="h-auto w-36 object-contain"
+							priority
+						/>
 				</Link>
 				<Button
 					variant="ghost"
 					size="icon"
-					className="h-8 w-8 lg:hidden"
+					className="h-8 w-8 lg:hidden flex-shrink-0"
 					onClick={() => dispatch(setMobileSidebarOpen(false))}
 				>
 					<X className="h-4 w-4" />

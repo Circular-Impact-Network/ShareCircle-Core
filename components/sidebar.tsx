@@ -1,6 +1,7 @@
 'use client';
 
-import { Users, FileText, BookMarked, MessageCircle, User, Share2 } from 'lucide-react';
+import Image from 'next/image';
+import { Users, FileText, BookMarked, MessageCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
@@ -19,11 +20,15 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
 	return (
 		<aside className="w-64 bg-sidebar border-r border-sidebar-border p-6 flex flex-col gap-8">
-			<div className="flex items-center gap-2">
-				<div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center hover:shadow-lg transition-all duration-300">
-					<Share2 className="w-6 h-6 text-primary-foreground" />
-				</div>
-				<h1 className="text-xl font-bold text-sidebar-foreground">ShareCircle</h1>
+			<div className="flex items-center">
+				<Image
+					src="/share-circle-logo.png"
+					alt="ShareCircle"
+					width={160}
+					height={48}
+					className="h-auto w-40 object-contain"
+					priority
+				/>
 			</div>
 
 			<nav className="flex flex-col gap-2 flex-1">

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Share2, Lock, Users } from 'lucide-react';
 
@@ -9,12 +10,16 @@ export default function Landing() {
 			{/* Navigation */}
 			<nav className="border-b border-border/40 backdrop-blur-sm">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-					<div className="flex items-center gap-2">
-						<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-							<Share2 className="w-5 h-5 text-primary-foreground" />
-						</div>
-						<span className="font-display font-semibold text-lg">ShareCircle</span>
-					</div>
+					<Link href="/">
+						<Image
+							src="/share-circle-logo.png"
+							alt="ShareCircle"
+							width={160}
+							height={48}
+							className="h-auto w-36 sm:w-40 object-contain"
+							priority
+						/>
+					</Link>
 					<div className="flex items-center gap-3">
 						<Link href="/login">
 							<Button variant="ghost" className="text-foreground hover:bg-primary/10">

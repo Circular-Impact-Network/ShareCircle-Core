@@ -1,6 +1,6 @@
 import type React from 'react';
 
-import { Share2 } from 'lucide-react';
+import Image from 'next/image';
 
 type AuthSplitLayoutProps = {
 	leftTitle: string;
@@ -16,10 +16,13 @@ export default function AuthSplitLayout({ leftTitle, leftDescription, rightHeade
 			<div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/60 items-center justify-center p-8">
 				<div className="max-w-md">
 					<div className="flex items-center gap-3 mb-8">
-						<div className="w-10 h-10 bg-primary-foreground rounded-lg flex items-center justify-center">
-							<Share2 className="w-6 h-6 text-primary" />
-						</div>
-						<span className="font-display font-bold text-2xl text-primary-foreground">ShareCircle</span>
+						<Image
+							src="/share-circle-logo.png"
+							alt="ShareCircle"
+							width={200}
+							height={80}
+							className="h-auto w-48 object-contain"
+						/>
 					</div>
 					<h2 className="text-4xl font-display font-bold text-primary-foreground mb-4">{leftTitle}</h2>
 					<p className="text-primary-foreground/80 text-lg">{leftDescription}</p>
@@ -29,11 +32,15 @@ export default function AuthSplitLayout({ leftTitle, leftDescription, rightHeade
 			{/* Right side - Content */}
 			<div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
 				<div className="w-full max-w-md">
-					<div className="lg:hidden flex items-center gap-2 mb-6">
-						<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-							<Share2 className="w-5 h-5 text-primary-foreground" />
-						</div>
-						<span className="font-display font-semibold text-lg">ShareCircle</span>
+					<div className="lg:hidden flex justify-center mb-6">
+						<Image
+							src="/share-circle-logo.png"
+							alt="ShareCircle"
+							width={160}
+							height={48}
+							className="h-auto w-40 object-contain"
+							priority
+						/>
 					</div>
 					{rightHeader}
 					{children}
