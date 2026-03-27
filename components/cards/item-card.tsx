@@ -2,6 +2,7 @@
 
 // Card with carousel for mediaUrls, video support, edit/delete actions
 import { memo } from 'react';
+import Image from 'next/image';
 import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,7 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 
 	const renderMedia = (url: string, index: number) => {
 		const isVideo = url.includes('video') || url.match(/\.(mp4|webm|mov)$/i);
-		
+
 		if (isVideo) {
 			return (
 				<video
@@ -87,12 +88,14 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 		}
 
 		return (
-			<img
+			<Image
 				src={url}
 				alt={`${item.name}${index > 0 ? ` - ${index + 1}` : ''}`}
-				className="w-full h-full object-contain"
-				loading="lazy"
-				decoding="async"
+				fill
+				className="object-contain"
+				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+				quality={85}
+				priority={index === 0 && variant === 'detail'}
 			/>
 		);
 	};

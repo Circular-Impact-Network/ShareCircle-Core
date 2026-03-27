@@ -241,9 +241,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							You don&apos;t have access to this item. You must be a member of the circle this item belongs to.
 						</p>
 						<div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-							<Button 
+							<Button
 								onClick={() => {
-									console.log('[Access Request] User requested access to item:', itemId);
 									toast({
 										title: 'Access request logged',
 										description: 'This feature is coming soon.',
