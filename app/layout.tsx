@@ -33,8 +33,15 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700
 
 export const metadata: Metadata = {
 	applicationName: 'ShareCircle',
-	title: 'ShareCircle - Share Items with Your Community',
-	description: 'Share, lend, and borrow items with trusted circles',
+	title: {
+		default: 'ShareCircle - Share Items with Your Community',
+		template: '%s | ShareCircle',
+	},
+	description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste through peer-to-peer item sharing.',
+	keywords: ['sharing economy', 'item sharing', 'borrow', 'lend', 'community', 'peer-to-peer', 'circular economy', 'sustainability'],
+	authors: [{ name: 'ShareCircle Team' }],
+	creator: 'ShareCircle',
+	publisher: 'ShareCircle',
 	manifest: '/manifest.webmanifest',
 	appleWebApp: {
 		capable: true,
@@ -45,9 +52,50 @@ export const metadata: Metadata = {
 		telephone: false,
 	},
 	icons: {
-		icon: '/icon',
-		apple: '/apple-icon',
+		icon: [
+			{ url: '/icon', sizes: 'any', type: 'image/png' },
+			{ url: '/share-circle-logo-no-name.png', sizes: '512x512', type: 'image/png' },
+		],
+		apple: [
+			{ url: '/apple-icon', sizes: '180x180', type: 'image/png' },
+		],
+		shortcut: '/share-circle-logo-no-name.png',
 	},
+	openGraph: {
+		type: 'website',
+		locale: 'en_US',
+		url: 'https://sharecircle.app',
+		siteName: 'ShareCircle',
+		title: 'ShareCircle - Share Items with Your Community',
+		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		images: [
+			{
+				url: '/share-circle-logo.png',
+				width: 1200,
+				height: 630,
+				alt: 'ShareCircle - Community Item Sharing',
+			},
+		],
+	},
+	twitter: {
+		card: 'summary_large_image',
+		title: 'ShareCircle - Share Items with Your Community',
+		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		images: ['/share-circle-logo.png'],
+		creator: '@sharecircle',
+	},
+	robots: {
+		index: true,
+		follow: true,
+		googleBot: {
+			index: true,
+			follow: true,
+			'max-video-preview': -1,
+			'max-image-preview': 'large',
+			'max-snippet': -1,
+		},
+	},
+	category: 'technology',
 };
 
 export const viewport: Viewport = {
