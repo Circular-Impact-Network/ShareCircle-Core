@@ -16,27 +16,22 @@ export default function manifest(): MetadataRoute.Manifest {
 		lang: 'en',
 		icons: [
 			{
-				src: '/icon',
-				sizes: 'any',
+				src: '/share-circle-logo-no-name.png',
+				sizes: '512x512',
 				type: 'image/png',
 				purpose: 'any',
 			},
 			{
-				src: '/icon',
-				sizes: 'any',
+				src: '/share-circle-logo-no-name.png',
+				sizes: '512x512',
 				type: 'image/png',
 				purpose: 'maskable',
-			},
-			{
-				src: '/apple-icon',
-				sizes: '180x180',
-				type: 'image/png',
 			},
 		],
 		screenshots: [
 			{
-				src: '/icon',
-				sizes: 'any',
+				src: '/share-circle-logo-no-name.png',
+				sizes: '512x512',
 				type: 'image/png',
 				form_factor: 'wide',
 				label: 'ShareCircle app preview',
