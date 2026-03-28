@@ -47,9 +47,8 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 		return (
 			<div className="flex min-h-[100dvh] items-center justify-center bg-background">
 				<div className="text-center">
-					<div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-						<span className="text-primary-foreground font-bold text-sm">SC</span>
-					</div>
+					{/* eslint-disable-next-line @next/next/no-img-element */}
+					<img src="/share-circle-logo-no-name.png" alt="ShareCircle" className="h-14 w-14 mx-auto mb-4" />
 					<p className="text-muted-foreground">Loading...</p>
 				</div>
 			</div>

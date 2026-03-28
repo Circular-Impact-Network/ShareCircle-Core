@@ -24,8 +24,30 @@ export function PWAProvider() {
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [isInstalled, setIsInstalled] = useState(false);
 	const isRefreshingRef = useRef(false);
+	const waitingWorkerRef = useRef<ServiceWorker | null>(null);
 
 	const shouldShowOfflineBanner = useMemo(() => !isOnline, [isOnline]);
+
+	// Keep ref in sync so the visibilitychange handler always has the latest value.
+	useEffect(() => {
+		waitingWorkerRef.current = waitingWorker;
+	}, [waitingWorker]);
+
+	// Auto-apply updates when the user backgrounds the app (standalone PWA).
+	// When the tab/app becomes hidden, silently activate the waiting worker so the
+	// next foreground visit loads the new version without a banner.
+	useEffect(() => {
+		if (typeof document === 'undefined') return;
+
+		const onHidden = () => {
+			if (document.visibilityState === 'hidden' && waitingWorkerRef.current) {
+				waitingWorkerRef.current.postMessage({ type: 'SKIP_WAITING' });
+			}
+		};
+
+		document.addEventListener('visibilitychange', onHidden);
+		return () => document.removeEventListener('visibilitychange', onHidden);
+	}, []);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') {
@@ -186,6 +208,15 @@ export function PWAProvider() {
 		}
 
 		waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+
+		// Fallback: if controllerchange doesn't fire within 2s, force reload.
+		// This handles edge cases where the event doesn't propagate reliably.
+		setTimeout(() => {
+			if (!isRefreshingRef.current) {
+				isRefreshingRef.current = true;
+				window.location.reload();
+			}
+		}, 2000);
 	};
 
 	return (
@@ -207,7 +238,7 @@ export function PWAProvider() {
 					</div>
 				)}
 
-				{updateAvailable && (
+				{updateAvailable && isInstalled && (
 					<div className="pointer-events-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
 						<div className="flex items-start gap-3">
 							<div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">

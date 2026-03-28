@@ -52,14 +52,9 @@ export const metadata: Metadata = {
 		telephone: false,
 	},
 	icons: {
-		icon: [
-			{ url: '/icon', sizes: 'any', type: 'image/png' },
-			{ url: '/share-circle-logo-no-name.png', sizes: '512x512', type: 'image/png' },
-		],
-		apple: [
-			{ url: '/apple-icon', sizes: '180x180', type: 'image/png' },
-		],
-		shortcut: '/share-circle-logo-no-name.png',
+		icon: '/icon',
+		apple: '/apple-icon',
+		shortcut: '/icon',
 	},
 	openGraph: {
 		type: 'website',

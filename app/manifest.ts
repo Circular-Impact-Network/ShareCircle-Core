@@ -17,7 +17,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		icons: [
 			{
 				src: '/share-circle-logo-no-name.png',
-				sizes: '512x512',
+				sizes: '192x192',
 				type: 'image/png',
 				purpose: 'any',
 			},
@@ -25,16 +25,19 @@ export default function manifest(): MetadataRoute.Manifest {
 				src: '/share-circle-logo-no-name.png',
 				sizes: '512x512',
 				type: 'image/png',
+				purpose: 'any',
+			},
+			{
+				src: '/share-circle-logo-no-name.png',
+				sizes: '192x192',
+				type: 'image/png',
 				purpose: 'maskable',
 			},
-		],
-		screenshots: [
 			{
 				src: '/share-circle-logo-no-name.png',
 				sizes: '512x512',
 				type: 'image/png',
-				form_factor: 'wide',
-				label: 'ShareCircle app preview',
+				purpose: 'maskable',
 			},
 		],
 		shortcuts: [
