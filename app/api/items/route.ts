@@ -27,7 +27,6 @@ async function generateAndStoreEmbedding(
 			UPDATE items SET embedding = ${embeddingVector}
 			WHERE id = ${itemId}
 		`;
-		console.log(`Successfully generated multimodal embedding for item ${itemId}, dimensions: ${embedding.length}`);
 	} catch (error) {
 		console.error(`Failed to generate embedding for item ${itemId}:`, error);
 		// Don't throw - this is fire-and-forget

@@ -50,8 +50,7 @@ export async function POST(req: NextRequest) {
 				
 				// If validation found a matched item, use it to refine the analysis
 				if (validation.matchedItem) {
-					console.log(`Validation matched: "${userHint}" -> "${validation.matchedItem}" (${validation.confidence})`);
-				}
+					}
 			} catch (validationError) {
 				// Log but don't fail - validation is a nice-to-have, not required
 				console.error('Validation failed, proceeding with analysis:', validationError);

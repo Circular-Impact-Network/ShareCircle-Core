@@ -118,14 +118,6 @@ export async function POST(req: NextRequest) {
 		// We use Prisma.raw to inject the vector directly since parameterized vectors can be tricky
 		const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
 
-		console.log('Search params:', {
-			queryText: query,
-			circleIds: searchCircleIds,
-			categoryFilter,
-			tagFilter,
-			threshold,
-			embeddingLength: embedding.length,
-		});
 
 		// Prepare query text for hybrid full-text search (null for image-only searches)
 		const queryText = query?.trim() || null;
@@ -144,7 +136,6 @@ export async function POST(req: NextRequest) {
 					${limit}::int
 				)
 			`;
-			console.log('Search results count:', results.length);
 		} catch (dbError) {
 			console.error('Database search error:', dbError);
 			// Return empty results instead of error - graceful degradation
