@@ -60,6 +60,8 @@ enum BorrowQueueStatus {
 
 enum BorrowTransactionStatus {
   ACTIVE
+  LENDER_CONFIRMED
+  BORROWER_CONFIRMED
   RETURN_PENDING
   COMPLETED
   CANCELLED
@@ -76,6 +78,9 @@ enum NotificationType {
   // Queue notifications
   QUEUE_POSITION_UPDATED
   QUEUE_ITEM_READY
+  // Handoff notifications
+  ITEM_HANDOFF_CONFIRMED
+  ITEM_RECEIVED_CONFIRMED
   // Return notifications
   RETURN_REQUESTED
   RETURN_CONFIRMED
@@ -134,6 +139,7 @@ model User {
   pushSubscriptions       PushSubscription[]
   pushSendAttempts        PushSendAttempt[]
   notificationPreference  UserNotificationPreference?
+  itemRequestActions      ItemRequestAction[]
 
   @@map("users")
 }
@@ -371,6 +377,7 @@ model ItemRequest {
 
   requester User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
   circles   ItemRequestCircle[]
+  actions   ItemRequestAction[]
 
   @@index([requesterId])
   @@index([status])
@@ -391,6 +398,23 @@ model ItemRequestCircle {
   @@index([circleId])
   @@index([itemRequestId])
   @@map("item_request_circles")
+}
+
+// Track user-level actions on item requests (ignore, respond)
+model ItemRequestAction {
+  id            String      @id @default(cuid())
+  userId        String      @map("user_id")
+  itemRequestId String      @map("item_request_id")
+  action        String      // "IGNORED" or "RESPONDED"
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemRequest ItemRequest @relation(fields: [itemRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemRequestId, action])
+  @@index([userId])
+  @@index([itemRequestId])
+  @@map("item_request_actions")
 }
 
 // Borrow Request - request to borrow a specific item
