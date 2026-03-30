@@ -24,19 +24,23 @@ type CircleNotifyParams = {
 
 const NOTIFICATION_PATHS: Record<NotificationType, (m: Record<string, unknown>) => string> = {
 	NEW_MESSAGE: m => `/messages/${m.conversationId ?? ''}`,
-	ITEM_REQUEST_CREATED: () => '/requests',
-	ITEM_REQUEST_FULFILLED: () => '/requests',
-	BORROW_REQUEST_RECEIVED: () => '/activity',
-	BORROW_REQUEST_APPROVED: () => '/activity',
+	ITEM_REQUEST_CREATED: () => '/notifications?tab=item-requests',
+	ITEM_REQUEST_FULFILLED: () => '/notifications?tab=item-requests',
+	BORROW_REQUEST_RECEIVED: () => '/notifications?tab=borrow-requests',
+	BORROW_REQUEST_APPROVED: m => (m.itemId ? `/items/${m.itemId}` : '/activity'),
 	BORROW_REQUEST_DECLINED: () => '/activity',
 	QUEUE_POSITION_UPDATED: () => '/activity',
 	QUEUE_ITEM_READY: () => '/activity',
+	ITEM_HANDOFF_CONFIRMED: () => '/activity',
+	ITEM_RECEIVED_CONFIRMED: () => '/activity',
 	RETURN_REQUESTED: () => '/activity',
 	RETURN_CONFIRMED: () => '/activity',
 };
 
 function resolvePath(type: NotificationType, metadata?: Record<string, unknown>): string {
-	return metadata ? NOTIFICATION_PATHS[type](metadata) : '/notifications';
+	const resolver = NOTIFICATION_PATHS[type];
+	if (!resolver) return '/notifications';
+	return metadata ? resolver(metadata) : '/notifications';
 }
 
 /**

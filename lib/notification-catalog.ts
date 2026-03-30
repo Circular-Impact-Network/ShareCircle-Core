@@ -37,6 +37,8 @@ export const NOTIFICATION_TYPE_TO_CATEGORY: Record<NotificationType, Notificatio
 	BORROW_REQUEST_DECLINED: 'BORROW_REQUESTS',
 	QUEUE_POSITION_UPDATED: 'QUEUE',
 	QUEUE_ITEM_READY: 'QUEUE',
+	ITEM_HANDOFF_CONFIRMED: 'RETURNS',
+	ITEM_RECEIVED_CONFIRMED: 'RETURNS',
 	RETURN_REQUESTED: 'RETURNS',
 	RETURN_CONFIRMED: 'RETURNS',
 };
@@ -112,9 +114,19 @@ export const NOTIFICATION_CATALOG: NotificationCategoryDefinition[] = [
 	},
 	{
 		id: 'RETURNS',
-		title: 'Returns',
-		description: 'Handoff and return confirmations.',
+		title: 'Handoff & Returns',
+		description: 'Item handoff, receipt, and return confirmations.',
 		types: [
+			{
+				type: 'ITEM_HANDOFF_CONFIRMED',
+				title: 'Item handed off',
+				description: 'The lender confirmed handing off the item.',
+			},
+			{
+				type: 'ITEM_RECEIVED_CONFIRMED',
+				title: 'Item received',
+				description: 'The borrower confirmed receiving the item.',
+			},
 			{
 				type: 'RETURN_REQUESTED',
 				title: 'Return requested',
