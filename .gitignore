@@ -170,3 +170,4 @@ vite.config.ts.timestamp-*
 # Claude Code (user-specific cache only)
 .claude/cache/
 .claude/skills/
+.gitnexus
