@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
 		const circleId = req.nextUrl.searchParams.get('circleId');
 		const status = req.nextUrl.searchParams.get('status') as ItemRequestStatus | null;
 		const myRequests = req.nextUrl.searchParams.get('myRequests') === 'true';
+		const includeIgnored = req.nextUrl.searchParams.get('includeIgnored') === 'true';
 
 		// Get circles the user is a member of
 		const userCircles = await prisma.circleMember.findMany({
@@ -79,16 +80,29 @@ export async function GET(req: NextRequest) {
 						},
 					},
 				},
+				actions: {
+					where: { userId },
+					select: { action: true },
+				},
 			},
 			orderBy: {
 				createdAt: 'desc',
 			},
 		});
 
-		const response = itemRequests.map(request => ({
-			...request,
-			circle: request.circles[0]?.circle ?? null,
-		}));
+		// Map actions to boolean flags and optionally filter ignored
+		const mapped = itemRequests.map(request => {
+			const actionSet = new Set(request.actions.map(a => a.action));
+			const { actions, ...rest } = request;
+			return {
+				...rest,
+				circle: request.circles[0]?.circle ?? null,
+				isIgnored: actionSet.has('IGNORED'),
+				isResponded: actionSet.has('RESPONDED'),
+			};
+		});
+
+		const response = includeIgnored ? mapped : mapped.filter(r => !r.isIgnored);
 
 		return NextResponse.json(response, { status: 200 });
 	} catch (error) {
