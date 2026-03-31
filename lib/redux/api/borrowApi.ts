@@ -41,6 +41,8 @@ export interface ItemRequest {
 	requester: UserInfo;
 	circle: CircleInfo | null;
 	circles: { circle: CircleInfo }[];
+	isIgnored?: boolean;
+	isResponded?: boolean;
 }
 
 export interface CreateItemRequestInput {
@@ -55,6 +57,7 @@ export interface GetItemRequestsFilters {
 	circleId?: string;
 	status?: ItemRequestStatus;
 	myRequests?: boolean;
+	includeIgnored?: boolean;
 }
 
 // Borrow Request Types
@@ -159,10 +162,11 @@ export const borrowApi = createApi({
 			query: (filters = {}) => {
 				const params = new URLSearchParams();
 				if (filters && typeof filters === 'object') {
-					const { circleId, status, myRequests } = filters;
+					const { circleId, status, myRequests, includeIgnored } = filters;
 					if (circleId) params.append('circleId', circleId);
 					if (status) params.append('status', status);
 					if (myRequests) params.append('myRequests', 'true');
+					if (includeIgnored) params.append('includeIgnored', 'true');
 				}
 				const queryString = params.toString();
 				return `/item-requests${queryString ? `?${queryString}` : ''}`;
@@ -194,6 +198,35 @@ export const borrowApi = createApi({
 				body,
 			}),
 			invalidatesTags: (_result, _error, { id }) => [{ type: 'ItemRequests', id }, 'ItemRequests'],
+		}),
+
+		// Ignore an item request
+		ignoreItemRequest: builder.mutation<unknown, string>({
+			query: id => ({
+				url: `/item-requests/${id}/action`,
+				method: 'POST',
+				body: { action: 'IGNORED' },
+			}),
+			invalidatesTags: ['ItemRequests'],
+		}),
+
+		// Un-ignore an item request
+		unignoreItemRequest: builder.mutation<unknown, string>({
+			query: id => ({
+				url: `/item-requests/${id}/action?action=IGNORED`,
+				method: 'DELETE',
+			}),
+			invalidatesTags: ['ItemRequests'],
+		}),
+
+		// Mark item request as responded
+		respondToItemRequest: builder.mutation<unknown, string>({
+			query: id => ({
+				url: `/item-requests/${id}/action`,
+				method: 'POST',
+				body: { action: 'RESPONDED' },
+			}),
+			invalidatesTags: ['ItemRequests'],
 		}),
 
 		// ===== Borrow Requests =====
@@ -274,6 +307,34 @@ export const borrowApi = createApi({
 			invalidatesTags: ['BorrowRequests', 'Transactions', 'BorrowQueue'],
 		}),
 
+		// Confirm handoff (lender confirms giving the item)
+		confirmHandoff: builder.mutation<{ message: string; transaction: BorrowTransaction }, string>({
+			query: id => ({
+				url: `/borrow-requests/${id}/handoff`,
+				method: 'POST',
+			}),
+			invalidatesTags: ['BorrowRequests', 'Transactions'],
+		}),
+
+		// Confirm receipt (borrower confirms receiving the item)
+		confirmReceipt: builder.mutation<{ message: string; transaction: BorrowTransaction }, string>({
+			query: id => ({
+				url: `/borrow-requests/${id}/receive`,
+				method: 'POST',
+			}),
+			invalidatesTags: ['BorrowRequests', 'Transactions'],
+		}),
+
+		// Extend borrow period (borrower requests new due date)
+		extendBorrow: builder.mutation<{ message: string; transaction: BorrowTransaction }, { id: string; newDueAt: string }>({
+			query: ({ id, newDueAt }) => ({
+				url: `/borrow-requests/${id}/extend`,
+				method: 'POST',
+				body: { newDueAt },
+			}),
+			invalidatesTags: ['Transactions'],
+		}),
+
 		// ===== Borrow Queue =====
 
 		// Get queue entries
@@ -335,6 +396,9 @@ export const {
 	useGetItemRequestQuery,
 	useCreateItemRequestMutation,
 	useUpdateItemRequestMutation,
+	useIgnoreItemRequestMutation,
+	useUnignoreItemRequestMutation,
+	useRespondToItemRequestMutation,
 	// Borrow Requests
 	useGetBorrowRequestsQuery,
 	useGetBorrowRequestQuery,
@@ -342,6 +406,9 @@ export const {
 	useUpdateBorrowRequestMutation,
 	useMarkAsReturnedMutation,
 	useConfirmReturnMutation,
+	useConfirmHandoffMutation,
+	useConfirmReceiptMutation,
+	useExtendBorrowMutation,
 	// Queue
 	useGetQueueEntriesQuery,
 	useLeaveQueueMutation,
