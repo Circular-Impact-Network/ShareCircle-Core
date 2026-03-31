@@ -57,11 +57,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No transaction found' }, { status: 400 });
 		}
 
-		// Transaction must be return_pending or active (owner can directly confirm)
-		if (
-			borrowRequest.transaction.status !== BorrowTransactionStatus.RETURN_PENDING &&
-			borrowRequest.transaction.status !== BorrowTransactionStatus.ACTIVE
-		) {
+		// Transaction must be return_pending or in an active borrowing state
+		const confirmableStatuses: BorrowTransactionStatus[] = [
+			BorrowTransactionStatus.RETURN_PENDING,
+			BorrowTransactionStatus.ACTIVE,
+			BorrowTransactionStatus.LENDER_CONFIRMED,
+			BorrowTransactionStatus.BORROWER_CONFIRMED,
+		];
+		if (!confirmableStatuses.includes(borrowRequest.transaction.status)) {
 			return NextResponse.json({ error: 'Transaction cannot be completed at this stage' }, { status: 400 });
 		}
 
