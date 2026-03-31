@@ -305,23 +305,24 @@ export async function detectItems(imageUrl: string): Promise<ItemDetection> {
 					{ type: 'image', image: imageUrl },
 					{
 						type: 'text',
-						text: `Analyze this image and identify ALL items present, especially clothing, apparel, dresses, and garments.
+						text: `Analyze this image and identify items that could realistically be shared or lent to someone in a community sharing app.
 
-CRITICAL INSTRUCTIONS:
-- Identify EVERY item in the image, including clothing, accessories, and apparel
-- Pay special attention to clothing items (dresses, shirts, pants, jackets, shoes, bags, jewelry, etc.)
-- Do NOT ignore or skip clothing items - they are often the main focus
-- List items in order of prominence/size (most prominent first)
-- Include items even if they are partially visible or in the background
-- For clothing items, note the type (dress, shirt, etc.) and any distinguishing features
+ONLY include items that are portable and ownable — things that can be physically handed to another person. Examples: clothing, accessories, tools, electronics, appliances, sports equipment, bags, books, toys, musical instruments, camping gear, moveable furniture, kitchen gadgets.
 
-Return an array of all detected items with:
+DO NOT include:
+- Architectural/structural elements: walls, floors, ceilings, staircases, pillars, columns, built-in doors, windows, doorframes
+- Outdoor/natural fixtures: trees, plants, grass, hedges, rocks, soil, sky, water
+- Permanent infrastructure: pipes, electrical panels, radiators, built-in shelving, fixed light fixtures, HVAC units, built-in cabinets
+- Abstract concepts: rooms, spaces, views, lighting conditions, shadows, surfaces, backgrounds
+- People or animals
+
+Return an array of shareable items found with:
 - name: Short, clear name (2-5 words)
 - description: Brief description if helpful
-- category: Primary category (prioritize "Clothing" or "Apparel" for garments)
+- category: Primary category (e.g., "Clothing", "Tools", "Electronics", "Sports", "Books", "Appliances")
 - confidence: How confident you are about this detection
 
-Focus on being comprehensive - it's better to include more items than to miss important ones.`,
+If no shareable items are visible, return an empty array.`,
 					},
 				],
 			},
