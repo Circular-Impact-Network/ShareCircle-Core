@@ -3,14 +3,14 @@
 // Item detail with edit modal, borrow/queue actions
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-	ArrowLeft, 
-	MessageCircle, 
-	Calendar, 
-	Tag, 
-	FolderOpen, 
-	Copy, 
-	Check, 
+import {
+	ArrowLeft,
+	MessageCircle,
+	Calendar,
+	Tag,
+	FolderOpen,
+	Copy,
+	Check,
 	Loader2,
 	Lock,
 	X,
@@ -19,6 +19,7 @@ import {
 	CheckCircle2,
 	AlertCircle,
 	Pencil,
+	CalendarPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,11 +40,12 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { useGetItemQuery, Item } from '@/lib/redux/api/itemsApi';
-import { 
-	useCreateBorrowRequestMutation, 
+import {
+	useCreateBorrowRequestMutation,
 	useGetBorrowRequestsQuery,
 	useGetQueueEntriesQuery,
-	useGetTransactionsQuery
+	useGetTransactionsQuery,
+	useExtendBorrowMutation,
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +61,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [isStartingChat, setIsStartingChat] = useState(false);
 	const [showBorrowModal, setShowBorrowModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
+	const [showExtendModal, setShowExtendModal] = useState(false);
+	const [newDueDate, setNewDueDate] = useState('');
 	const [borrowMessage, setBorrowMessage] = useState('');
 	const [desiredFrom, setDesiredFrom] = useState('');
 	const [desiredTo, setDesiredTo] = useState('');
@@ -80,17 +84,19 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 		{ skip: !itemId }
 	);
 	
-	// Borrow request mutation
+	// Borrow/extend mutations
 	const [createBorrowRequest, { isLoading: isCreatingRequest }] = useCreateBorrowRequestMutation();
+	const [extendBorrow, { isLoading: isExtending }] = useExtendBorrowMutation();
 	
 	// Check if user already has a pending request
 	const hasPendingRequest = existingRequests.some(r => r.status === 'PENDING');
 	const isInQueue = queueEntries.some(q => q.status === 'WAITING' || q.status === 'READY');
 	const queuePosition = queueEntries.find(q => q.status === 'WAITING')?.position;
 	
-	// Check if user is currently borrowing this item
+	// Check if user is currently borrowing this item (all non-completed active statuses)
 	const activeTransaction = borrowerTransactions.find(
-		t => t.item.id === itemId && (t.status === 'ACTIVE' || t.status === 'RETURN_PENDING')
+		t => t.item.id === itemId &&
+		['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED', 'RETURN_PENDING'].includes(t.status)
 	);
 	const isCurrentBorrower = !!activeTransaction;
 	
@@ -156,6 +162,29 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			});
 		} finally {
 			setIsStartingChat(false);
+		}
+	};
+
+	const handleExtend = async () => {
+		if (!newDueDate) {
+			toast({ title: 'Please select a new due date', variant: 'destructive' });
+			return;
+		}
+		if (!activeTransaction?.borrowRequestId) {
+			toast({ title: 'Unable to extend: transaction info missing', variant: 'destructive' });
+			return;
+		}
+		try {
+			await extendBorrow({ id: activeTransaction.borrowRequestId, newDueAt: newDueDate }).unwrap();
+			toast({ title: 'Borrow period extended!', description: `New due date: ${new Date(newDueDate).toLocaleDateString()}` });
+			setShowExtendModal(false);
+			setNewDueDate('');
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to extend'
+					: 'Failed to extend borrow period';
+			toast({ title: 'Extension not allowed', description: msg, variant: 'destructive' });
 		}
 	};
 
@@ -389,8 +418,12 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 									<div>
 										<p className="text-sm font-medium text-primary">You&apos;re borrowing this</p>
 										<p className="text-xs text-muted-foreground">
-											{activeTransaction?.status === 'RETURN_PENDING' 
-												? 'Return pending confirmation'
+											{activeTransaction?.status === 'RETURN_PENDING'
+												? 'Return pending owner confirmation'
+												: activeTransaction?.status === 'LENDER_CONFIRMED'
+												? 'In transit — confirm when you receive it'
+												: activeTransaction?.status === 'BORROWER_CONFIRMED'
+												? `Received — due ${new Date(activeTransaction.dueAt).toLocaleDateString()}`
 												: `Due ${new Date(activeTransaction!.dueAt).toLocaleDateString()}`
 											}
 										</p>
@@ -474,12 +507,24 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								{itemWithAvailability?.isAvailable !== false ? 'Request to Borrow' : 'Join Queue'}
 							</Button>
 						)}
-						{isCurrentBorrower && activeTransaction?.status === 'ACTIVE' && (
-							<Button 
+						{isCurrentBorrower && (
+							<Button
 								variant="secondary"
 								onClick={() => router.push('/activity')}
 							>
 								View in My Activity
+							</Button>
+						)}
+						{isCurrentBorrower &&
+							activeTransaction &&
+							['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED'].includes(activeTransaction.status) && (
+							<Button
+								variant="outline"
+								className="gap-2 bg-transparent"
+								onClick={() => setShowExtendModal(true)}
+							>
+								<CalendarPlus className="h-4 w-4" />
+								Extend Borrow
 							</Button>
 						)}
 					</div>
@@ -550,6 +595,49 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			{/* Extend Borrow Dialog */}
+			<Dialog open={showExtendModal} onOpenChange={setShowExtendModal}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Extend Borrow Period</DialogTitle>
+						<DialogDescription>
+							Choose a new due date for &ldquo;{item.name}&rdquo;. Extension is only available if no one
+							else has an approved request or is next in queue.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4 py-4">
+						<div className="space-y-2">
+							<Label htmlFor="new-due-date">New due date</Label>
+							<Input
+								id="new-due-date"
+								type="date"
+								value={newDueDate}
+								onChange={e => setNewDueDate(e.target.value)}
+								min={
+									activeTransaction?.dueAt
+										? new Date(activeTransaction.dueAt).toISOString().split('T')[0]
+										: new Date().toISOString().split('T')[0]
+								}
+							/>
+						</div>
+						{activeTransaction?.dueAt && (
+							<p className="text-xs text-muted-foreground">
+								Current due date: {new Date(activeTransaction.dueAt).toLocaleDateString()}
+							</p>
+						)}
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setShowExtendModal(false)}>
+							Cancel
+						</Button>
+						<Button onClick={handleExtend} disabled={isExtending || !newDueDate} className="gap-2">
+							{isExtending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
+							Confirm Extension
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
 			<EditItemModal
 				itemId={item.id}
 				open={showEditModal}
