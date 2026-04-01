@@ -21,7 +21,7 @@ import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/comp
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useGetAllItemsQuery, useDeleteItemMutation, useUpdateItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import { useToast } from '@/hooks/use-toast';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 type ListingTab = 'active' | 'archived';
@@ -172,21 +172,21 @@ export function MyListingsPage() {
 	);
 
 	return (
-		<PageShell className="space-y-6">
-			<PageHeader
-				title="My Listings"
-				description="Manage the items you share with your circles."
-				actions={
-					<Button onClick={() => setShowAddItem(true)} className="gap-2">
-						<Plus className="h-4 w-4" />
-						<span className="hidden sm:inline">Add Item</span>
-						<span className="sm:hidden">Add</span>
-					</Button>
-				}
-			/>
-
+		<PageShell>
 			<PageTabs value={activeTab} onValueChange={value => setActiveTab(value as ListingTab)}>
-				<PageTabsList>
+				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+					<PageHeader
+						title="My Listings"
+						description="Manage the items you share with your circles."
+						actions={
+							<Button onClick={() => setShowAddItem(true)} className="gap-2">
+								<Plus className="h-4 w-4" />
+								<span className="hidden sm:inline">Add Item</span>
+								<span className="sm:hidden">Add</span>
+							</Button>
+						}
+					/>
+					<PageTabsList>
 					<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
 						Active
 					</PageTabsTrigger>
@@ -197,6 +197,7 @@ export function MyListingsPage() {
 						Archived
 					</PageTabsTrigger>
 				</PageTabsList>
+				</PageStickyHeader>
 
 				<PageTabsContent value="active">
 					{isLoading ? (

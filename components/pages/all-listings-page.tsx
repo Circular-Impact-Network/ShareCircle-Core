@@ -6,7 +6,7 @@ import { Search, Loader2, Package, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
@@ -34,26 +34,28 @@ export function AllListingsPage() {
 	} = useProgressivePagination({ items: filteredItems, pageSize: 12 });
 
 	return (
-		<PageShell className="space-y-6">
-			<PageHeader title="All Listings" description="Browse all items shared across your circles" />
+		<PageShell>
+			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-4 space-y-4">
+				<PageHeader title="All Listings" description="Browse all items shared across your circles" />
 
-			{/* Search Bar */}
-			<div className="space-y-2">
-				<div className="relative">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-					<Input
-						placeholder="Search items, circles, or tags..."
-						value={searchTerm}
-						onChange={e => setSearchTerm(e.target.value)}
-						className="pl-9"
-					/>
+				{/* Search Bar */}
+				<div className="space-y-2">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input
+							placeholder="Search items, circles, or tags..."
+							value={searchTerm}
+							onChange={e => setSearchTerm(e.target.value)}
+							className="pl-9"
+						/>
+					</div>
+					{filteredItems.length > 0 && (
+						<p className="text-sm text-muted-foreground">
+							Showing {filteredItems.length} of {items.length} items
+						</p>
+					)}
 				</div>
-				{filteredItems.length > 0 && (
-					<p className="text-sm text-muted-foreground">
-						Showing {filteredItems.length} of {items.length} items
-					</p>
-				)}
-			</div>
+			</PageStickyHeader>
 
 			{/* Loading State */}
 			{isLoading && (

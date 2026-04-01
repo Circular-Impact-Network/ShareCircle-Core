@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useGetAllItemsQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
@@ -289,72 +289,74 @@ export function BrowseListingsPage() {
 	};
 
 	return (
-		<PageShell className="space-y-6">
-			<PageHeader title="Browse Items" description="Discover items shared across all your circles" />
+		<PageShell>
+			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-4 space-y-4">
+				<PageHeader title="Browse Items" description="Discover items shared across all your circles" />
 
-			{/* Search and Filter Bar */}
-			<div className="flex flex-col gap-3 sm:flex-row">
-				{/* Search Input */}
-				<div className="relative flex-1">
-					<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-					<Input
-						placeholder="Search items... (press Enter to search)"
-						value={searchQuery}
-						onChange={e => setSearchQuery(e.target.value)}
-						onKeyDown={handleSearchKeyDown}
-						className="pl-9 pr-20"
-						data-testid="search-input"
-					/>
-					<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-						{searchQuery && (
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-7 w-7 p-0"
-								onClick={clearSearch}
-							>
-								<X className="h-4 w-4" />
-							</Button>
-						)}
-						<Button
-							variant="secondary"
-							size="sm"
-							className="h-7 px-2"
-							onClick={() => executeSearch()}
-							disabled={searchQuery.trim().length < 2 || isSearching}
-						>
-							{isSearching ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
-							) : (
-								'Search'
+				{/* Search and Filter Bar */}
+				<div className="flex flex-col gap-3 sm:flex-row">
+					{/* Search Input */}
+					<div className="relative flex-1">
+						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+						<Input
+							placeholder="Search items... (press Enter to search)"
+							value={searchQuery}
+							onChange={e => setSearchQuery(e.target.value)}
+							onKeyDown={handleSearchKeyDown}
+							className="pl-9 pr-20"
+							data-testid="search-input"
+						/>
+						<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+							{searchQuery && (
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 w-7 p-0"
+									onClick={clearSearch}
+								>
+									<X className="h-4 w-4" />
+								</Button>
 							)}
-						</Button>
+							<Button
+								variant="secondary"
+								size="sm"
+								className="h-7 px-2"
+								onClick={() => executeSearch()}
+								disabled={searchQuery.trim().length < 2 || isSearching}
+							>
+								{isSearching ? (
+									<Loader2 className="h-3 w-3 animate-spin" />
+								) : (
+									'Search'
+								)}
+							</Button>
+						</div>
 					</div>
+
+					{/* Category Filter */}
+					<Select value={selectedCategory} onValueChange={handleCategoryChange}>
+						<SelectTrigger className="w-full sm:w-[200px]" data-testid="category-filter">
+							<Filter className="h-4 w-4 mr-2" />
+							<SelectValue placeholder="Category" />
+						</SelectTrigger>
+						<SelectContent>
+							{categories.map(category => (
+								<SelectItem key={category} value={category}>
+									{category}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+
+					{/* Reset Filters */}
+					{hasActiveFilters && (
+						<Button variant="outline" onClick={handleResetFilters} className="gap-2 sm:self-start">
+							<X className="h-4 w-4" />
+							Clear
+						</Button>
+					)}
 				</div>
-
-				{/* Category Filter */}
-				<Select value={selectedCategory} onValueChange={handleCategoryChange}>
-					<SelectTrigger className="w-full sm:w-[200px]" data-testid="category-filter">
-						<Filter className="h-4 w-4 mr-2" />
-						<SelectValue placeholder="Category" />
-					</SelectTrigger>
-					<SelectContent>
-						{categories.map(category => (
-							<SelectItem key={category} value={category}>
-								{category}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-
-				{/* Reset Filters */}
-				{hasActiveFilters && (
-					<Button variant="outline" onClick={handleResetFilters} className="gap-2 sm:self-start">
-						<X className="h-4 w-4" />
-						Clear
-					</Button>
-				)}
-			</div>
+			</PageStickyHeader>
 
 			{/* Results Count */}
 			<div className="flex items-center justify-between text-sm text-muted-foreground">
