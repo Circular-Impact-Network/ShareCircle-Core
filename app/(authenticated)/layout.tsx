@@ -57,11 +57,11 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
 	return (
 		<NotificationsProvider>
-			<div className="min-h-[100dvh] bg-background">
+			<div className="h-[100dvh] bg-background">
 				<Sidebar />
 				<main
 					data-scroll-root="authenticated-main"
-					className="app-scrollbar min-h-[100dvh] overflow-x-hidden overflow-y-auto pt-14 lg:ml-60 lg:pt-0"
+					className="app-scrollbar h-[100dvh] overflow-x-hidden overflow-y-auto pt-14 lg:ml-60 lg:pt-0"
 				>
 					{/* Mobile menu button */}
 					<Button

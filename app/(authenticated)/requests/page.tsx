@@ -1,5 +1,5 @@
-import { ItemRequestsPage } from '@/components/pages/item-requests-page';
+import { redirect } from 'next/navigation';
 
 export default function RequestsRoute() {
-	return <ItemRequestsPage />;
+	redirect('/notifications?tab=item-requests');
 }

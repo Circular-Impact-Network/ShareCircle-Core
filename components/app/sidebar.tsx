@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History, HandHelping } from 'lucide-react';
+import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils';
 const navItems = [
 	{ id: 'home', label: 'Home', icon: Home, href: '/home' },
 	{ id: 'browse', label: 'Browse Items', icon: Search, href: '/browse' },
-	{ id: 'requests', label: 'Item Requests', icon: HandHelping, href: '/requests' },
 	{ id: 'circles', label: 'Circles', icon: LayoutGrid, href: '/circles' },
 	{ id: 'listings', label: 'My Listings', icon: Plus, href: '/listings' },
 	{ id: 'activity', label: 'My Activity', icon: History, href: '/activity' },

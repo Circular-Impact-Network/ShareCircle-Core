@@ -26,7 +26,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import {
@@ -278,12 +278,14 @@ export function ItemRequestsPage() {
 	const isLoading = allLoading || myLoading;
 
 	return (
-		<PageShell className="space-y-6">
-			<div className="flex items-center justify-between">
-				<PageHeader
-					title="Item Requests"
-					description="See what items people in your circles are looking for"
-				/>
+		<PageShell>
+			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
+			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+				<div className="flex items-center justify-between">
+					<PageHeader
+						title="Item Requests"
+						description="See what items people in your circles are looking for"
+					/>
 				<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
 					<DialogTrigger asChild>
 						<Button className="gap-2">
@@ -365,9 +367,7 @@ export function ItemRequestsPage() {
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
-			</div>
-
-			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
+				</div>
 				<PageTabsList>
 					<PageTabsTrigger value="all" className="gap-2" badge={openRequests.length > 0 ? openRequests.length : undefined}>
 						<Search className="h-4 w-4" />
@@ -378,6 +378,7 @@ export function ItemRequestsPage() {
 						My Requests
 					</PageTabsTrigger>
 				</PageTabsList>
+			</PageStickyHeader>
 
 				{/* All Requests Tab */}
 				<PageTabsContent value="all" className="space-y-3">
