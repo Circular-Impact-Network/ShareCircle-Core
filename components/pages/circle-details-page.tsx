@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
 	Copy,
@@ -55,9 +55,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
 import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import {
+	useGetItemRequestsQuery,
+	useIgnoreItemRequestMutation,
+	useRespondToItemRequestMutation,
+	useUpdateItemRequestMutation,
+} from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
+import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { ItemRequestCard } from '@/components/cards/item-request-card';
+import { PackageOpen } from 'lucide-react';
+import { ItemRequestFilter, type ItemRequestFilterValue } from '@/components/app/item-request-filter';
 
 interface CircleDetailsPageProps {
 	circleId: string;
@@ -121,6 +131,69 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		hasMore: hasMoreItems,
 		loadMore: loadMoreItems,
 	} = useProgressivePagination({ items, pageSize: 9 });
+
+	// Item requests for this circle
+	const [itemsTab, setItemsTab] = useState<'shared' | 'requested'>('shared');
+	const [circleItemFilter, setCircleItemFilter] = useState<ItemRequestFilterValue>('from-others');
+	const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
+	const { data: circleItemRequests = [], isLoading: isLoadingRequests } = useGetItemRequestsQuery({
+		circleId,
+		includeIgnored: true,
+	});
+	const { data: myItemRequests = [] } = useGetItemRequestsQuery({ myRequests: true });
+	const [ignoreItemRequest] = useIgnoreItemRequestMutation();
+	const [respondToItemRequest] = useRespondToItemRequestMutation();
+	const [updateItemRequest] = useUpdateItemRequestMutation();
+	const myRequestIds = useMemo(() => new Set(myItemRequests.map(r => r.id)), [myItemRequests]);
+	const filteredCircleRequests = useMemo(() => {
+		if (circleItemFilter === 'from-others') return circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN');
+		if (circleItemFilter === 'mine') return circleItemRequests.filter(r => myRequestIds.has(r.id));
+		return circleItemRequests;
+	}, [circleItemRequests, myRequestIds, circleItemFilter]);
+	const {
+		visibleItems: visibleRequests,
+		hasMore: hasMoreRequests,
+		loadMore: loadMoreRequests,
+	} = useProgressivePagination({ items: filteredCircleRequests, pageSize: 8 });
+
+	const handleRespondRequest = async (requestId: string, requesterId: string, requestTitle: string) => {
+		setRespondingRequestId(requestId);
+		try {
+			await respondToItemRequest(requestId).unwrap();
+			const threadResponse = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId: requesterId }),
+			});
+			if (!threadResponse.ok) throw new Error('Failed to start conversation');
+			const thread = await threadResponse.json();
+			const draft = `I have this item and can help with your request: "${requestTitle}".`;
+			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
+		} catch (error) {
+			console.error('Respond error:', error);
+			toast({ title: 'Unable to respond', variant: 'destructive' });
+		} finally {
+			setRespondingRequestId(null);
+		}
+	};
+
+	const handleIgnoreRequest = async (requestId: string) => {
+		try {
+			await ignoreItemRequest(requestId).unwrap();
+			toast({ title: 'Request ignored' });
+		} catch {
+			toast({ title: 'Failed to ignore request', variant: 'destructive' });
+		}
+	};
+
+	const handleCloseRequest = async (requestId: string) => {
+		try {
+			await updateItemRequest({ id: requestId, status: 'CANCELLED' }).unwrap();
+			toast({ title: 'Request closed' });
+		} catch {
+			toast({ title: 'Failed to close request', variant: 'destructive' });
+		}
+	};
 
 	const fetchCircle = useCallback(async () => {
 		try {
@@ -586,7 +659,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						const isCreator = member.joinType === 'CREATED';
 
 						return (
-							<Card key={member.id} className="group flex-shrink-0 w-[260px] border-border/70 snap-start">
+							<Card key={`desktop-${member.id}`} className="group flex-shrink-0 w-[260px] border-border/70 snap-start">
 								<CardContent className="flex items-start gap-3 p-4">
 									<Tooltip>
 										<TooltipTrigger asChild>
@@ -723,7 +796,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						const isCreator = member.joinType === 'CREATED';
 
 						return (
-							<Card key={member.id} className="group border-border/70">
+							<Card key={`mobile-${member.id}`} className="group border-border/70">
 								<CardContent className="flex items-center gap-3 p-3">
 									<Avatar className="h-10 w-10 flex-shrink-0">
 										<AvatarImage src={member.image || undefined} alt={member.name || 'Member'} />
@@ -850,86 +923,151 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				)}
 			</div>
 
-			{/* Items Section */}
+			{/* Items & Requests Section */}
 			<div className="space-y-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<h2 className="text-xl font-semibold sm:text-2xl">Shared Items</h2>
-						<Badge variant="outline" className="text-xs">
-							{items.length}
-						</Badge>
+				<PageTabs value={itemsTab} onValueChange={v => setItemsTab(v as 'shared' | 'requested')}>
+					<div className="flex items-center justify-between">
+						<PageTabsList>
+							<PageTabsTrigger value="shared" className="gap-2" badge={items.length > 0 ? items.length : undefined}>
+								<Package className="h-4 w-4" />
+								Shared Items
+							</PageTabsTrigger>
+							<PageTabsTrigger value="requested" className="gap-2" badge={circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN').length > 0 ? circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN').length : undefined}>
+								<PackageOpen className="h-4 w-4" />
+								Requested Items
+							</PageTabsTrigger>
+						</PageTabsList>
+						<div className="flex gap-2">
+							{itemsTab === 'shared' && (
+								<Button onClick={() => setShowAddItem(true)} className="gap-2" size="sm">
+									<Plus className="h-4 w-4" />
+									<span className="hidden sm:inline">Add Item</span>
+									<span className="sm:hidden">Add</span>
+								</Button>
+							)}
+							</div>
 					</div>
-					<Button onClick={() => setShowAddItem(true)} className="gap-2" size="sm">
-						<Plus className="h-4 w-4" />
-						<span className="hidden sm:inline">Add Item</span>
-						<span className="sm:hidden">Add</span>
-					</Button>
-				</div>
 
-				{isLoadingItems ? (
-					<div className="flex flex-col items-center justify-center py-12">
-						<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-						<p className="text-sm text-muted-foreground">Loading items...</p>
-					</div>
-				) : items.length === 0 ? (
-					<Card className="border-dashed border-border/70 bg-card">
-						<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-							<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-								<Package className="h-7 w-7 text-primary" />
+					{/* Shared Items Tab */}
+					<PageTabsContent value="shared" className="space-y-4">
+						{isLoadingItems ? (
+							<div className="flex flex-col items-center justify-center py-12">
+								<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+								<p className="text-sm text-muted-foreground">Loading items...</p>
 							</div>
-							<div>
-								<p className="font-medium text-foreground mb-1">No items shared yet</p>
-								<p className="text-sm text-muted-foreground">Be the first to share something with this circle!</p>
-							</div>
-							<Button onClick={() => setShowAddItem(true)} variant="outline" className="gap-2">
-								<Plus className="h-4 w-4" />
-								Add the first item
-							</Button>
-						</CardContent>
-					</Card>
-				) : (
-					<>
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							{visibleItems.map(item => (
-								<ItemSummaryCard
-									key={item.id}
-									item={item}
-									onClick={() => router.push(`/items/${item.id}`)}
-									showMediaActions={item.isOwner}
-									onDelete={item.isOwner ? setItemToDelete : undefined}
-									actions={
-										<div
-											className="flex flex-wrap gap-2"
-											onClick={event => {
-												event.stopPropagation();
-											}}
-										>
-											<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
-												View item
-											</Button>
-											{item.isOwner ? (
-												<Button
-													variant="outline"
-													size="sm"
-													className="gap-2 text-destructive"
-													onClick={() => setItemToDelete(item)}
+						) : items.length === 0 ? (
+							<Card className="border-dashed border-border/70 bg-card">
+								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+									<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+										<Package className="h-7 w-7 text-primary" />
+									</div>
+									<div>
+										<p className="font-medium text-foreground mb-1">No items shared yet</p>
+										<p className="text-sm text-muted-foreground">Be the first to share something with this circle!</p>
+									</div>
+									<Button onClick={() => setShowAddItem(true)} variant="outline" className="gap-2">
+										<Plus className="h-4 w-4" />
+										Add the first item
+									</Button>
+								</CardContent>
+							</Card>
+						) : (
+							<>
+								<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+									{visibleItems.map(item => (
+										<ItemSummaryCard
+											key={item.id}
+											item={item}
+											onClick={() => router.push(`/items/${item.id}`)}
+											showMediaActions={item.isOwner}
+											onDelete={item.isOwner ? setItemToDelete : undefined}
+											actions={
+												<div
+													className="flex flex-wrap gap-2"
+													onClick={event => {
+														event.stopPropagation();
+													}}
 												>
-													<Trash2 className="h-4 w-4" />
-													Delete
-												</Button>
-											) : null}
-										</div>
-									}
+													<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+														View item
+													</Button>
+													{item.isOwner ? (
+														<Button
+															variant="outline"
+															size="sm"
+															className="gap-2 text-destructive"
+															onClick={() => setItemToDelete(item)}
+														>
+															<Trash2 className="h-4 w-4" />
+															Delete
+														</Button>
+													) : null}
+												</div>
+											}
+										/>
+									))}
+								</div>
+								<InfiniteScrollSentinel
+									hasMore={hasMoreItems}
+									onLoadMore={loadMoreItems}
+									label="Loading more shared items"
 								/>
-							))}
-						</div>
-						<InfiniteScrollSentinel
-							hasMore={hasMoreItems}
-							onLoadMore={loadMoreItems}
-							label="Loading more shared items"
-						/>
-					</>
-				)}
+							</>
+						)}
+					</PageTabsContent>
+
+					{/* Requested Items Tab */}
+					<PageTabsContent value="requested" className="space-y-3">
+						<ItemRequestFilter value={circleItemFilter} onChange={setCircleItemFilter} />
+						{isLoadingRequests ? (
+							<div className="flex flex-col items-center justify-center py-12">
+								<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+								<p className="text-sm text-muted-foreground">Loading requests...</p>
+							</div>
+						) : filteredCircleRequests.length === 0 ? (
+							<Card className="border-dashed border-border/70 bg-card">
+								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+									<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+										<PackageOpen className="h-7 w-7 text-muted-foreground" />
+									</div>
+									<div>
+										<p className="font-medium text-foreground mb-1">
+											{circleItemFilter === 'from-others' ? 'No open requests from others' : circleItemFilter === 'mine' ? 'You have no requests' : 'No item requests'}
+										</p>
+										<p className="text-sm text-muted-foreground">
+											{circleItemFilter === 'from-others'
+												? 'When circle members need something, their requests will appear here'
+												: circleItemFilter === 'mine'
+												? 'Post a request if you need to borrow something from this circle'
+												: 'Item requests for this circle will appear here'}
+										</p>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<>
+								<div className="space-y-3">
+									{visibleRequests.map(request => (
+										<ItemRequestCard
+											key={request.id}
+											request={request}
+											onRespond={handleRespondRequest}
+											onIgnore={handleIgnoreRequest}
+											onClose={handleCloseRequest}
+											isMyRequest={myItemRequests.some(r => r.id === request.id)}
+											isResponding={respondingRequestId === request.id}
+										/>
+									))}
+								</div>
+								<InfiniteScrollSentinel
+									hasMore={hasMoreRequests}
+									onLoadMore={loadMoreRequests}
+									label="Loading more requests"
+								/>
+							</>
+						)}
+					</PageTabsContent>
+				</PageTabs>
 			</div>
 
 			{/* Delete Item Confirmation Dialog */}
