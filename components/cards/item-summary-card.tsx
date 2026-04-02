@@ -17,6 +17,7 @@ type ItemSummaryCardProps = {
 	onEdit?: (item: Item) => void;
 	onDelete?: (item: Item) => void;
 	descriptionFallback?: string;
+	borrowStatus?: string | null;
 };
 
 export function ItemSummaryCard({
@@ -28,6 +29,7 @@ export function ItemSummaryCard({
 	onEdit,
 	onDelete,
 	descriptionFallback = 'No description provided.',
+	borrowStatus,
 }: ItemSummaryCardProps) {
 	const visibleTags = item.tags.slice(0, 2);
 	const remainingTags = item.tags.length - visibleTags.length;
@@ -52,7 +54,19 @@ export function ItemSummaryCard({
 			/>
 			<CardContent className="flex flex-1 flex-col gap-3 p-4">
 				<div className="space-y-2">
-					<h3 className="line-clamp-1 text-base font-semibold text-foreground">{item.name}</h3>
+					<div className="flex items-center gap-2">
+						<h3 className="line-clamp-1 text-base font-semibold text-foreground">{item.name}</h3>
+						{borrowStatus && (
+							<Badge variant="secondary" className="shrink-0 text-[10px]">
+								{borrowStatus}
+							</Badge>
+						)}
+						{item.isAvailable === false && !borrowStatus && (
+							<Badge variant="outline" className="shrink-0 text-[10px] text-amber-600">
+								Borrowed
+							</Badge>
+						)}
+					</div>
 					<p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
 						{item.description || descriptionFallback}
 					</p>
