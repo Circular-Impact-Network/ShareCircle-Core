@@ -30,7 +30,7 @@ import {
 	selectUserBio,
 } from '@/lib/redux/selectors/userSelectors';
 import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/userApi';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { NotificationPreferencesPanel } from '@/components/settings/notification-preferences-panel';
 
@@ -546,16 +546,17 @@ export function SettingsPage() {
 	};
 
 	return (
-		<PageShell className="max-w-5xl space-y-8">
-			<PageHeader title="Settings" description="Manage your account settings and preferences." />
-
+		<PageShell className="max-w-5xl">
 			<PageTabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
-				<PageTabsList className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-0">
-					<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
-					<PageTabsTrigger value="account">Account</PageTabsTrigger>
-					<PageTabsTrigger value="notifications">Notifications</PageTabsTrigger>
-					<PageTabsTrigger value="appearance">Appearance</PageTabsTrigger>
-				</PageTabsList>
+				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+					<PageHeader title="Settings" description="Manage your account settings and preferences." />
+					<PageTabsList className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-0">
+						<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
+						<PageTabsTrigger value="account">Account</PageTabsTrigger>
+						<PageTabsTrigger value="notifications">Notifications</PageTabsTrigger>
+						<PageTabsTrigger value="appearance">Appearance</PageTabsTrigger>
+					</PageTabsList>
+				</PageStickyHeader>
 
 				<PageTabsContent value="profile" className="space-y-6">
 					<Card>

@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import {
@@ -24,6 +24,9 @@ import {
 	useGetQueueEntriesQuery,
 	useGetTransactionsQuery,
 	useMarkAsReturnedMutation,
+	useConfirmReturnMutation,
+	useConfirmHandoffMutation,
+	useConfirmReceiptMutation,
 	BorrowRequest,
 	BorrowQueueEntry,
 	FullTransaction,
@@ -43,7 +46,11 @@ function getStatusBadge(status: string) {
 		case 'DECLINED':
 			return <Badge variant="destructive">Declined</Badge>;
 		case 'ACTIVE':
-			return <Badge className="bg-green-500 hover:bg-green-500">Currently Borrowed</Badge>;
+			return <Badge className="bg-blue-500 hover:bg-blue-500">Borrow Approved</Badge>;
+		case 'LENDER_CONFIRMED':
+			return <Badge className="bg-amber-500 hover:bg-amber-500">Item Handed Off</Badge>;
+		case 'BORROWER_CONFIRMED':
+			return <Badge className="bg-green-500 hover:bg-green-500">Item Received</Badge>;
 		case 'RETURN_PENDING':
 			return <Badge variant="secondary">Return Pending</Badge>;
 		case 'COMPLETED':
@@ -62,15 +69,23 @@ function ActiveTransactionCard({
 	transaction,
 	role,
 	onMarkReturned,
+	onConfirmHandoff,
+	onConfirmReceipt,
+	onConfirmReturn,
 	isLoading,
 }: {
 	transaction: FullTransaction;
 	role: 'borrower' | 'owner';
 	onMarkReturned?: (id: string) => void;
+	onConfirmHandoff?: (id: string) => void;
+	onConfirmReceipt?: (id: string) => void;
+	onConfirmReturn?: (id: string) => void;
 	isLoading?: boolean;
 }) {
 	const router = useRouter();
 	const isActive = transaction.status === 'ACTIVE';
+	const isLenderConfirmed = transaction.status === 'LENDER_CONFIRMED';
+	const isBorrowerConfirmed = transaction.status === 'BORROWER_CONFIRMED';
 	const isReturnPending = transaction.status === 'RETURN_PENDING';
 	const otherPerson = role === 'borrower' ? transaction.owner : transaction.borrower;
 
@@ -110,8 +125,53 @@ function ActiveTransactionCard({
 							Due: {new Date(transaction.dueAt).toLocaleDateString()}
 						</p>
 
-						{/* Actions based on role and status */}
-						{role === 'borrower' && isActive && onMarkReturned && (
+						{/* Owner actions */}
+						{role === 'owner' && isActive && onConfirmHandoff && (
+							<Button
+								size="sm"
+								className="mt-3 gap-2"
+								onClick={() => onConfirmHandoff(transaction.borrowRequestId)}
+								disabled={isLoading}
+							>
+								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								Confirm Item Handed Off
+							</Button>
+						)}
+						{role === 'owner' && isLenderConfirmed && (
+							<p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+								Waiting for borrower to confirm receipt
+							</p>
+						)}
+						{role === 'owner' && isReturnPending && onConfirmReturn && (
+							<Button
+								size="sm"
+								className="mt-3 gap-2"
+								onClick={() => onConfirmReturn(transaction.borrowRequestId)}
+								disabled={isLoading}
+							>
+								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								Confirm Return
+							</Button>
+						)}
+
+						{/* Borrower actions */}
+						{role === 'borrower' && isActive && (
+							<p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+								Waiting for lender to confirm handoff
+							</p>
+						)}
+						{role === 'borrower' && isLenderConfirmed && onConfirmReceipt && (
+							<Button
+								size="sm"
+								className="mt-3 gap-2"
+								onClick={() => onConfirmReceipt(transaction.borrowRequestId)}
+								disabled={isLoading}
+							>
+								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								Confirm Item Received
+							</Button>
+						)}
+						{role === 'borrower' && isBorrowerConfirmed && onMarkReturned && (
 							<Button
 								size="sm"
 								variant="outline"
@@ -127,15 +187,6 @@ function ActiveTransactionCard({
 							<p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
 								Waiting for owner to confirm return
 							</p>
-						)}
-						{role === 'owner' && isReturnPending && (
-							<Button
-								size="sm"
-								className="mt-3"
-								onClick={() => router.push('/notifications?tab=requests')}
-							>
-								Confirm Return
-							</Button>
 						)}
 					</div>
 				</div>
@@ -288,8 +339,23 @@ export function MyActivityPage() {
 		myEntries: true,
 	});
 
-	// Mark as returned mutation
+	// Mutations
 	const [markAsReturned] = useMarkAsReturnedMutation();
+	const [confirmReturn] = useConfirmReturnMutation();
+	const [confirmHandoff] = useConfirmHandoffMutation();
+	const [confirmReceipt] = useConfirmReceiptMutation();
+
+	const handleConfirmReturn = async (requestId: string) => {
+		setProcessingId(requestId);
+		try {
+			await confirmReturn(requestId).unwrap();
+			toast({ title: 'Return confirmed!', description: 'Transaction completed.' });
+		} catch {
+			toast({ title: 'Failed to confirm return', variant: 'destructive' });
+		} finally {
+			setProcessingId(null);
+		}
+	};
 
 	const handleMarkReturned = async (requestId: string) => {
 		setProcessingId(requestId);
@@ -303,10 +369,35 @@ export function MyActivityPage() {
 		}
 	};
 
+	const handleConfirmHandoff = async (requestId: string) => {
+		setProcessingId(requestId);
+		try {
+			await confirmHandoff(requestId).unwrap();
+			toast({ title: 'Handoff confirmed!', description: 'Borrower has been notified.' });
+		} catch {
+			toast({ title: 'Failed to confirm handoff', variant: 'destructive' });
+		} finally {
+			setProcessingId(null);
+		}
+	};
+
+	const handleConfirmReceipt = async (requestId: string) => {
+		setProcessingId(requestId);
+		try {
+			await confirmReceipt(requestId).unwrap();
+			toast({ title: 'Receipt confirmed!', description: 'Lender has been notified.' });
+		} catch {
+			toast({ title: 'Failed to confirm receipt', variant: 'destructive' });
+		} finally {
+			setProcessingId(null);
+		}
+	};
+
 	// Filter data
-	// Active = currently borrowed/lent (ACTIVE or RETURN_PENDING transactions)
-	const activeBorrowed = borrowerTransactions.filter(t => t.status === 'ACTIVE' || t.status === 'RETURN_PENDING');
-	const activeLent = ownerTransactions.filter(t => t.status === 'ACTIVE' || t.status === 'RETURN_PENDING');
+	// Active = currently borrowed/lent (all non-completed active statuses)
+	const activeStatuses = ['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED', 'RETURN_PENDING'];
+	const activeBorrowed = borrowerTransactions.filter(t => activeStatuses.includes(t.status));
+	const activeLent = ownerTransactions.filter(t => activeStatuses.includes(t.status));
 	const activeCount = activeBorrowed.length + activeLent.length;
 
 	// Pending = pending approval requests (only PENDING status)
@@ -330,11 +421,11 @@ export function MyActivityPage() {
 	const isLoading = requestsLoading || borrowerTxLoading || ownerTxLoading || queueLoading;
 
 	return (
-		<PageShell className="space-y-6">
-			<PageHeader title="My Activity" description="Track your borrowing and lending activity" />
-
+		<PageShell>
 			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
-				<PageTabsList>
+				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+					<PageHeader title="My Activity" description="Track your borrowing and lending activity" />
+					<PageTabsList>
 					<PageTabsTrigger value="active" className="gap-2" badge={activeCount > 0 ? activeCount : undefined}>
 						<HandshakeIcon className="h-4 w-4" />
 						Active
@@ -360,6 +451,7 @@ export function MyActivityPage() {
 						History
 					</PageTabsTrigger>
 				</PageTabsList>
+				</PageStickyHeader>
 
 				{/* Active Tab - Currently borrowed/lent items */}
 				<PageTabsContent value="active" className="space-y-4">
@@ -398,6 +490,7 @@ export function MyActivityPage() {
 											transaction={tx}
 											role="borrower"
 											onMarkReturned={handleMarkReturned}
+											onConfirmReceipt={handleConfirmReceipt}
 											isLoading={processingId === tx.borrowRequestId}
 										/>
 									))}
@@ -414,7 +507,14 @@ export function MyActivityPage() {
 									{activeLent
 										.filter(tx => visibleActiveTransactions.visibleItems.some(item => item.id === tx.id))
 										.map(tx => (
-										<ActiveTransactionCard key={tx.id} transaction={tx} role="owner" />
+										<ActiveTransactionCard
+											key={tx.id}
+											transaction={tx}
+											role="owner"
+											onConfirmHandoff={handleConfirmHandoff}
+											onConfirmReturn={handleConfirmReturn}
+											isLoading={processingId === tx.borrowRequestId}
+										/>
 									))}
 								</div>
 							)}
