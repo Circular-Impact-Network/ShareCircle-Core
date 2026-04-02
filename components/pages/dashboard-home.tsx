@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Bell, Clock, MessageCircle, Plus, Search, Users } from 'lucide-react';
+import { Activity, Bell, HandshakeIcon, MessageCircle, Package, Plus, Search, Users } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -125,6 +125,28 @@ export function DashboardHome() {
 								Browse items
 							</Link>
 						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="bg-white/10 text-white hover:bg-white/20 gap-2"
+							asChild
+						>
+							<Link href="/activity">
+								<Activity className="h-4 w-4" />
+								My Activity
+							</Link>
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="bg-white/10 text-white hover:bg-white/20 gap-2"
+							asChild
+						>
+							<Link href="/notifications?tab=item-requests">
+								<Package className="h-4 w-4" />
+								Request item
+							</Link>
+						</Button>
 					</CardContent>
 				</Card>
 
@@ -146,8 +168,8 @@ export function DashboardHome() {
 					<Card className="flex flex-col border-border/60">
 						<CardHeader className="space-y-1 pb-2">
 							<div className="flex items-center justify-between gap-2">
-								<CardTitle className="text-base sm:text-lg">Open requests ({pendingRequests.length})</CardTitle>
-								<Clock className="h-4 w-4 text-primary" />
+								<CardTitle className="text-base sm:text-lg">Borrow requests ({pendingRequests.length})</CardTitle>
+								<HandshakeIcon className="h-4 w-4 text-primary" />
 							</div>
 							<CardDescription className="text-xs sm:text-sm">Your pending incoming borrow requests</CardDescription>
 						</CardHeader>
@@ -169,7 +191,7 @@ export function DashboardHome() {
 							)}
 							<div className="mt-auto flex justify-end border-t border-border/60 pt-3">
 								<Button asChild variant="ghost" size="sm" className="h-8 px-2 text-sm">
-									<Link href="/notifications?tab=requests">View all requests</Link>
+									<Link href="/notifications?tab=borrow-requests">View all requests</Link>
 								</Button>
 							</div>
 						</CardContent>
@@ -276,8 +298,8 @@ export function DashboardHome() {
 
 				<Card className="border-border/60">
 					<CardHeader className="space-y-1 pb-3">
-						<CardTitle>Open item requests</CardTitle>
-						<CardDescription className="text-sm">Requests from circles that still need items</CardDescription>
+						<CardTitle>Requested Items</CardTitle>
+						<CardDescription className="text-sm">Your friends need a few items. Do you have these?</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-2.5 pt-0">
 						{isItemRequestsLoading ? (
@@ -297,7 +319,7 @@ export function DashboardHome() {
 						)}
 						<div className="flex justify-end border-t border-border/60 pt-3">
 							<Button asChild variant="ghost" size="sm" className="h-8 px-2 text-sm">
-								<Link href="/requests">See all requests</Link>
+								<Link href="/notifications?tab=item-requests">See all requests</Link>
 							</Button>
 						</div>
 					</CardContent>
