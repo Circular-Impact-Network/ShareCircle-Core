@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Deferred rendering for off-screen list items -- improves scroll performance */
+.content-auto {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 200px;
+}
+
 :root {
 	/* Green-themed color palette inspired by WhatsApp/Supabase */
 	--background: #1a1d23;
