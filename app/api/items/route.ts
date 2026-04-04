@@ -46,9 +46,14 @@ export async function GET(req: NextRequest) {
 		const circleId = req.nextUrl.searchParams.get('circleId');
 		const category = req.nextUrl.searchParams.get('category');
 		const tag = req.nextUrl.searchParams.get('tag');
-	const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true';
-	const ownerOnly = req.nextUrl.searchParams.get('ownerOnly') === 'true';
-	const archivedParam = req.nextUrl.searchParams.get('archived');
+		const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true';
+		const ownerOnly = req.nextUrl.searchParams.get('ownerOnly') === 'true';
+		const archivedParam = req.nextUrl.searchParams.get('archived');
+
+		// Cursor-based pagination params
+		const limitParam = req.nextUrl.searchParams.get('limit');
+		const cursor = req.nextUrl.searchParams.get('cursor');
+		const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10) || 24), 100) : null;
 
 		// Get circles the user is a member of
 		const userCircles = await prisma.circleMember.findMany({
@@ -134,11 +139,22 @@ export async function GET(req: NextRequest) {
 			orderBy: {
 				createdAt: 'desc',
 			},
+			// Cursor-based pagination: fetch one extra to determine hasMore
+			...(limit !== null
+				? {
+						take: limit + 1,
+						...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+					}
+				: {}),
 		});
+
+		// Determine pagination metadata
+		const hasMore = limit !== null && items.length > limit;
+		const paginatedItems = hasMore ? items.slice(0, limit) : items;
 
 		// Generate signed URLs for item images and media
 		const itemsWithUrls = await Promise.all(
-			items.map(async item => {
+			paginatedItems.map(async item => {
 				const imageUrl = await getSignedUrl(item.imagePath, 'items');
 				// Generate signed URLs for all media files (main image + supporting media)
 				const mediaUrls = await Promise.all([
@@ -171,6 +187,16 @@ export async function GET(req: NextRequest) {
 				};
 			}),
 		);
+
+		// When limit param is present, return paginated response format
+		// Otherwise return flat array for backward compatibility
+		if (limit !== null) {
+			const nextCursor = hasMore ? itemsWithUrls[itemsWithUrls.length - 1]?.id ?? null : null;
+			return NextResponse.json(
+				{ items: itemsWithUrls, nextCursor, hasMore },
+				{ status: 200 },
+			);
+		}
 
 		return NextResponse.json(itemsWithUrls, { status: 200 });
 	} catch (error) {
