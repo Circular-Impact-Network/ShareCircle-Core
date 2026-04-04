@@ -212,4 +212,3 @@ export function generateResetToken(): string {
 	return crypto.randomUUID();
 }
 
-export { getMail };
