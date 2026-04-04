@@ -32,7 +32,7 @@ export function getDialCodeForCountry(country: SupportedPhoneCountry): string {
 	return `+${getCountryCallingCode(country as CountryCode)}`;
 }
 
-export function sanitizePhoneInput(input: string): string {
+function sanitizePhoneInput(input: string): string {
 	return input.replace(/\D/g, '');
 }
 
