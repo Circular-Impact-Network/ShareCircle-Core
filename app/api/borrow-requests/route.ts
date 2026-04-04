@@ -126,23 +126,34 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Desired dates are required' }, { status: 400 });
 		}
 
-		// Get the item with owner info
-		const item = await prisma.item.findUnique({
-			where: { id: itemId },
-			include: {
-				owner: {
-					select: {
-						id: true,
-						name: true,
+		// Fetch item and user circles in parallel (independent queries)
+		const [item, userCircles] = await Promise.all([
+			prisma.item.findUnique({
+				where: { id: itemId },
+				include: {
+					owner: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+					circles: {
+						select: {
+							circleId: true,
+						},
 					},
 				},
-				circles: {
-					select: {
-						circleId: true,
-					},
+			}),
+			prisma.circleMember.findMany({
+				where: {
+					userId,
+					leftAt: null,
 				},
-			},
-		});
+				select: {
+					circleId: true,
+				},
+			}),
+		]);
 
 		if (!item) {
 			return NextResponse.json({ error: 'Item not found' }, { status: 404 });
@@ -154,16 +165,6 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Verify user is in at least one circle where the item is shared
-		const userCircles = await prisma.circleMember.findMany({
-			where: {
-				userId,
-				leftAt: null,
-			},
-			select: {
-				circleId: true,
-			},
-		});
-
 		const userCircleIds = userCircles.map(c => c.circleId);
 		const itemCircleIds = item.circles.map(c => c.circleId);
 		const hasAccess = itemCircleIds.some(cId => userCircleIds.includes(cId));
@@ -187,29 +188,29 @@ export async function POST(req: NextRequest) {
 
 		// If item is not available and user wants to join queue
 		if (!item.isAvailable && joinQueue) {
-			// Check if user is already in queue
-			const existingQueueEntry = await prisma.borrowQueue.findFirst({
-				where: {
-					itemId,
-					requesterId: userId,
-					status: BorrowQueueStatus.WAITING,
-				},
-			});
+			// Check queue status in parallel (both need only itemId)
+			const [existingQueueEntry, lastQueueEntry] = await Promise.all([
+				prisma.borrowQueue.findFirst({
+					where: {
+						itemId,
+						requesterId: userId,
+						status: BorrowQueueStatus.WAITING,
+					},
+				}),
+				prisma.borrowQueue.findFirst({
+					where: {
+						itemId,
+						status: BorrowQueueStatus.WAITING,
+					},
+					orderBy: {
+						position: 'desc',
+					},
+				}),
+			]);
 
 			if (existingQueueEntry) {
 				return NextResponse.json({ error: 'You are already in the queue for this item' }, { status: 400 });
 			}
-
-			// Get current queue position
-			const lastQueueEntry = await prisma.borrowQueue.findFirst({
-				where: {
-					itemId,
-					status: BorrowQueueStatus.WAITING,
-				},
-				orderBy: {
-					position: 'desc',
-				},
-			});
 
 			const nextPosition = (lastQueueEntry?.position || 0) + 1;
 
