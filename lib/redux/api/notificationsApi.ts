@@ -42,8 +42,17 @@ export const notificationsApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 60,
+	refetchOnFocus: true,
+	refetchOnReconnect: true,
 	tagTypes: ['Notifications'],
 	endpoints: builder => ({
+		// Get unread notification count (lightweight)
+		getUnreadNotificationCount: builder.query<{ unreadCount: number }, void>({
+			query: () => '/notifications/unread-count',
+			providesTags: ['Notifications'],
+		}),
+
 		// Get notifications
 		getNotifications: builder.query<NotificationsResponse, GetNotificationsFilters | void>({
 			query: (filters = {}) => {
@@ -98,6 +107,7 @@ export const notificationsApi = createApi({
 });
 
 export const {
+	useGetUnreadNotificationCountQuery,
 	useGetNotificationsQuery,
 	useMarkAsReadMutation,
 	useMarkAllAsReadMutation,
