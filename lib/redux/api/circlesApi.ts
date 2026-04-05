@@ -84,6 +84,8 @@ export const circlesApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 300,
+	refetchOnReconnect: true,
 	tagTypes: ['Circles', 'CircleDetails', 'CircleMembers'],
 	endpoints: builder => ({
 		// Get all circles the user is a member of
