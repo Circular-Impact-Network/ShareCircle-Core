@@ -153,6 +153,9 @@ export const borrowApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 90,
+	refetchOnFocus: true,
+	refetchOnReconnect: true,
 	tagTypes: ['ItemRequests', 'BorrowRequests', 'BorrowQueue', 'Transactions', 'Items'],
 	endpoints: builder => ({
 		// ===== Item Requests =====
@@ -283,8 +286,8 @@ export const borrowApi = createApi({
 				{ type: 'BorrowRequests', id },
 				'BorrowRequests',
 				'Transactions',
-				// Invalidate the item if we have the result
-				...(result?.item?.id ? [{ type: 'Items' as const, id: result.item.id }] : ['Items' as const]),
+				// Invalidate the specific item if available (skip on error -- nothing changed)
+				...(result?.item?.id ? [{ type: 'Items' as const, id: result.item.id }] : []),
 			],
 		}),
 
