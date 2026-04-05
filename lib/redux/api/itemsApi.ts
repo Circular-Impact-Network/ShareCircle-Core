@@ -115,6 +115,8 @@ export const itemsApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 120,
+	refetchOnReconnect: true,
 	tagTypes: ['Items', 'CircleItems'],
 	endpoints: builder => ({
 		// Upload item image
@@ -268,6 +270,47 @@ export const itemsApi = createApi({
 				body,
 			}),
 		}),
+
+		// Paginated items (cursor-based for infinite scroll)
+		getItemsPaginated: builder.query<
+			{ items: Item[]; nextCursor: string | null; hasMore: boolean },
+			GetItemsFilters & { limit?: number; cursor?: string }
+		>({
+			query: params => {
+				const p = new URLSearchParams();
+				if (params.limit) p.append('limit', String(params.limit));
+				if (params.cursor) p.append('cursor', params.cursor);
+				if (params.category && params.category !== 'All Categories') p.append('category', params.category);
+				if (params.tag) p.append('tag', params.tag);
+				if (params.circleId) p.append('circleId', params.circleId);
+				if (params.includeArchived) p.append('includeArchived', 'true');
+				if (params.archived !== undefined) p.append('archived', String(params.archived));
+				if (params.ownerOnly) p.append('ownerOnly', 'true');
+				const qs = p.toString();
+				return `/items${qs ? `?${qs}` : ''}`;
+			},
+			serializeQueryArgs: ({ queryArgs }) => {
+				// Exclude cursor so pages merge into one cache entry per filter set
+				const { cursor, ...rest } = queryArgs;
+				return rest;
+			},
+			merge: (currentCache, newData) => {
+				if (!newData.items.length) return currentCache;
+				const existingIds = new Set(currentCache.items.map(i => i.id));
+				const unique = newData.items.filter(i => !existingIds.has(i.id));
+				currentCache.items.push(...unique);
+				currentCache.nextCursor = newData.nextCursor;
+				currentCache.hasMore = newData.hasMore;
+			},
+			forceRefetch: ({ currentArg, previousArg }) => currentArg?.cursor !== previousArg?.cursor,
+			providesTags: ['Items'],
+		}),
+
+		// Lightweight categories list (no item data / signed URLs)
+		getItemCategories: builder.query<string[], void>({
+			query: () => '/items/categories',
+			providesTags: ['Items'],
+		}),
 	}),
 });
 
@@ -284,4 +327,6 @@ export const {
 	useDeleteItemMutation,
 	useSearchItemsMutation,
 	useCleanupImageMutation,
+	useGetItemsPaginatedQuery,
+	useGetItemCategoriesQuery,
 } = itemsApi;
