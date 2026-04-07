@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
 import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
-import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
+import { useGetUnreadNotificationCountQuery } from '@/lib/redux/api/notificationsApi';
 import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -37,9 +37,9 @@ export function Sidebar() {
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
 
-	// Get notification counts - fetch minimal data just to get counts
+	// Get unread notification count via lightweight endpoint
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
-	const { data: notificationsData } = useGetNotificationsQuery({ limit: 1 });
+	const { data: notificationsData } = useGetUnreadNotificationCountQuery();
 	
 	// Get unread message count
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
