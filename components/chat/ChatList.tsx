@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Search, Pin, BellOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,7 +15,7 @@ type ChatListProps = {
 	onSelect: (threadId: string) => void;
 };
 
-export function ChatList({
+export const ChatList = memo(function ChatList({
 	threads,
 	activeId,
 	searchValue,
@@ -104,4 +105,4 @@ export function ChatList({
 			</div>
 		</div>
 	);
-}
+});
