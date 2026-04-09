@@ -4,19 +4,19 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping, Check } from 'lucide-react';
+import { ItemGridSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetAllItemsQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import { useGetItemsPaginatedQuery, useGetItemCategoriesQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 export function BrowseListingsPage() {
 	const router = useRouter();
@@ -38,16 +38,30 @@ export function BrowseListingsPage() {
 	// Item request mutation
 	const [createItemRequest, { isLoading: isCreatingRequest }] = useCreateItemRequestMutation();
 
-	// Build filters for the query
-	const filters: GetItemsFilters = useMemo(() => ({
-		category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
-	}), [selectedCategory]);
+	// Cursor state for infinite scroll pagination
+	const [cursor, setCursor] = useState<string | undefined>(undefined);
 
-	// Fetch filtered items (for display)
-	const { data: items = [], isLoading, error } = useGetAllItemsQuery(filters);
-	
-	// Fetch ALL items (unfiltered) for category extraction - this ensures dropdown always has all options
-	const { data: allItems = [] } = useGetAllItemsQuery();
+	// Reset cursor when category filter changes
+	useEffect(() => {
+		setCursor(undefined);
+	}, [selectedCategory]);
+
+	// Build filters for the paginated query (memoized to avoid spurious hook re-runs)
+	const filters = useMemo<GetItemsFilters & { limit: number; cursor?: string }>(
+		() => ({
+			category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+			limit: 24,
+			cursor,
+		}),
+		[selectedCategory, cursor],
+	);
+
+	// Fetch paginated items (server-side cursor pagination)
+	const { data: paginatedData, isLoading, error } = useGetItemsPaginatedQuery(filters);
+	const items = paginatedData?.items ?? [];
+
+	// Lightweight categories query (no item data / signed URLs)
+	const { data: allCategories = [] } = useGetItemCategoriesQuery();
 
 	// Semantic search mutation
 	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError, reset: resetSearch }] =
@@ -156,15 +170,11 @@ export function BrowseListingsPage() {
 		return items;
 	}, [isSearchActive, searchResults, items]);
 
-	// Extract unique categories from ALL items (unfiltered) for the dropdown
-	// This ensures the dropdown always shows all available categories
-	const categories = useMemo(() => {
-		const cats = new Set<string>();
-		allItems.forEach(item => {
-			item.categories.forEach(cat => cats.add(cat));
-		});
-		return ['All Categories', ...Array.from(cats).sort()];
-	}, [allItems]);
+	// Categories from lightweight API endpoint (no item data / signed URLs)
+	const categories = useMemo(
+		() => ['All Categories', ...allCategories],
+		[allCategories],
+	);
 
 	// Get user's circles (only circles the user is a member of)
 	const { data: userCircles = [] } = useGetCirclesQuery();
@@ -234,42 +244,43 @@ export function BrowseListingsPage() {
 		}
 	}, [queryFromUrl, router]);
 
-	const handleStartChat = useCallback(
-		async (ownerId: string) => {
-			if (!ownerId) return;
-			setStartingChatId(ownerId);
-			try {
-				const response = await fetch('/api/messages/threads', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ otherUserId: ownerId }),
-				});
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.error || 'Failed to start chat');
-				}
-				const data = await response.json();
-				router.push(`/messages/${data.id}`);
-			} catch (error) {
-				console.error('Start chat error:', error);
-				toast({
-					title: 'Unable to start chat',
-					description: error instanceof Error ? error.message : 'Please try again.',
-					variant: 'destructive',
-				});
-			} finally {
-				setStartingChatId(null);
+	async function handleStartChat(ownerId: string) {
+		if (!ownerId) return;
+		setStartingChatId(ownerId);
+		try {
+			const response = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId: ownerId }),
+			});
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to start chat');
 			}
-		},
-		[router, toast],
-	);
+			const data = await response.json();
+			router.push(`/messages/${data.id}`);
+		} catch (error) {
+			console.error('Start chat error:', error);
+			toast({
+				title: 'Unable to start chat',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setStartingChatId(null);
+		}
+	}
 
 	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || isSearchActive;
-	const {
-		visibleItems: visibleDisplayItems,
-		hasMore: hasMoreDisplayItems,
-		loadMore: loadMoreDisplayItems,
-	} = useProgressivePagination({ items: displayItems, pageSize: 12 });
+
+	// For search results, show all (already limited by search API). For browse, use server pagination.
+	const visibleDisplayItems = displayItems;
+	const hasMoreDisplayItems = isSearchActive ? false : (paginatedData?.hasMore ?? false);
+	const loadMoreDisplayItems = useCallback(() => {
+		if (paginatedData?.nextCursor) {
+			setCursor(paginatedData.nextCursor);
+		}
+	}, [paginatedData?.nextCursor]);
 
 	// Combined loading state
 	const isLoadingData = isLoading || isSearching;
@@ -369,12 +380,7 @@ export function BrowseListingsPage() {
 			</div>
 
 			{/* Loading State */}
-			{isLoading && (
-				<div className="flex flex-col items-center justify-center py-12">
-					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-					<p className="text-sm text-muted-foreground">Loading items...</p>
-				</div>
-			)}
+			{isLoading && <ItemGridSkeleton count={8} />}
 
 			{/* Empty State - No Items at all */}
 			{!isLoadingData && items.length === 0 && !isSearchActive && (
