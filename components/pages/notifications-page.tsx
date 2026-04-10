@@ -11,13 +11,9 @@ import {
 	Loader2,
 	Package,
 	HandshakeIcon,
-	RotateCcw,
-	MessageSquare,
-	Clock,
 	Plus,
 	Send,
 	PackageOpen,
-	CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +32,7 @@ import {
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { NotificationListSkeleton, RequestCardListSkeleton } from '@/components/ui/skeletons';
 import {
 	useGetNotificationsQuery,
 	useMarkAsReadMutation,
@@ -59,303 +56,13 @@ import {
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
+import { AlertCard } from '@/components/cards/alert-card';
+import { BorrowRequestCard } from '@/components/cards/borrow-request-card';
 import { ItemRequestFilter, type ItemRequestFilterValue } from '@/components/app/item-request-filter';
 
 type TabType = 'alerts' | 'borrow-requests' | 'item-requests';
-
-// Helper to get icon for notification type
-function getNotificationIcon(type: string) {
-	switch (type) {
-		case 'ITEM_REQUEST_CREATED':
-		case 'ITEM_REQUEST_FULFILLED':
-			return Package;
-		case 'BORROW_REQUEST_RECEIVED':
-		case 'BORROW_REQUEST_APPROVED':
-		case 'BORROW_REQUEST_DECLINED':
-			return HandshakeIcon;
-		case 'QUEUE_POSITION_UPDATED':
-		case 'QUEUE_ITEM_READY':
-			return Clock;
-		case 'ITEM_HANDOFF_CONFIRMED':
-		case 'ITEM_RECEIVED_CONFIRMED':
-		case 'RETURN_REQUESTED':
-		case 'RETURN_CONFIRMED':
-			return RotateCcw;
-		case 'NEW_MESSAGE':
-			return MessageSquare;
-		default:
-			return Bell;
-	}
-}
-
-// Alert notification card (passive) with navigation and optional inline action
-function AlertCard({
-	notification,
-	onMarkRead,
-	onNavigate,
-	actionLabel,
-	onAction,
-	isActionLoading,
-	actionDoneLabel,
-}: {
-	notification: Notification;
-	onMarkRead: (id: string) => void;
-	onNavigate: (notification: Notification) => void;
-	actionLabel?: string;
-	onAction?: () => void;
-	isActionLoading?: boolean;
-	actionDoneLabel?: string;
-}) {
-	const isUnread = notification.status === 'UNREAD';
-
-	const handleClick = () => {
-		if (isUnread) {
-			onMarkRead(notification.id);
-		}
-		onNavigate(notification);
-	};
-
-	const handleAction = (e: React.MouseEvent) => {
-		e.stopPropagation();
-		if (isUnread) onMarkRead(notification.id);
-		onAction?.();
-	};
-
-	const renderIcon = () => {
-		const Icon = getNotificationIcon(notification.type);
-		return Icon ? <Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} /> : null;
-	};
-
-	return (
-		<Card
-			className={cn(
-				'cursor-pointer transition-all hover:bg-accent/50',
-				isUnread && 'border-primary/30 bg-primary/5',
-			)}
-			onClick={handleClick}
-		>
-			<CardContent className="p-4">
-				<div className="flex items-start gap-3">
-					<div
-						className={cn(
-							'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-							isUnread ? 'bg-primary/10' : 'bg-muted',
-						)}
-					>
-						{renderIcon()}
-					</div>
-					<div className="flex-1 min-w-0">
-						<div className="flex items-center gap-2">
-							<p className={cn('text-sm font-medium', isUnread && 'text-foreground')}>
-								{notification.title}
-							</p>
-							{isUnread && <div className="h-2 w-2 rounded-full bg-primary" />}
-						</div>
-						<p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
-						<p className="text-xs text-muted-foreground mt-1">
-							{formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-						</p>
-						{actionDoneLabel ? (
-							<div className="mt-2 flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
-								<CheckCircle2 className="h-3.5 w-3.5" />
-								{actionDoneLabel}
-							</div>
-						) : actionLabel && onAction ? (
-							<div className="mt-3">
-								<Button
-									size="sm"
-									className="gap-2"
-									onClick={handleAction}
-									disabled={isActionLoading}
-								>
-									{isActionLoading ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<Check className="h-4 w-4" />
-									)}
-									{actionLabel}
-								</Button>
-							</div>
-						) : null}
-					</div>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-// Borrow request card (actionable) — shown in the Borrow Requests tab which only shows incoming (owner view)
-function BorrowRequestCard({
-	request,
-	onApprove,
-	onDecline,
-	onConfirmReturn,
-	onConfirmHandoff,
-	isLoading,
-}: {
-	request: BorrowRequest;
-	onApprove: (id: string) => void;
-	onDecline: (id: string) => void;
-	onConfirmReturn: (id: string) => void;
-	onConfirmHandoff: (id: string) => void;
-	isLoading: boolean;
-}) {
-	const router = useRouter();
-	const isPending = request.status === 'PENDING';
-	const isReturnPending = request.transaction?.status === 'RETURN_PENDING';
-	const isActive = request.status === 'APPROVED' && request.transaction?.status === 'ACTIVE';
-	const isLenderConfirmed = request.transaction?.status === 'LENDER_CONFIRMED';
-	const isBorrowerConfirmed = request.transaction?.status === 'BORROWER_CONFIRMED';
-
-	return (
-		<Card>
-			<CardContent className="p-4">
-				<div className="flex items-start gap-3">
-					{request.item.imageUrl && (
-						<div
-							className="h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
-							onClick={() => router.push(`/items/${request.item.id}`)}
-						>
-							<img
-								src={request.item.imageUrl}
-								alt={request.item.name}
-								className="h-full w-full object-cover"
-							/>
-						</div>
-					)}
-					<div className="flex-1 min-w-0">
-						<div className="flex items-center gap-2 mb-1">
-							<p
-								className="text-sm font-medium truncate cursor-pointer hover:underline"
-								onClick={() => router.push(`/items/${request.item.id}`)}
-							>
-								{request.item.name}
-							</p>
-							<Badge
-								variant={
-									isPending
-										? 'default'
-										: isReturnPending
-											? 'secondary'
-											: isActive
-												? 'default'
-												: isLenderConfirmed
-													? 'secondary'
-													: 'outline'
-								}
-							>
-								{isPending
-									? 'Pending'
-									: isReturnPending
-										? 'Return Pending'
-										: isActive
-											? 'Borrow Approved'
-											: isLenderConfirmed
-												? 'Item Handed Off'
-												: request.transaction?.status === 'BORROWER_CONFIRMED'
-													? 'Item Received'
-													: request.status}
-							</Badge>
-						</div>
-						<div className="flex items-center gap-2 text-sm text-muted-foreground">
-							<Avatar className="h-5 w-5">
-								<AvatarImage src={request.requester.image || undefined} />
-								<AvatarFallback className="text-[10px]">
-									{request.requester.name?.[0]?.toUpperCase() || '?'}
-								</AvatarFallback>
-							</Avatar>
-							<span className="truncate">{request.requester.name || 'Unknown'}</span>
-						</div>
-						{request.message && (
-							<p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-								&ldquo;{request.message}&rdquo;
-							</p>
-						)}
-						<p className="text-xs text-muted-foreground mt-1">
-							{new Date(request.desiredFrom).toLocaleDateString()} -{' '}
-							{new Date(request.desiredTo).toLocaleDateString()}
-						</p>
-
-						{/* Actions based on state */}
-						{isPending && (
-							<div className="mt-3 flex flex-wrap gap-2">
-								<Button
-									size="sm"
-									onClick={() => onApprove(request.id)}
-									disabled={isLoading}
-									className="gap-2"
-								>
-									{isLoading ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<Check className="h-4 w-4 mr-1" />
-									)}
-									Approve
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={() => onDecline(request.id)}
-									disabled={isLoading}
-								>
-									Decline
-								</Button>
-							</div>
-						)}
-						{isActive && (
-							<div className="mt-3">
-								<Button
-									size="sm"
-									onClick={() => onConfirmHandoff(request.id)}
-									disabled={isLoading}
-									className="gap-2"
-								>
-									{isLoading ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<Check className="h-4 w-4 mr-1" />
-									)}
-									Confirm Item Handed Off
-								</Button>
-							</div>
-						)}
-						{isLenderConfirmed && (
-							<p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-								Waiting for {request.requester.name || 'borrower'} to confirm receipt
-							</p>
-						)}
-						{isBorrowerConfirmed && (
-							<p className="text-xs text-green-600 dark:text-green-400 mt-2">
-								{request.requester.name || 'Borrower'} has confirmed receiving the item
-							</p>
-						)}
-						{isReturnPending && (
-							<div className="mt-3">
-								<Button
-									size="sm"
-									onClick={() => onConfirmReturn(request.id)}
-									disabled={isLoading}
-									className="gap-2"
-								>
-									{isLoading ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<CheckCheck className="h-4 w-4 mr-1" />
-									)}
-									Confirm Return
-								</Button>
-							</div>
-						)}
-					</div>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
 
 export function NotificationsPage() {
 	const router = useRouter();
@@ -852,9 +559,7 @@ export function NotificationsPage() {
 				{/* Alerts Tab */}
 				<PageTabsContent value="alerts" className="space-y-3">
 					{alertsLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<NotificationListSkeleton count={5} />
 					) : alerts.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -911,9 +616,7 @@ export function NotificationsPage() {
 				{/* Borrow Requests Tab */}
 				<PageTabsContent value="borrow-requests" className="space-y-3">
 					{requestsLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : actionableRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -953,9 +656,7 @@ export function NotificationsPage() {
 				<PageTabsContent value="item-requests" className="space-y-3">
 					<ItemRequestFilter value={itemFilter} onChange={setItemFilter} />
 					{itemRequestsLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : filteredItemRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
