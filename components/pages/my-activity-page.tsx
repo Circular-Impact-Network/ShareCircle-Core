@@ -13,6 +13,7 @@ import {
 	History,
 	CheckCircle2,
 } from 'lucide-react';
+import { RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -456,9 +457,7 @@ export function MyActivityPage() {
 				{/* Active Tab - Currently borrowed/lent items */}
 				<PageTabsContent value="active" className="space-y-4">
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : activeCount === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -531,9 +530,7 @@ export function MyActivityPage() {
 				{/* Pending Tab - Requests awaiting approval */}
 				<PageTabsContent value="pending" className="space-y-3">
 					{requestsLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={3} />
 					) : pendingRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -566,9 +563,7 @@ export function MyActivityPage() {
 				{/* Queue Tab */}
 				<PageTabsContent value="queue" className="space-y-3">
 					{queueLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={3} />
 					) : activeQueueEntries.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -601,9 +596,7 @@ export function MyActivityPage() {
 				{/* History Tab */}
 				<PageTabsContent value="history" className="space-y-4">
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : borrowedHistory.length === 0 && lentHistory.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
