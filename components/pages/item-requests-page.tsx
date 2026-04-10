@@ -29,13 +29,14 @@ import {
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { RequestCardListSkeleton } from '@/components/ui/skeletons';
 import {
 	useGetItemRequestsQuery,
 	useCreateItemRequestMutation,
 	useUpdateItemRequestMutation,
 	ItemRequest,
 } from '@/lib/redux/api/borrowApi';
-import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
+
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -155,9 +156,6 @@ export function ItemRequestsPage() {
 	// Fetch data
 	const { data: allRequests = [], isLoading: allLoading } = useGetItemRequestsQuery({});
 	const { data: myRequests = [], isLoading: myLoading } = useGetItemRequestsQuery({ myRequests: true });
-	// Keep items query for potential future use
-	useGetAllItemsQuery();
-
 	// Get user's circles (only circles the user is a member of)
 	const { data: circles = [] } = useGetCirclesQuery();
 
@@ -383,9 +381,7 @@ export function ItemRequestsPage() {
 				{/* All Requests Tab */}
 				<PageTabsContent value="all" className="space-y-3">
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : openRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -424,9 +420,7 @@ export function ItemRequestsPage() {
 				{/* My Requests Tab */}
 				<PageTabsContent value="mine" className="space-y-3">
 					{myLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : myRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
