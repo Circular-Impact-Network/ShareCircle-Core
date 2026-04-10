@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -11,20 +11,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/ui/page';
+import { DashboardItemSkeleton } from '@/components/ui/skeletons';
 import { useGetUserQuery } from '@/lib/redux/api/userApi';
 import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
-import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
+import { useGetUnreadMessageCountQuery, useGetRecentThreadsQuery } from '@/lib/redux/api/messagesApi';
 import { useGetBorrowRequestsQuery, useGetItemRequestsQuery } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import type { ChatThread as ChatThreadType } from '@/components/chat/types';
 
 export function DashboardHome() {
 	const router = useRouter();
 	const { data: session } = useSession();
 	const { data: user } = useGetUserQuery();
 	const [dashboardSearch, setDashboardSearch] = useState('');
-	const [recentThreads, setRecentThreads] = useState<ChatThreadType[]>([]);
-	const [isRecentThreadsLoading, setIsRecentThreadsLoading] = useState(true);
 	const { data: notificationsData, isLoading: isNotificationsLoading } = useGetNotificationsQuery({ limit: 5 });
 	const { data: unreadMessagesData, isLoading: isUnreadMessagesLoading } = useGetUnreadMessageCountQuery();
 	const { data: incomingRequests = [], isLoading: isIncomingLoading } = useGetBorrowRequestsQuery({
@@ -32,6 +30,7 @@ export function DashboardHome() {
 	});
 	const { data: itemRequests = [], isLoading: isItemRequestsLoading } = useGetItemRequestsQuery();
 	const { data: circles = [], isLoading: isCirclesLoading } = useGetCirclesQuery();
+	const { data: recentThreads = [], isLoading: isRecentThreadsLoading } = useGetRecentThreadsQuery({ limit: 3 });
 
 	const userName = user?.name || session?.user?.name || 'there';
 	const newUserWindowMs = 2 * 60 * 60 * 1000;
@@ -58,35 +57,6 @@ export function DashboardHome() {
 				.slice(0, 3),
 		[notificationsData]
 	);
-
-	useEffect(() => {
-		let isMounted = true;
-
-		async function loadRecentThreads() {
-			setIsRecentThreadsLoading(true);
-			try {
-				const response = await fetch('/api/messages/threads');
-				if (!response.ok) {
-					return;
-				}
-				const data = (await response.json()) as ChatThreadType[];
-				if (isMounted) {
-					setRecentThreads(data.slice(0, 3));
-				}
-			} catch (error) {
-				console.error('Failed to load recent threads:', error);
-			} finally {
-				if (isMounted) {
-					setIsRecentThreadsLoading(false);
-				}
-			}
-		}
-
-		loadRecentThreads();
-		return () => {
-			isMounted = false;
-		};
-	}, [unreadMessages]);
 
 	const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -175,7 +145,10 @@ export function DashboardHome() {
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isIncomingLoading ? (
-								<p className="text-sm text-muted-foreground">Loading requests...</p>
+								<div className="space-y-2">
+									<DashboardItemSkeleton />
+									<DashboardItemSkeleton />
+								</div>
 							) : pendingRequests.length === 0 ? (
 								<p className="text-sm text-muted-foreground">No pending requests right now.</p>
 							) : (
@@ -207,7 +180,10 @@ export function DashboardHome() {
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isNotificationsLoading ? (
-								<p className="text-sm text-muted-foreground">Loading notifications...</p>
+								<div className="space-y-2">
+									<DashboardItemSkeleton />
+									<DashboardItemSkeleton />
+								</div>
 							) : recentNotifications.length === 0 ? (
 								<p className="text-sm text-muted-foreground">No notifications yet.</p>
 							) : (
@@ -239,7 +215,10 @@ export function DashboardHome() {
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isUnreadMessagesLoading || isRecentThreadsLoading ? (
-								<p className="text-sm text-muted-foreground">Loading conversations...</p>
+								<div className="space-y-2">
+									<DashboardItemSkeleton />
+									<DashboardItemSkeleton />
+								</div>
 							) : recentThreads.length > 0 ? (
 								recentThreads.map(thread => {
 									const otherUser = thread.participants[0];
