@@ -67,24 +67,25 @@ describe('NotificationsProvider', () => {
 		expect(dispatchSpy).toHaveBeenCalled();
 	});
 
-	it('responds to new message broadcasts', () => {
+	it('invalidates message queries for NEW_MESSAGE notifications', () => {
 		render(
 			<NotificationsProvider>
 				<div>child</div>
 			</NotificationsProvider>,
 		);
 
-		const messageChannel = channels['user:user-1:messages'];
-		messageChannel.handlers.new_message({
+		const notificationChannel = channels['notifications:user-1'];
+		notificationChannel.handlers.new_notification({
 			payload: {
-				id: 'message-1',
-				senderId: 'user-2',
+				id: 'notification-2',
+				type: 'NEW_MESSAGE',
+				title: 'New message from Sender',
 				body: 'Hello!',
-				sender: { id: 'user-2', name: 'Sender', image: null },
 			},
 		});
 
 		expect(toastSpy).toHaveBeenCalled();
+		// dispatch called for both notification invalidation and message count invalidation
 		expect(dispatchSpy).toHaveBeenCalled();
 	});
 });
