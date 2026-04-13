@@ -12,3 +12,10 @@
 - **AI**: Google Gemini Vision + multimodal embeddings
 - **Push**: Web Push (VAPID), in-app notifications (DB-persisted)
 - **Dev port**: `localhost:3003`
+
+## Domain Model
+
+### Borrowing State Machines
+
+```
+BorrowRequest:  PENDING → APPROVED | DECLINED | CANCELLED
