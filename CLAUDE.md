@@ -40,3 +40,10 @@ ItemRequest:    OPEN → FULFILLED | CANCELLED
 
 - Default to **Server Components** (no `"use client"`); use client only for hooks, state, events, browser APIs
 - Pattern: Server component as outer shell (auth check) → Client component for interactivity
+- Page files in `app/(authenticated)/*/page.tsx` are thin server wrappers; logic lives in `components/pages/`
+
+### 2. API Routes
+
+Every route: **session check → try/catch → Prisma → response**. Always `getServerSession(authOptions)` first. Generic error messages to client, descriptive `console.error` for debugging.
+
+### 3. RTK Query
