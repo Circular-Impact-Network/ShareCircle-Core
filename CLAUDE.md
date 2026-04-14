@@ -33,3 +33,10 @@ ItemRequest:    OPEN → FULFILLED | CANCELLED
 
 ### NotificationType Enum (11 types)
 `NEW_MESSAGE` · `BORROW_REQUEST_RECEIVED` · `BORROW_REQUEST_APPROVED` · `BORROW_REQUEST_DECLINED` · `BORROW_QUEUE_READY` · `RETURN_PENDING` · `RETURN_CONFIRMED` · `ITEM_REQUEST_FULFILLED` · `CIRCLE_INVITE` · `NEW_MEMBER_JOINED` · `ITEM_AVAILABLE_SOON`
+
+## Architecture Patterns
+
+### 1. Server vs Client Components
+
+- Default to **Server Components** (no `"use client"`); use client only for hooks, state, events, browser APIs
+- Pattern: Server component as outer shell (auth check) → Client component for interactivity
