@@ -26,3 +26,10 @@ ItemRequest:    OPEN → FULFILLED | CANCELLED
 
 ### Key Relationships
 
+- **Circles**: Private groups with roles (ADMIN | MEMBER); invite codes expire 7 days
+- **Items**: Multi-circle sharing via `ItemCircle` join table; semantic search via pgvector
+- **Messages**: DIRECT | GROUP; `clientId` for dedup; delivery tracked via `MessageReceipt`
+- **Notifications**: 11 types, dual-channel (in-app + push), user preferences with per-type overrides
+
+### NotificationType Enum (11 types)
+`NEW_MESSAGE` · `BORROW_REQUEST_RECEIVED` · `BORROW_REQUEST_APPROVED` · `BORROW_REQUEST_DECLINED` · `BORROW_QUEUE_READY` · `RETURN_PENDING` · `RETURN_CONFIRMED` · `ITEM_REQUEST_FULFILLED` · `CIRCLE_INVITE` · `NEW_MEMBER_JOINED` · `ITEM_AVAILABLE_SOON`
