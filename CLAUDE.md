@@ -47,3 +47,10 @@ ItemRequest:    OPEN → FULFILLED | CANCELLED
 Every route: **session check → try/catch → Prisma → response**. Always `getServerSession(authOptions)` first. Generic error messages to client, descriptive `console.error` for debugging.
 
 ### 3. RTK Query
+
+API slices live in `lib/redux/api/`. Use `providesTags` / `invalidatesTags` for cache management. Import from `@/lib/redux/api/*`.
+
+### 4. Real-time Subscriptions
+
+Custom hooks in `hooks/`. **Always** `supabase.removeChannel(channel)` on cleanup — memory leak otherwise.
+
