@@ -19,3 +19,10 @@
 
 ```
 BorrowRequest:  PENDING → APPROVED | DECLINED | CANCELLED
+BorrowQueue:    WAITING → READY → SKIPPED
+BorrowTransaction: ACTIVE → RETURN_PENDING → COMPLETED | CANCELLED
+ItemRequest:    OPEN → FULFILLED | CANCELLED
+```
+
+### Key Relationships
+
