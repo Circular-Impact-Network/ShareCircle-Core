@@ -82,3 +82,10 @@ await prisma.$executeRaw`
 
 - **Formatting**: Prettier — 120 char width, tabs, single quotes
 - **Files**: kebab-case; **Components**: PascalCase; **Hooks**: `useXxx` camelCase
+- **Imports**: Always `@/` path aliases
+- **API routes**: `app/api/[route]/route.ts` — RESTful naming
+
+## Development Commands
+
+```bash
+npm run dev              # Start dev server (port 3003)
