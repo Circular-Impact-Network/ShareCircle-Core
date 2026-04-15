@@ -61,3 +61,10 @@ Use `after()` from `next/server` for all non-blocking work (notifications, broad
 ```typescript
 after(() => {
   queueNotification({ type: 'BORROW_REQUEST_RECEIVED', userId: ownerId, ... });
+});
+return NextResponse.json(result); // Returns immediately
+```
+
+`after()` only works in API routes — **not** in Server Components.
+
+### 6. Prisma
