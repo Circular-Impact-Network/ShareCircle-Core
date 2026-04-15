@@ -68,3 +68,10 @@ return NextResponse.json(result); // Returns immediately
 `after()` only works in API routes — **not** in Server Components.
 
 ### 6. Prisma
+
+Always import singleton: `import { prisma } from '@/lib/prisma'`. Never `new PrismaClient()`.
+
+Vector fields require raw SQL — no native Prisma support:
+```typescript
+await prisma.$executeRaw`
+  UPDATE "Item" SET embedding = ${Prisma.raw(`'[${values}]'::vector`)} WHERE id = ${id}
