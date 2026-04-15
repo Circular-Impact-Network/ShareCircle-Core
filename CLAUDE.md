@@ -75,3 +75,10 @@ Vector fields require raw SQL — no native Prisma support:
 ```typescript
 await prisma.$executeRaw`
   UPDATE "Item" SET embedding = ${Prisma.raw(`'[${values}]'::vector`)} WHERE id = ${id}
+`;
+```
+
+## Code Conventions
+
+- **Formatting**: Prettier — 120 char width, tabs, single quotes
+- **Files**: kebab-case; **Components**: PascalCase; **Hooks**: `useXxx` camelCase
