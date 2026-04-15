@@ -54,3 +54,10 @@ API slices live in `lib/redux/api/`. Use `providesTags` / `invalidatesTags` for 
 
 Custom hooks in `hooks/`. **Always** `supabase.removeChannel(channel)` on cleanup — memory leak otherwise.
 
+### 5. `after()` for Side Effects (Critical)
+
+Use `after()` from `next/server` for all non-blocking work (notifications, broadcasts, embeddings). Fire-and-forget `void promise` is unreliable on Vercel serverless. `after()` guarantees execution after response. Use `queueNotification()` from `lib/notify.ts` as the helper.
+
+```typescript
+after(() => {
+  queueNotification({ type: 'BORROW_REQUEST_RECEIVED', userId: ownerId, ... });
