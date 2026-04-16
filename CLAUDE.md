@@ -110,3 +110,10 @@ npm run test:e2e:ui      # Playwright UI mode
 4. **Side effects**: `after()` / `queueNotification()` for notifications, broadcasts, embeddings
 5. **Real-time cleanup**: Remove Supabase channels on unmount
 6. **Rate limiting**: Check `lib/rate-limit.ts` before adding public endpoints
+7. **Zod validation**: On API routes, not just client-side
+8. **No auto-docs**: Never create `.md` files unless explicitly requested
+
+## Security Patterns
+
+- **Circle membership gate**: Always verify `circleMember.findFirst({ where: { circleId, userId, leftAt: null } })` before exposing data
+- **Owner checks**: `ownerId === session.user.id` for mutations
