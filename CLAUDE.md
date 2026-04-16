@@ -117,3 +117,10 @@ npm run test:e2e:ui      # Playwright UI mode
 
 - **Circle membership gate**: Always verify `circleMember.findFirst({ where: { circleId, userId, leftAt: null } })` before exposing data
 - **Owner checks**: `ownerId === session.user.id` for mutations
+- **OTP**: `timingSafeEqualHex()` for comparison; hashed storage
+- **Invite codes**: Check expiry (7 days) before accepting
+- **Passwords**: bcryptjs `compare()` only — never plain text
+
+## Common Gotchas
+
+1. **Supabase client split**: `supabaseAdmin` (service role) on server for broadcasts; `createClient()` (anon) on client for subscriptions. Client anon key **cannot** broadcast — silent failure.
