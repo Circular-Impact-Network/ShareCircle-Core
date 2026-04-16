@@ -103,3 +103,10 @@ npm run test:e2e:ui      # Playwright UI mode
 ```
 
 ## Best Practices
+
+1. **Auth first**: `getServerSession(authOptions)` before any logic in API routes
+2. **Prisma singleton**: `@/lib/prisma` only
+3. **Signed URLs**: `getSignedUrl(path, bucket)` for all Supabase storage paths; never expose raw paths
+4. **Side effects**: `after()` / `queueNotification()` for notifications, broadcasts, embeddings
+5. **Real-time cleanup**: Remove Supabase channels on unmount
+6. **Rate limiting**: Check `lib/rate-limit.ts` before adding public endpoints
