@@ -89,3 +89,10 @@ await prisma.$executeRaw`
 
 ```bash
 npm run dev              # Start dev server (port 3003)
+npm run build            # Production build
+npm run lint             # ESLint check
+npm run format           # Prettier write
+npm run db:generate      # Regenerate Prisma client after schema changes
+npm run db:migrate:dev   # Create + apply migration
+npm run db:push          # Push schema without migration (dev only, destructive)
+npm run db:studio        # Prisma Studio at localhost:5555
