@@ -96,3 +96,10 @@ npm run db:generate      # Regenerate Prisma client after schema changes
 npm run db:migrate:dev   # Create + apply migration
 npm run db:push          # Push schema without migration (dev only, destructive)
 npm run db:studio        # Prisma Studio at localhost:5555
+npm test                 # All tests
+npm run test:unit        # Vitest unit tests
+npm run test:e2e         # Playwright E2E tests
+npm run test:e2e:ui      # Playwright UI mode
+```
+
+## Best Practices
