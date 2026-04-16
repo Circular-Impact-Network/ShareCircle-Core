@@ -124,3 +124,10 @@ npm run test:e2e:ui      # Playwright UI mode
 ## Common Gotchas
 
 1. **Supabase client split**: `supabaseAdmin` (service role) on server for broadcasts; `createClient()` (anon) on client for subscriptions. Client anon key **cannot** broadcast — silent failure.
+2. **`after()` scope**: API routes only. Not Server Components.
+3. **Vector embeddings**: Raw SQL only (`Prisma.raw`). No Prisma native support.
+4. **Signed URL expiry**: 1hr default. Handle 403 by requesting fresh URL on client.
+5. **`session.user.id`**: Is `string` (extended in `types/next-auth.d.ts`), not the default NextAuth type.
+6. **Phone validation**: Call `isSupportedPhoneCountry()` before `validatePhoneByCountry()` — throws on unsupported countries.
+7. **Email normalization**: `normalizeEmail()` before all DB queries — prevents duplicate accounts.
+8. **PWA caching**: NetworkOnly for auth routes, NetworkFirst for API reads (Workbox in `next.config.ts`).
