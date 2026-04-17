@@ -166,3 +166,10 @@ Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `T
 
 - `TESTING.md` — E2E guide, test data cleanup
 - `REALTIME_CHAT_DOCUMENTATION.md` — chat architecture, presence
+- `NOTIFICATIONS_BORROW_LENDING_DOCUMENTATION.md` — notification system, borrow workflows
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **share-circle** (1806 symbols, 4348 relationships, 139 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
