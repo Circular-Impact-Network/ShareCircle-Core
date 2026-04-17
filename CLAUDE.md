@@ -159,3 +159,10 @@ Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `T
 **New notification type**: add to `NotificationType` enum in schema → `db:migrate:dev` → `NOTIFICATION_PATHS` in `lib/notify.ts` → catalog entry in `lib/notification-catalog.ts` → `queueNotification()` in route
 
 **New real-time feature**: hook in `hooks/` → unique channel name → cleanup on unmount → broadcast via `supabaseAdmin` in API route
+
+**New DB model**: update `schema.prisma` → `db:migrate:dev` → API routes → update this file's domain section if state machines changed
+
+## Documentation References
+
+- `TESTING.md` — E2E guide, test data cleanup
+- `REALTIME_CHAT_DOCUMENTATION.md` — chat architecture, presence
