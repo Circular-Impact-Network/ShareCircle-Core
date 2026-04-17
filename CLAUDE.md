@@ -131,3 +131,10 @@ npm run test:e2e:ui      # Playwright UI mode
 6. **Phone validation**: Call `isSupportedPhoneCountry()` before `validatePhoneByCountry()` — throws on unsupported countries.
 7. **Email normalization**: `normalizeEmail()` before all DB queries — prevents duplicate accounts.
 8. **PWA caching**: NetworkOnly for auth routes, NetworkFirst for API reads (Workbox in `next.config.ts`).
+9. **N+1 queries**: Use `include` for eager loading in Prisma; don't fetch relations in loops.
+10. **AI endpoint timeout**: `export const maxDuration = 60;` on AI routes — default times out for vision/embedding calls.
+
+## Environment Variables
+
+Required:
+- `DATABASE_URL`, `DIRECT_URL` — PostgreSQL with pgvector
