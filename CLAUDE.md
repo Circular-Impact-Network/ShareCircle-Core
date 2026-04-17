@@ -138,3 +138,10 @@ npm run test:e2e:ui      # Playwright UI mode
 
 Required:
 - `DATABASE_URL`, `DIRECT_URL` — PostgreSQL with pgvector
+- `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+Optional: `GOOGLE_CLIENT_ID/SECRET` · `GMAIL_USER/APP_PASSWORD` · `TWILIO_*` · `VAPID_*`
+
+Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `TEST_CLEANUP_SECRET`
+
