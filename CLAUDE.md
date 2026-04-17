@@ -152,3 +152,10 @@ Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `T
 - Mock image upload + AI in E2E to avoid costs
 - See `TESTING.md` for full guide
 
+## Common Task Checklists
+
+**New API endpoint**: session check → try/catch → Prisma → response → RTK Query slice in `lib/redux/api/` → rate limit if public
+
+**New notification type**: add to `NotificationType` enum in schema → `db:migrate:dev` → `NOTIFICATION_PATHS` in `lib/notify.ts` → catalog entry in `lib/notification-catalog.ts` → `queueNotification()` in route
+
+**New real-time feature**: hook in `hooks/` → unique channel name → cleanup on unmount → broadcast via `supabaseAdmin` in API route
