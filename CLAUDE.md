@@ -173,3 +173,10 @@ Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `T
 
 This project is indexed by GitNexus as **share-circle** (1806 symbols, 4348 relationships, 139 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
