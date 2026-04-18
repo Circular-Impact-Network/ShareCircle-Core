@@ -229,3 +229,10 @@ This project is indexed by GitNexus as **share-circle** (1806 symbols, 4348 rela
 | `gitnexus://repo/share-circle/context` | Codebase overview, check index freshness |
 | `gitnexus://repo/share-circle/clusters` | All functional areas |
 | `gitnexus://repo/share-circle/processes` | All execution flows |
+| `gitnexus://repo/share-circle/process/{name}` | Step-by-step execution trace |
+
+## Self-Check Before Finishing
+
+Before completing any code modification task, verify:
+1. `gitnexus_impact` was run for all modified symbols
+2. No HIGH/CRITICAL risk warnings were ignored
