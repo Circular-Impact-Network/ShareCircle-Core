@@ -222,3 +222,10 @@ This project is indexed by GitNexus as **share-circle** (1806 symbols, 4348 rela
 | d=2 | LIKELY AFFECTED — indirect deps | Should test |
 | d=3 | MAY NEED TESTING — transitive | Test if critical path |
 
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/share-circle/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/share-circle/clusters` | All functional areas |
+| `gitnexus://repo/share-circle/processes` | All execution flows |
