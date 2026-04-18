@@ -215,3 +215,10 @@ This project is indexed by GitNexus as **share-circle** (1806 symbols, 4348 rela
 | `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
 
 ## Impact Risk Levels
+
+| Depth | Meaning | Action |
+|-------|---------|--------|
+| d=1 | WILL BREAK — direct callers/importers | MUST update these |
+| d=2 | LIKELY AFFECTED — indirect deps | Should test |
+| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+
