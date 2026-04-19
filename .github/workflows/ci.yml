@@ -53,8 +53,10 @@ jobs:
                   path: coverage/
                   retention-days: 14
 
-    # E2E needs a real Postgres URL and NextAuth/Supabase secrets; add repo secrets or this job will fail at signup (empty DATABASE_URL).
+    # E2E tests disabled in CI — run locally with: npm run test:e2e
+    # To re-enable: remove the `if: false` line and set the required repo secrets (TEST_DATABASE_URL, TEST_DIRECT_URL, NEXTAUTH_SECRET, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, TEST_CLEANUP_SECRET).
     e2e-tests:
+        if: false
         runs-on: ubuntu-latest
         needs: [lint, type-check, unit-tests]
         env:
@@ -77,6 +79,7 @@ jobs:
                   cache: 'npm'
             - run: npm ci
             - run: npx prisma generate
+            - run: npx prisma migrate deploy
             - run: npx playwright install --with-deps chromium
             - run: npm run build
             - run: npx playwright test

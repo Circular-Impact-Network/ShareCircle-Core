@@ -21,14 +21,15 @@ export default defineConfig({
 	globalSetup: path.join(__dirname, 'tests/e2e/global-setup.ts'),
 	globalTeardown: path.join(__dirname, 'tests/e2e/global-teardown.ts'),
 	webServer: {
-		command: 'npm run dev',
+		// CI: use the production build (npm run build runs first in ci.yml); Local: dev server with HMR.
+		command: process.env.CI ? 'npm run start' : 'npm run dev',
 		url: baseURL,
-		reuseExistingServer: true, // Allow reusing existing server for local development
+		reuseExistingServer: !process.env.CI, // Always start fresh in CI; reuse locally for speed.
 		timeout: 120_000,
-		// Inherit full env (CI sets DATABASE_URL from secrets; Next also reads .env.local locally).
-		// Do not replace with a tiny object only — that can drop DATABASE_URL for the dev server.
+		// Spread full env so DATABASE_URL / NEXTAUTH_SECRET / Supabase keys reach the Next.js process.
+		// Without this, the webServer only gets the explicit keys and DB queries fail.
 		env: {
-			...process.env,
+			...(process.env as Record<string, string>),
 			E2E_AUTO_VERIFY: process.env.E2E_AUTO_VERIFY ?? 'true',
 			SKIP_SMS: process.env.SKIP_SMS ?? 'true',
 			SKIP_EMAIL: process.env.SKIP_EMAIL ?? 'true',
