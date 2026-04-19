@@ -1,12 +1,6 @@
 import { NotificationType } from '@prisma/client';
 
-export const NOTIFICATION_CATEGORY_IDS = [
-	'MESSAGES',
-	'ITEM_REQUESTS',
-	'BORROW_REQUESTS',
-	'QUEUE',
-	'RETURNS',
-] as const;
+export const NOTIFICATION_CATEGORY_IDS = ['MESSAGES', 'ITEM_REQUESTS', 'BORROW_REQUESTS', 'QUEUE', 'RETURNS'] as const;
 
 export type NotificationCategoryId = (typeof NOTIFICATION_CATEGORY_IDS)[number];
 

@@ -106,26 +106,6 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		dispatch(messagesApi.util.invalidateTags(['UnreadCount']));
 	}, [dispatch]);
 
-	const getMessagePreview = useCallback(
-		(message: {
-			body: string;
-			attachments?: { type: string }[];
-		}) => {
-			if (message.body?.trim()) {
-				return message.body.substring(0, 50) + (message.body.length > 50 ? '...' : '');
-			}
-
-			if (message.attachments?.length) {
-				return message.attachments.length === 1
-					? 'Sent a photo'
-					: `Sent ${message.attachments.length} photos`;
-			}
-
-			return 'Sent a new message';
-		},
-		[],
-	);
-
 	const fetchPushStatus = useCallback(async () => {
 		const response = await fetch('/api/push/subscriptions', {
 			credentials: 'include',
@@ -229,9 +209,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			}
 
 			const permission =
-				Notification.permission === 'granted'
-					? 'granted'
-					: await Notification.requestPermission();
+				Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
 			setPushPermission(permission);
 
 			if (permission !== 'granted') {
@@ -270,8 +248,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			console.error('Failed to enable push notifications:', error);
 			toast({
 				title: 'Could not enable push',
-				description:
-					error instanceof Error ? error.message : 'Please try again from a supported browser.',
+				description: error instanceof Error ? error.message : 'Please try again from a supported browser.',
 				variant: 'destructive',
 			});
 		} finally {

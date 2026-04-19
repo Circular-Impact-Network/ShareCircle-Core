@@ -47,7 +47,9 @@ export function Dropzone({
 			className={cn(
 				'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200',
 				disabled && 'cursor-not-allowed opacity-60',
-				isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50 hover:border-primary/50',
+				isDragActive
+					? 'border-primary bg-primary/5'
+					: 'border-border hover:bg-muted/50 hover:border-primary/50',
 				className,
 			)}
 		>

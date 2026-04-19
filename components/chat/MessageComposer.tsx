@@ -12,11 +12,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import {
-	MAX_MEDIA_ATTACHMENTS,
-	getUploadValidationError,
-	prepareImageForUpload,
-} from '@/lib/media';
+import { MAX_MEDIA_ATTACHMENTS, getUploadValidationError, prepareImageForUpload } from '@/lib/media';
 
 type MessageComposerProps = {
 	value: string;

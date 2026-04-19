@@ -256,10 +256,13 @@ const CarouselDots = React.forwardRef<HTMLDivElement, CarouselDotsProps>(({ clas
 	const [selectedIndex, setSelectedIndex] = React.useState(0);
 	const [scrollSnaps, setScrollSnaps] = React.useState<number[]>([]);
 
-	const scrollTo = React.useCallback((index: number, e?: React.MouseEvent) => {
-		e?.stopPropagation();
-		api?.scrollTo(index);
-	}, [api]);
+	const scrollTo = React.useCallback(
+		(index: number, e?: React.MouseEvent) => {
+			e?.stopPropagation();
+			api?.scrollTo(index);
+		},
+		[api],
+	);
 
 	const onSelect = React.useCallback(() => {
 		if (!api) return;
@@ -285,14 +288,14 @@ const CarouselDots = React.forwardRef<HTMLDivElement, CarouselDotsProps>(({ clas
 		<div
 			ref={ref}
 			className={cn('flex justify-center gap-2 mt-4', className)}
-			onClick={(e) => e.stopPropagation()}
+			onClick={e => e.stopPropagation()}
 			{...props}
 		>
 			{scrollSnaps.map((_, index) => (
 				<button
 					key={index}
 					type="button"
-					onClick={(e) => scrollTo(index, e)}
+					onClick={e => scrollTo(index, e)}
 					className={cn(
 						'h-2 w-2 rounded-full transition-all',
 						index === selectedIndex ? 'bg-primary w-6' : 'bg-muted-foreground/50',
@@ -342,7 +345,7 @@ const CarouselNumber = React.forwardRef<HTMLDivElement, CarouselNumberProps>(({ 
 				'absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded',
 				className,
 			)}
-			onClick={(e) => e.stopPropagation()}
+			onClick={e => e.stopPropagation()}
 			{...props}
 		>
 			{selectedIndex + 1}/{count}

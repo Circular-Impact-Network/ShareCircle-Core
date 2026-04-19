@@ -16,7 +16,6 @@ import {
 	PackageOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,11 +50,9 @@ import {
 	useUpdateItemRequestMutation,
 	useIgnoreItemRequestMutation,
 	useRespondToItemRequestMutation,
-	BorrowRequest,
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { AlertCard } from '@/components/cards/alert-card';
@@ -304,7 +301,6 @@ export function NotificationsPage() {
 		}
 	};
 
-
 	// Item request handlers
 	const handleRespond = async (requestId: string, requesterId: string, requestTitleText: string) => {
 		setRespondingRequestId(requestId);
@@ -412,148 +408,141 @@ export function NotificationsPage() {
 					/>
 					<div className="flex items-center justify-between">
 						<PageTabsList>
-						<PageTabsTrigger
-							value="alerts"
-							className="gap-2"
-							badge={unreadCount > 0 ? unreadCount : undefined}
-						>
-							<Bell className="h-4 w-4" />
-							Alerts
-						</PageTabsTrigger>
-						<PageTabsTrigger
-							value="borrow-requests"
-							className="gap-2"
-							badge={actionableRequests.length > 0 ? actionableRequests.length : undefined}
-						>
-							<HandshakeIcon className="h-4 w-4" />
-							Borrow Requests
-						</PageTabsTrigger>
-						<PageTabsTrigger
-							value="item-requests"
-							className="gap-2"
-							badge={openItemRequestCount > 0 ? openItemRequestCount : undefined}
-						>
-							<Package className="h-4 w-4" />
-							Requested Items
-						</PageTabsTrigger>
-					</PageTabsList>
+							<PageTabsTrigger
+								value="alerts"
+								className="gap-2"
+								badge={unreadCount > 0 ? unreadCount : undefined}
+							>
+								<Bell className="h-4 w-4" />
+								Alerts
+							</PageTabsTrigger>
+							<PageTabsTrigger
+								value="borrow-requests"
+								className="gap-2"
+								badge={actionableRequests.length > 0 ? actionableRequests.length : undefined}
+							>
+								<HandshakeIcon className="h-4 w-4" />
+								Borrow Requests
+							</PageTabsTrigger>
+							<PageTabsTrigger
+								value="item-requests"
+								className="gap-2"
+								badge={openItemRequestCount > 0 ? openItemRequestCount : undefined}
+							>
+								<Package className="h-4 w-4" />
+								Requested Items
+							</PageTabsTrigger>
+						</PageTabsList>
 
-					<div className="flex gap-2">
-						{activeTab === 'alerts' && alerts.length > 0 && (
-							<>
-								<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-									<CheckCheck className="h-4 w-4 mr-1" />
-									Mark all read
-								</Button>
-								<Button variant="ghost" size="sm" onClick={handleClearAll}>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</>
-						)}
-						{activeTab === 'item-requests' && (
-							<>
-								<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-									<DialogTrigger asChild>
-										<Button size="sm" className="gap-1">
-											<Plus className="h-4 w-4" />
-											New Request
-										</Button>
-									</DialogTrigger>
-									<DialogContent>
-										<DialogHeader>
-											<DialogTitle>Request an Item</DialogTitle>
-											<DialogDescription>
-												Let your circles know what you&apos;re looking for
-											</DialogDescription>
-										</DialogHeader>
-										<div className="space-y-4 py-4">
-											<Input
-												placeholder="What are you looking for?"
-												value={requestTitle}
-												onChange={e => setRequestTitle(e.target.value)}
-											/>
-											<Textarea
-												placeholder="Add details (optional)"
-												value={requestDescription}
-												onChange={e => setRequestDescription(e.target.value)}
-												rows={3}
-											/>
-											<div className="space-y-2">
-												<p className="text-sm text-muted-foreground">
-													Share this request with circles *
-												</p>
-												{circles.length > 1 && (
-													<Button
-														variant="outline"
-														type="button"
-														onClick={toggleSelectAllCircles}
-													>
-														{allCirclesSelected
-															? 'Deselect All Circles'
-															: 'Select All Circles'}
-													</Button>
-												)}
-												<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
-													{circles.map(circle => {
-														const isSelected = requestCircleIds.includes(circle.id);
-														return (
-															<button
-																key={circle.id}
-																type="button"
-																onClick={() => toggleCircleSelection(circle.id)}
-																className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
-																	isSelected
-																		? 'bg-primary/10'
-																		: 'hover:bg-muted'
-																}`}
-															>
-																<div
-																	className={`h-4 w-4 rounded border flex items-center justify-center ${
-																		isSelected
-																			? 'border-primary bg-primary text-primary-foreground'
-																			: 'border-muted-foreground'
+						<div className="flex gap-2">
+							{activeTab === 'alerts' && alerts.length > 0 && (
+								<>
+									<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+										<CheckCheck className="h-4 w-4 mr-1" />
+										Mark all read
+									</Button>
+									<Button variant="ghost" size="sm" onClick={handleClearAll}>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</>
+							)}
+							{activeTab === 'item-requests' && (
+								<>
+									<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+										<DialogTrigger asChild>
+											<Button size="sm" className="gap-1">
+												<Plus className="h-4 w-4" />
+												New Request
+											</Button>
+										</DialogTrigger>
+										<DialogContent>
+											<DialogHeader>
+												<DialogTitle>Request an Item</DialogTitle>
+												<DialogDescription>
+													Let your circles know what you&apos;re looking for
+												</DialogDescription>
+											</DialogHeader>
+											<div className="space-y-4 py-4">
+												<Input
+													placeholder="What are you looking for?"
+													value={requestTitle}
+													onChange={e => setRequestTitle(e.target.value)}
+												/>
+												<Textarea
+													placeholder="Add details (optional)"
+													value={requestDescription}
+													onChange={e => setRequestDescription(e.target.value)}
+													rows={3}
+												/>
+												<div className="space-y-2">
+													<p className="text-sm text-muted-foreground">
+														Share this request with circles *
+													</p>
+													{circles.length > 1 && (
+														<Button
+															variant="outline"
+															type="button"
+															onClick={toggleSelectAllCircles}
+														>
+															{allCirclesSelected
+																? 'Deselect All Circles'
+																: 'Select All Circles'}
+														</Button>
+													)}
+													<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
+														{circles.map(circle => {
+															const isSelected = requestCircleIds.includes(circle.id);
+															return (
+																<button
+																	key={circle.id}
+																	type="button"
+																	onClick={() => toggleCircleSelection(circle.id)}
+																	className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+																		isSelected ? 'bg-primary/10' : 'hover:bg-muted'
 																	}`}
 																>
-																	{isSelected && (
-																		<Check className="h-3 w-3" />
-																	)}
-																</div>
-																<span>{circle.name}</span>
-															</button>
-														);
-													})}
+																	<div
+																		className={`h-4 w-4 rounded border flex items-center justify-center ${
+																			isSelected
+																				? 'border-primary bg-primary text-primary-foreground'
+																				: 'border-muted-foreground'
+																		}`}
+																	>
+																		{isSelected && <Check className="h-3 w-3" />}
+																	</div>
+																	<span>{circle.name}</span>
+																</button>
+															);
+														})}
+													</div>
 												</div>
 											</div>
-										</div>
-										<DialogFooter>
-											<Button
-												variant="outline"
-												onClick={() => setShowCreateModal(false)}
-											>
-												Cancel
-											</Button>
-											<Button
-												onClick={handleCreate}
-												disabled={
-													isCreating ||
-													!requestTitle.trim() ||
-													requestCircleIds.length === 0
-												}
-											>
-												{isCreating ? (
-													<Loader2 className="h-4 w-4 animate-spin mr-2" />
-												) : (
-													<Send className="h-4 w-4 mr-2" />
-												)}
-												Create Request
-											</Button>
-										</DialogFooter>
-									</DialogContent>
-								</Dialog>
-							</>
-						)}
+											<DialogFooter>
+												<Button variant="outline" onClick={() => setShowCreateModal(false)}>
+													Cancel
+												</Button>
+												<Button
+													onClick={handleCreate}
+													disabled={
+														isCreating ||
+														!requestTitle.trim() ||
+														requestCircleIds.length === 0
+													}
+												>
+													{isCreating ? (
+														<Loader2 className="h-4 w-4 animate-spin mr-2" />
+													) : (
+														<Send className="h-4 w-4 mr-2" />
+													)}
+													Create Request
+												</Button>
+											</DialogFooter>
+										</DialogContent>
+									</Dialog>
+								</>
+							)}
+						</div>
 					</div>
-				</div>
 				</PageStickyHeader>
 
 				{/* Alerts Tab */}
@@ -671,8 +660,8 @@ export function NotificationsPage() {
 										{itemFilter === 'from-others'
 											? 'Requests from your circle members will appear here'
 											: itemFilter === 'mine'
-											? 'Post a request to let your circles know what you need'
-											: 'No item requests from your circles yet'}
+												? 'Post a request to let your circles know what you need'
+												: 'No item requests from your circles yet'}
 									</p>
 								</div>
 							</CardContent>

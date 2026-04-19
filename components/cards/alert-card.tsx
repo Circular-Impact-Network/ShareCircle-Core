@@ -17,27 +17,27 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/lib/redux/api/notificationsApi';
 
-function getNotificationIcon(type: string) {
+function NotificationIconGlyph({ type, className }: { type: string; className?: string }) {
 	switch (type) {
 		case 'ITEM_REQUEST_CREATED':
 		case 'ITEM_REQUEST_FULFILLED':
-			return Package;
+			return <Package className={className} />;
 		case 'BORROW_REQUEST_RECEIVED':
 		case 'BORROW_REQUEST_APPROVED':
 		case 'BORROW_REQUEST_DECLINED':
-			return HandshakeIcon;
+			return <HandshakeIcon className={className} />;
 		case 'QUEUE_POSITION_UPDATED':
 		case 'QUEUE_ITEM_READY':
-			return Clock;
+			return <Clock className={className} />;
 		case 'ITEM_HANDOFF_CONFIRMED':
 		case 'ITEM_RECEIVED_CONFIRMED':
 		case 'RETURN_REQUESTED':
 		case 'RETURN_CONFIRMED':
-			return RotateCcw;
+			return <RotateCcw className={className} />;
 		case 'NEW_MESSAGE':
-			return MessageSquare;
+			return <MessageSquare className={className} />;
 		default:
-			return Bell;
+			return <Bell className={className} />;
 	}
 }
 
@@ -75,8 +75,6 @@ export function AlertCard({
 		onAction?.();
 	};
 
-	const Icon = getNotificationIcon(notification.type);
-
 	return (
 		<Card
 			className={cn(
@@ -93,7 +91,10 @@ export function AlertCard({
 							isUnread ? 'bg-primary/10' : 'bg-muted',
 						)}
 					>
-						<Icon className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')} />
+						<NotificationIconGlyph
+							type={notification.type}
+							className={cn('h-5 w-5', isUnread ? 'text-primary' : 'text-muted-foreground')}
+						/>
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
@@ -113,12 +114,7 @@ export function AlertCard({
 							</div>
 						) : actionLabel && onAction ? (
 							<div className="mt-3">
-								<Button
-									size="sm"
-									className="gap-2"
-									onClick={handleAction}
-									disabled={isActionLoading}
-								>
+								<Button size="sm" className="gap-2" onClick={handleAction} disabled={isActionLoading}>
 									{isActionLoading ? (
 										<Loader2 className="h-4 w-4 animate-spin" />
 									) : (

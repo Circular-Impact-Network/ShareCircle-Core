@@ -35,10 +35,7 @@ export function MyListingsPage() {
 	const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
 	const [actionItemId, setActionItemId] = useState<string | null>(null);
 
-	const {
-		data: myItems = [],
-		isLoading,
-	} = useGetAllItemsQuery({
+	const { data: myItems = [], isLoading } = useGetAllItemsQuery({
 		ownerOnly: true,
 		includeArchived: true,
 	});
@@ -161,16 +158,16 @@ export function MyListingsPage() {
 						}
 					/>
 					<PageTabsList>
-					<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
-						Active
-					</PageTabsTrigger>
-					<PageTabsTrigger
-						value="archived"
-						badge={archivedItems.length > 0 ? archivedItems.length : undefined}
-					>
-						Archived
-					</PageTabsTrigger>
-				</PageTabsList>
+						<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
+							Active
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="archived"
+							badge={archivedItems.length > 0 ? archivedItems.length : undefined}
+						>
+							Archived
+						</PageTabsTrigger>
+					</PageTabsList>
 				</PageStickyHeader>
 
 				<PageTabsContent value="active">

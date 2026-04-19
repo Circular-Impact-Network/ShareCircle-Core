@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
 		// Log to console in development
 		console.error('Error caught by ErrorBoundary:', error, errorInfo);
-		
+
 		// Call optional error callback
 		this.props.onError?.(error, errorInfo);
 	}
@@ -61,9 +61,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 							<AlertTriangle className="h-6 w-6 text-destructive" />
 						</div>
 						<CardTitle>Something went wrong</CardTitle>
-						<CardDescription>
-							An unexpected error occurred. Please try again.
-						</CardDescription>
+						<CardDescription>An unexpected error occurred. Please try again.</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{process.env.NODE_ENV === 'development' && this.state.error && (
@@ -89,7 +87,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
  */
 export function withErrorBoundary<P extends object>(
 	WrappedComponent: React.ComponentType<P>,
-	errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
+	errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>,
 ) {
 	const WithErrorBoundary = (props: P) => (
 		<ErrorBoundary {...errorBoundaryProps}>
@@ -122,18 +120,11 @@ export function PageErrorBoundary({ children }: { children: ReactNode }) {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<Button
-								onClick={() => window.location.reload()}
-								className="w-full gap-2"
-							>
+							<Button onClick={() => window.location.reload()} className="w-full gap-2">
 								<RefreshCcw className="h-4 w-4" />
 								Reload Page
 							</Button>
-							<Button
-								variant="outline"
-								onClick={() => window.history.back()}
-								className="w-full"
-							>
+							<Button variant="outline" onClick={() => window.history.back()} className="w-full">
 								Go Back
 							</Button>
 						</CardContent>
@@ -159,21 +150,12 @@ export function ModalErrorBoundary({ children, onClose }: { children: ReactNode;
 						<AlertTriangle className="h-6 w-6 text-destructive" />
 					</div>
 					<h3 className="font-semibold">Something went wrong</h3>
-					<p className="mt-1 text-sm text-muted-foreground">
-						This dialog encountered an error.
-					</p>
+					<p className="mt-1 text-sm text-muted-foreground">This dialog encountered an error.</p>
 					<div className="mt-4 flex gap-2">
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={onClose}
-						>
+						<Button size="sm" variant="outline" onClick={onClose}>
 							Close
 						</Button>
-						<Button
-							size="sm"
-							onClick={() => window.location.reload()}
-						>
+						<Button size="sm" onClick={() => window.location.reload()}>
 							Reload
 						</Button>
 					</div>

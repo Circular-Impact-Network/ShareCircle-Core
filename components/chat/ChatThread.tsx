@@ -35,7 +35,7 @@ export function ChatThread({
 		const prevLastMessageId = prevLastMessageIdRef.current;
 		const messagesAdded = messages.length > prevMessagesLengthRef.current;
 		const isNewMessage = lastMessage && lastMessage.id !== prevLastMessageId;
-		
+
 		// Scroll to bottom only when:
 		// 1. New messages were added (not loaded from history via "load more")
 		// 2. The last message changed (not just a re-render)
@@ -43,14 +43,14 @@ export function ChatThread({
 		if (messagesAdded && isNewMessage && containerRef.current) {
 			const container = containerRef.current;
 			const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-			
+
 			// Always scroll for own messages, otherwise only if near bottom
 			const lastIsOwn = lastMessage?.senderId === currentUserId;
 			if (lastIsOwn || isNearBottom) {
 				bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 			}
 		}
-		
+
 		// Update refs
 		prevMessagesLengthRef.current = messages.length;
 		prevLastMessageIdRef.current = lastMessage?.id ?? null;

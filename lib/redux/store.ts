@@ -29,7 +29,7 @@ export const store = configureStore({
 			notificationsApi.middleware,
 			messagesApi.middleware,
 			circlesApi.middleware,
-			notificationPreferencesApi.middleware
+			notificationPreferencesApi.middleware,
 		),
 });
 

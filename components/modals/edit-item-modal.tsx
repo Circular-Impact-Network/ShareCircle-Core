@@ -11,7 +11,14 @@ import {
 } from '@/lib/redux/api/itemsApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,9 +161,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 			return null;
 		}
 
-		const preparedFile = file.type.startsWith('image/')
-			? await prepareImageForUpload(file)
-			: file;
+		const preparedFile = file.type.startsWith('image/') ? await prepareImageForUpload(file) : file;
 		const validationError = getUploadValidationError(preparedFile, { allowVideo });
 		if (validationError) {
 			toast({
@@ -254,10 +259,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				return;
 			}
 
-			setMedia(prev => [
-				...prev,
-				...uploads,
-			]);
+			setMedia(prev => [...prev, ...uploads]);
 		} catch {
 			toast({
 				title: 'Upload failed',
@@ -341,12 +343,21 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				clearTimeout(savePhaseTimeoutRef.current);
 				savePhaseTimeoutRef.current = null;
 			}
-			const errData = error && typeof error === 'object' && 'data' in error ? (error.data as { code?: string; message?: string; error?: string; details?: { imageLabel: string; reason: string; detectedItems?: string[] }[] }) : null;
+			const errData =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as {
+							code?: string;
+							message?: string;
+							error?: string;
+							details?: { imageLabel: string; reason: string; detectedItems?: string[] }[];
+						})
+					: null;
 			if (errData?.code === 'ITEM_MISMATCH') {
 				setSavePhase('validating');
 				setTimeout(() => setSavePhase('idle'), 600);
 				const detailLines = (errData.details ?? []).map(
-					d => `${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
+					d =>
+						`${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
 				);
 				toast({
 					title: errData.message ?? 'Listing does not match photo(s)',
@@ -386,7 +397,8 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 					<div className="space-y-4">
 						{!isOnline && (
 							<div className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100">
-								You&apos;re offline. Edits to images or media need a connection before they can be saved.
+								You&apos;re offline. Edits to images or media need a connection before they can be
+								saved.
 							</div>
 						)}
 						<div className="space-y-2">
@@ -582,9 +594,18 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 					<Button variant="outline" onClick={() => void handleCancel()}>
 						Cancel
 					</Button>
-					<Button onClick={handleSave} disabled={isUpdating || isUploadingImage || isUploadingMedia || isLoadingItem || savePhase !== 'idle'}>
+					<Button
+						onClick={handleSave}
+						disabled={
+							isUpdating || isUploadingImage || isUploadingMedia || isLoadingItem || savePhase !== 'idle'
+						}
+					>
 						{isUpdating || savePhase !== 'idle' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-						{savePhase === 'validating' ? 'Validating...' : savePhase === 'saving' ? 'Saving...' : 'Save changes'}
+						{savePhase === 'validating'
+							? 'Validating...'
+							: savePhase === 'saving'
+								? 'Saving...'
+								: 'Save changes'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

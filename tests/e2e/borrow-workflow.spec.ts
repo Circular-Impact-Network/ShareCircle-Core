@@ -7,7 +7,7 @@ import { test, expect, storageStatePaths } from './fixtures';
 
 const imageBuffer = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAqMB9Z/4fN0AAAAASUVORK5CYII=',
-	'base64'
+	'base64',
 );
 
 test.describe('borrow workflow', () => {
@@ -95,10 +95,10 @@ test.describe('borrow workflow', () => {
 		// Fill in item details
 		const nameInput = page.getByPlaceholder('e.g., Camping Tent');
 		await nameInput.fill('Power Drill');
-		
+
 		const descInput = page.getByPlaceholder('Describe your item, its condition, and any important details...');
 		await descInput.fill('A powerful cordless drill for DIY projects.');
-		
+
 		// Select circle - try multiple selector patterns
 		const circleButton = page.getByRole('button', { name: circleName });
 		const circleCheckbox = page.getByLabel(circleName);
@@ -107,14 +107,14 @@ test.describe('borrow workflow', () => {
 		} else if (await circleCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
 			await circleCheckbox.click();
 		}
-		
+
 		// Wait for validation
 		await page.waitForTimeout(500);
-		
+
 		// Check if Create Item button is enabled
 		const createButton = page.getByRole('button', { name: 'Create Item' });
 		const isEnabled = await createButton.isEnabled().catch(() => false);
-		
+
 		if (!isEnabled) {
 			// If button is disabled, close modal and verify basic flow worked
 			await page.keyboard.press('Escape');
@@ -122,7 +122,7 @@ test.describe('borrow workflow', () => {
 			// Test passes - circle creation and joining succeeded, but item form has validation requirements
 			return;
 		}
-		
+
 		// Create the item
 		await createButton.click();
 
@@ -136,7 +136,7 @@ test.describe('borrow workflow', () => {
 		// Step 4: User2 requests to borrow the item
 		await user2Page.goto('/browse');
 		await user2Page.waitForTimeout(1000);
-		
+
 		// Click on the item to view details
 		const itemCard = user2Page.getByText('Power Drill').first();
 		await expect(itemCard).toBeVisible();
@@ -147,19 +147,19 @@ test.describe('borrow workflow', () => {
 		const requestButton = user2Page.getByRole('button', { name: /Request to Borrow/i });
 		if (await requestButton.isVisible()) {
 			await requestButton.click();
-			
+
 			// Fill in borrow request form
 			const fromDateInput = user2Page.locator('input[type="date"]').first();
 			const toDateInput = user2Page.locator('input[type="date"]').last();
-			
+
 			const today = new Date();
 			const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-			
+
 			if (await fromDateInput.isVisible()) {
 				await fromDateInput.fill(today.toISOString().split('T')[0]);
 				await toDateInput.fill(nextWeek.toISOString().split('T')[0]);
 			}
-			
+
 			const submitButton = user2Page.getByRole('button', { name: /Submit|Request|Borrow/i });
 			if (await submitButton.isVisible()) {
 				await submitButton.click();
@@ -173,25 +173,25 @@ test.describe('borrow workflow', () => {
 		// Navigate to activity/requests page
 		await page.goto('/activity');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Look for pending tab or section
 		const pendingTab = page.getByRole('tab', { name: /Pending/i });
 		if (await pendingTab.isVisible()) {
 			await pendingTab.click();
 			await page.waitForTimeout(500);
 		}
-		
+
 		// Check if there are any pending requests with cancel button
 		const cancelButton = page.getByRole('button', { name: /Cancel/i }).first();
 		if (await cancelButton.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await cancelButton.click();
-			
+
 			// Confirm cancellation if dialog appears
 			const confirmButton = page.getByRole('button', { name: /Confirm|Yes/i });
 			if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
 				await confirmButton.click();
 			}
-			
+
 			// Verify cancellation message or status change
 			await page.waitForTimeout(1000);
 		}
@@ -203,7 +203,7 @@ test.describe('borrow workflow', () => {
 
 		// Navigate to incoming requests
 		await page.goto('/activity');
-		
+
 		// Look for incoming requests tab or section
 		const incomingTab = page.getByRole('tab', { name: /Incoming|Requests/i });
 		if (await incomingTab.isVisible()) {
@@ -217,13 +217,13 @@ test.describe('borrow workflow', () => {
 			const declineButton = pendingRequest.locator('button:has-text("Decline")');
 			if (await declineButton.isVisible()) {
 				await declineButton.click();
-				
+
 				// Optional: Add decline note
 				const noteInput = page.locator('textarea');
 				if (await noteInput.isVisible()) {
 					await noteInput.fill('Sorry, item is not available during those dates.');
 				}
-				
+
 				// Confirm decline
 				const confirmButton = page.getByRole('button', { name: /Confirm|Decline/i });
 				if (await confirmButton.isVisible()) {
@@ -236,18 +236,18 @@ test.describe('borrow workflow', () => {
 	test('item becomes unavailable after approval', async ({ page, browser, request, users }) => {
 		// This test verifies that after a borrow request is approved,
 		// the item shows as unavailable to other users
-		
+
 		await page.goto('/browse');
-		
+
 		// Look for an item that's being borrowed
 		const unavailableItem = page.locator('[data-available="false"]');
-		if (await unavailableItem.count() > 0) {
+		if ((await unavailableItem.count()) > 0) {
 			await unavailableItem.first().click();
-			
+
 			// The request button should either be disabled or show "Join Queue"
 			const requestButton = page.getByRole('button', { name: /Request to Borrow/i });
 			const queueButton = page.getByRole('button', { name: /Join Queue/i });
-			
+
 			// Either the request button should be disabled or queue button should be visible
 			if (await requestButton.isVisible()) {
 				expect(await requestButton.isDisabled()).toBeTruthy();
@@ -261,13 +261,13 @@ test.describe('borrow workflow', () => {
 	test('return flow marks item as returned', async ({ page }) => {
 		// Navigate to activity page to see active borrows
 		await page.goto('/activity');
-		
+
 		// Look for active transactions (items being borrowed)
 		const activeTab = page.getByRole('tab', { name: /Active|Borrowed/i });
 		if (await activeTab.isVisible()) {
 			await activeTab.click();
 		}
-		
+
 		// Find an active borrow where user is the borrower
 		const activeBorrow = page.locator('[data-status="ACTIVE"]').first();
 		if (await activeBorrow.isVisible()) {
@@ -275,17 +275,17 @@ test.describe('borrow workflow', () => {
 			const returnButton = activeBorrow.locator('button:has-text("Return")');
 			if (await returnButton.isVisible()) {
 				await returnButton.click();
-				
+
 				// Confirm return
 				const confirmButton = page.getByRole('button', { name: /Confirm|Return/i });
 				if (await confirmButton.isVisible()) {
 					await confirmButton.click();
 				}
-				
+
 				// Status should change to PENDING_RETURN or similar
 				await expect(activeBorrow.locator('[data-status]')).toHaveAttribute(
 					'data-status',
-					/PENDING_RETURN|RETURNED/
+					/PENDING_RETURN|RETURNED/,
 				);
 			}
 		}
@@ -294,25 +294,22 @@ test.describe('borrow workflow', () => {
 	test('owner can confirm return', async ({ page }) => {
 		// Navigate to activity page
 		await page.goto('/activity');
-		
+
 		// Look for items pending return confirmation (where user is owner)
 		const incomingTab = page.getByRole('tab', { name: /Incoming|To Confirm/i });
 		if (await incomingTab.isVisible()) {
 			await incomingTab.click();
 		}
-		
+
 		const pendingReturn = page.locator('[data-status="PENDING_RETURN"]').first();
 		if (await pendingReturn.isVisible()) {
 			// Click confirm return
 			const confirmReturnButton = pendingReturn.locator('button:has-text("Confirm Return")');
 			if (await confirmReturnButton.isVisible()) {
 				await confirmReturnButton.click();
-				
+
 				// Status should change to COMPLETED
-				await expect(pendingReturn.locator('[data-status]')).toHaveAttribute(
-					'data-status',
-					'COMPLETED'
-				);
+				await expect(pendingReturn.locator('[data-status]')).toHaveAttribute('data-status', 'COMPLETED');
 			}
 		}
 	});

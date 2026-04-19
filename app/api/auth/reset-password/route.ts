@@ -20,22 +20,19 @@ export async function POST(req: NextRequest) {
 		const { token, password } = body;
 
 		if (!token || !password) {
-			return NextResponse.json(
-				{ error: 'Token and new password are required' },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: 'Token and new password are required' }, { status: 400 });
 		}
 
 		// Validate password strength
 		const passwordValidation = validatePassword(password);
 		if (!passwordValidation.isValid) {
 			return NextResponse.json(
-				{ 
+				{
 					error: passwordValidation.errors[0],
 					details: passwordValidation.errors,
 					requirements: getPasswordRequirementsText(),
 				},
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
@@ -50,7 +47,7 @@ export async function POST(req: NextRequest) {
 		if (!verificationToken) {
 			return NextResponse.json(
 				{ error: 'Invalid or expired reset link. Please request a new one.' },
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
@@ -66,10 +63,7 @@ export async function POST(req: NextRequest) {
 				},
 			});
 
-			return NextResponse.json(
-				{ error: 'Reset link has expired. Please request a new one.' },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: 'Reset link has expired. Please request a new one.' }, { status: 400 });
 		}
 
 		// Extract email from identifier (format: "reset:email@example.com")
@@ -81,10 +75,7 @@ export async function POST(req: NextRequest) {
 		});
 
 		if (!user) {
-			return NextResponse.json(
-				{ error: 'User not found' },
-				{ status: 404 }
-			);
+			return NextResponse.json({ error: 'User not found' }, { status: 404 });
 		}
 
 		// Hash new password
@@ -93,7 +84,7 @@ export async function POST(req: NextRequest) {
 		// Update user's password
 		await prisma.user.update({
 			where: { id: user.id },
-			data: { 
+			data: {
 				hashed_password: hashedPassword,
 				// Also verify email if not already verified (since they received the email)
 				emailVerified: user.emailVerified || new Date(),
@@ -112,13 +103,10 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json(
 			{ message: 'Password reset successfully. You can now log in with your new password.' },
-			{ status: 200 }
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error('Reset password error:', error);
-		return NextResponse.json(
-			{ error: 'An error occurred. Please try again.' },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: 'An error occurred. Please try again.' }, { status: 500 });
 	}
 }

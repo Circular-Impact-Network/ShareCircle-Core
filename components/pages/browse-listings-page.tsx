@@ -10,7 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetItemsPaginatedQuery, useGetItemCategoriesQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import {
+	useGetItemsPaginatedQuery,
+	useGetItemCategoriesQuery,
+	useSearchItemsMutation,
+	type GetItemsFilters,
+} from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
@@ -28,13 +33,13 @@ export function BrowseListingsPage() {
 	const hasShownSearchErrorRef = useRef(false);
 	const lastSearchKeyRef = useRef<string | null>(null);
 	const [startingChatId, setStartingChatId] = useState<string | null>(null);
-	
+
 	// Item request form state
 	const [showRequestForm, setShowRequestForm] = useState(false);
 	const [requestTitle, setRequestTitle] = useState('');
 	const [requestDescription, setRequestDescription] = useState('');
 	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
-	
+
 	// Item request mutation
 	const [createItemRequest, { isLoading: isCreatingRequest }] = useCreateItemRequestMutation();
 
@@ -58,7 +63,7 @@ export function BrowseListingsPage() {
 
 	// Fetch paginated items (server-side cursor pagination)
 	const { data: paginatedData, isLoading, error } = useGetItemsPaginatedQuery(filters);
-	const items = paginatedData?.items ?? [];
+	const items = useMemo(() => paginatedData?.items ?? [], [paginatedData?.items]);
 
 	// Lightweight categories query (no item data / signed URLs)
 	const { data: allCategories = [] } = useGetItemCategoriesQuery();
@@ -136,12 +141,15 @@ export function BrowseListingsPage() {
 	}, [normalizedQueryFromUrl, resetSearch, searchItems, selectedCategory]);
 
 	// Handle search on Enter key press
-	const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			executeSearch();
-		}
-	}, [executeSearch]);
+	const handleSearchKeyDown = useCallback(
+		(e: React.KeyboardEvent<HTMLInputElement>) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				executeSearch();
+			}
+		},
+		[executeSearch],
+	);
 
 	// Clear search and reset to default items
 	const clearSearch = useCallback(() => {
@@ -171,10 +179,7 @@ export function BrowseListingsPage() {
 	}, [isSearchActive, searchResults, items]);
 
 	// Categories from lightweight API endpoint (no item data / signed URLs)
-	const categories = useMemo(
-		() => ['All Categories', ...allCategories],
-		[allCategories],
-	);
+	const categories = useMemo(() => ['All Categories', ...allCategories], [allCategories]);
 
 	// Get user's circles (only circles the user is a member of)
 	const { data: userCircles = [] } = useGetCirclesQuery();
@@ -217,13 +222,14 @@ export function BrowseListingsPage() {
 			setRequestCircleIds([]);
 		} catch (error) {
 			console.error('Create item request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error || 'Failed to create request'
-				: 'Failed to create request. Please try again.';
-			toast({ 
-				title: 'Failed to create request', 
+			const errorMessage =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to create request'
+					: 'Failed to create request. Please try again.';
+			toast({
+				title: 'Failed to create request',
 				description: errorMessage,
-				variant: 'destructive' 
+				variant: 'destructive',
 			});
 		}
 	};
@@ -289,7 +295,7 @@ export function BrowseListingsPage() {
 	const getResultsText = () => {
 		const count = displayItems.length;
 		const itemText = count === 1 ? 'item' : 'items';
-		
+
 		if (isSearchActive && searchResults) {
 			return `${count} ${itemText} found`;
 		}
@@ -319,12 +325,7 @@ export function BrowseListingsPage() {
 						/>
 						<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
 							{searchQuery && (
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 w-7 p-0"
-									onClick={clearSearch}
-								>
+								<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={clearSearch}>
 									<X className="h-4 w-4" />
 								</Button>
 							)}
@@ -335,11 +336,7 @@ export function BrowseListingsPage() {
 								onClick={() => executeSearch()}
 								disabled={searchQuery.trim().length < 2 || isSearching}
 							>
-								{isSearching ? (
-									<Loader2 className="h-3 w-3 animate-spin" />
-								) : (
-									'Search'
-								)}
+								{isSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Search'}
 							</Button>
 						</div>
 					</div>
@@ -376,7 +373,9 @@ export function BrowseListingsPage() {
 						<Loader2 className="h-4 w-4 animate-spin" />
 						{isSearching ? 'Searching...' : 'Loading items...'}
 					</div>
-				) : <span>{getResultsText()}</span>}
+				) : (
+					<span>{getResultsText()}</span>
+				)}
 			</div>
 
 			{/* Loading State */}
@@ -437,7 +436,9 @@ export function BrowseListingsPage() {
 									<div className="space-y-2">
 										{userCircles.length > 1 && (
 											<Button variant="outline" type="button" onClick={toggleAllRequestCircles}>
-												{allRequestCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
+												{allRequestCirclesSelected
+													? 'Deselect All Circles'
+													: 'Select All Circles'}
 											</Button>
 										)}
 										<div className="app-scrollbar app-scrollbar-thin max-h-44 space-y-2 overflow-auto rounded-md border p-2">
@@ -454,7 +455,9 @@ export function BrowseListingsPage() {
 													>
 														<div
 															className={`h-4 w-4 rounded border flex items-center justify-center ${
-																isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'
+																isSelected
+																	? 'border-primary bg-primary text-primary-foreground'
+																	: 'border-muted-foreground'
 															}`}
 														>
 															{isSelected && <Check className="h-3 w-3" />}
@@ -479,7 +482,11 @@ export function BrowseListingsPage() {
 										</Button>
 										<Button
 											onClick={handleSubmitItemRequest}
-											disabled={isCreatingRequest || !requestTitle.trim() || requestCircleIds.length === 0}
+											disabled={
+												isCreatingRequest ||
+												!requestTitle.trim() ||
+												requestCircleIds.length === 0
+											}
 											className="gap-2"
 										>
 											{isCreatingRequest ? (
@@ -506,9 +513,7 @@ export function BrowseListingsPage() {
 						</div>
 						<div>
 							<p className="font-medium text-foreground mb-1">No items in this category</p>
-							<p className="text-sm text-muted-foreground mb-4">
-								Try selecting a different category
-							</p>
+							<p className="text-sm text-muted-foreground mb-4">Try selecting a different category</p>
 							<Button variant="outline" onClick={() => setSelectedCategory('All Categories')}>
 								Show All Categories
 							</Button>
@@ -520,7 +525,10 @@ export function BrowseListingsPage() {
 			{/* Items Grid */}
 			{!isLoading && displayItems.length > 0 && (
 				<>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="items-grid">
+					<div
+						className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+						data-testid="items-grid"
+					>
 						{visibleDisplayItems.map(item => (
 							<ItemSummaryCard
 								key={item.id}
@@ -555,7 +563,11 @@ export function BrowseListingsPage() {
 												</Button>
 											</>
 										) : (
-											<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => router.push(`/items/${item.id}`)}
+											>
 												View item
 											</Button>
 										)}

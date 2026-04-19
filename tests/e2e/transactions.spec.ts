@@ -232,7 +232,9 @@ test.describe('transactions', () => {
 			}
 
 			// Look for return pending transaction
-			const returnPendingTx = page.locator('[data-testid="transaction-card"][data-status="RETURN_PENDING"]').first();
+			const returnPendingTx = page
+				.locator('[data-testid="transaction-card"][data-status="RETURN_PENDING"]')
+				.first();
 			if (await returnPendingTx.isVisible({ timeout: 3000 }).catch(() => false)) {
 				// Should show waiting message
 				const waitingMessage = returnPendingTx.getByText(/Waiting|Pending.*confirm/i);

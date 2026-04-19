@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 		if (userHint && typeof userHint === 'string' && userHint.trim()) {
 			try {
 				const validation = await validateItemInImage(imageUrl, userHint.trim());
-				
+
 				if (!validation.isValid) {
 					return NextResponse.json(
 						{
@@ -40,17 +40,19 @@ export async function POST(req: NextRequest) {
 							code: 'ITEM_NOT_FOUND',
 							message: `The item you described ("${userHint}") was not found in the photo. ${validation.reason}`,
 							detectedItems: validation.detectedItems,
-							suggestion: validation.detectedItems.length > 0
-								? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
-								: 'Please try with a different photo or description.',
+							suggestion:
+								validation.detectedItems.length > 0
+									? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
+									: 'Please try with a different photo or description.',
 						},
-						{ status: 422 }
+						{ status: 422 },
 					);
 				}
-				
-				// If validation found a matched item, use it to refine the analysis
+
+				// If validation found a matched item, we could refine the analysis (placeholder for future use)
 				if (validation.matchedItem) {
-					}
+					void validation.matchedItem;
+				}
 			} catch (validationError) {
 				// Log but don't fail - validation is a nice-to-have, not required
 				console.error('Validation failed, proceeding with analysis:', validationError);
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
 		if (selectedItem && typeof selectedItem === 'string' && selectedItem.trim()) {
 			try {
 				const validation = await validateItemInImage(imageUrl, selectedItem.trim());
-				
+
 				if (!validation.isValid) {
 					return NextResponse.json(
 						{
@@ -69,11 +71,12 @@ export async function POST(req: NextRequest) {
 							code: 'ITEM_NOT_FOUND',
 							message: `The selected item ("${selectedItem}") was not found in the photo. ${validation.reason}`,
 							detectedItems: validation.detectedItems,
-							suggestion: validation.detectedItems.length > 0
-								? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
-								: 'Please try selecting a different item.',
+							suggestion:
+								validation.detectedItems.length > 0
+									? `Items detected in the photo: ${validation.detectedItems.slice(0, 5).join(', ')}${validation.detectedItems.length > 5 ? '...' : ''}`
+									: 'Please try selecting a different item.',
 						},
-						{ status: 422 }
+						{ status: 422 },
 					);
 				}
 			} catch (validationError) {
@@ -99,12 +102,13 @@ export async function POST(req: NextRequest) {
 				return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
 			}
 			if (error.message.includes('rate limit')) {
-				return NextResponse.json({ error: 'AI service rate limit reached. Please try again later.' }, { status: 429 });
+				return NextResponse.json(
+					{ error: 'AI service rate limit reached. Please try again later.' },
+					{ status: 429 },
+				);
 			}
 		}
 
 		return NextResponse.json({ error: 'Failed to analyze image' }, { status: 500 });
 	}
 }
-
-

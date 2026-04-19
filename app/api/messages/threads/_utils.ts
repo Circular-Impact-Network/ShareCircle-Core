@@ -42,10 +42,7 @@ export async function canUsersChat(userId: string, otherUserId: string): Promise
 	return shared.length > 0;
 }
 
-export async function getDirectConversationOtherUserId(
-	conversationId: string,
-	userId: string,
-): Promise<string | null> {
+export async function getDirectConversationOtherUserId(conversationId: string, userId: string): Promise<string | null> {
 	const participants = await prisma.conversationParticipant.findMany({
 		where: {
 			conversationId,

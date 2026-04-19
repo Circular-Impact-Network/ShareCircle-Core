@@ -167,10 +167,9 @@ describe('useMediaQuery Hook', () => {
 	});
 
 	it('handles query string changes by resubscribing', () => {
-		const { rerender } = renderHook(
-			({ query }) => useMediaQuery(query),
-			{ initialProps: { query: '(min-width: 768px)' } }
-		);
+		const { rerender } = renderHook(({ query }) => useMediaQuery(query), {
+			initialProps: { query: '(min-width: 768px)' },
+		});
 
 		expect(mockMatchMedia).toHaveBeenCalledWith('(min-width: 768px)');
 

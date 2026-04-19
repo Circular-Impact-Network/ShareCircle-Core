@@ -183,7 +183,7 @@ export function createTestImageBuffer(): Buffer {
 	// 1x1 transparent PNG
 	return Buffer.from(
 		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-		'base64'
+		'base64',
 	);
 }
 

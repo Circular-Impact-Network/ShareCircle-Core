@@ -46,10 +46,7 @@ export async function GET(req: NextRequest) {
 					},
 				},
 			},
-			orderBy: [
-				{ lastMessageAt: 'desc' },
-				{ updatedAt: 'desc' },
-			],
+			orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
 		});
 
 		// Filter conversations first before fetching additional data
@@ -88,9 +85,7 @@ export async function GET(req: NextRequest) {
 			return {
 				conversationId: conversation.id,
 				senderId: { not: userId },
-				...(currentParticipant.lastReadAt
-					? { createdAt: { gt: currentParticipant.lastReadAt } }
-					: {}),
+				...(currentParticipant.lastReadAt ? { createdAt: { gt: currentParticipant.lastReadAt } } : {}),
 			};
 		});
 
@@ -106,16 +101,16 @@ export async function GET(req: NextRequest) {
 		});
 
 		// Create a map for quick lookup
-		const unreadCountMap = new Map(
-			unreadCounts.map(item => [item.conversationId, item._count.id])
-		);
+		const unreadCountMap = new Map(unreadCounts.map(item => [item.conversationId, item._count.id]));
 
 		// Check canUsersChat in parallel for DIRECT conversations
 		const directConversations = filteredConversations.filter(c => c.type === 'DIRECT');
-		const otherUserIds = directConversations.map(c => {
-			const other = c.participants.find(p => p.userId !== userId);
-			return other?.user.id;
-		}).filter(Boolean) as string[];
+		const otherUserIds = directConversations
+			.map(c => {
+				const other = c.participants.find(p => p.userId !== userId);
+				return other?.user.id;
+			})
+			.filter(Boolean) as string[];
 
 		// Batch check canUsersChat - only check unique user IDs
 		const uniqueOtherUserIds = [...new Set(otherUserIds)];
@@ -123,23 +118,21 @@ export async function GET(req: NextRequest) {
 			uniqueOtherUserIds.map(async otherId => ({
 				userId: otherId,
 				canChat: await canUsersChat(userId, otherId),
-			}))
+			})),
 		);
 		const canChatMap = new Map(canChatResults.map(r => [r.userId, r.canChat]));
 
 		// Build final results
 		const results = filteredConversations.map(conversation => {
 			const currentParticipant = conversation.participants.find(p => p.userId === userId)!;
-			const otherParticipants = conversation.participants
-				.filter(p => p.userId !== userId)
-				.map(p => p.user);
+			const otherParticipants = conversation.participants.filter(p => p.userId !== userId).map(p => p.user);
 
 			const lastMessage = conversation.messages[0] || null;
 			const unreadCount = unreadCountMap.get(conversation.id) || 0;
 
 			const canMessage =
 				conversation.type === 'DIRECT' && otherParticipants[0]?.id
-					? canChatMap.get(otherParticipants[0].id) ?? true
+					? (canChatMap.get(otherParticipants[0].id) ?? true)
 					: true;
 
 			return {
@@ -193,10 +186,7 @@ export async function POST(req: NextRequest) {
 
 		const hasSharedCircle = await canUsersChat(userId, otherUserId);
 		if (!hasSharedCircle) {
-			return NextResponse.json(
-				{ error: 'You can only chat with users who share a circle' },
-				{ status: 403 },
-			);
+			return NextResponse.json({ error: 'You can only chat with users who share a circle' }, { status: 403 });
 		}
 
 		const existing = await prisma.conversation.findFirst({
@@ -244,10 +234,7 @@ export async function POST(req: NextRequest) {
 					createdById: userId,
 					participants: {
 						createMany: {
-							data: [
-								{ userId },
-								{ userId: otherUserId },
-							],
+							data: [{ userId }, { userId: otherUserId }],
 						},
 					},
 				},

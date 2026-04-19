@@ -29,12 +29,7 @@ interface PageShellProps {
 
 export function PageShell({ children, className }: PageShellProps) {
 	return (
-		<div
-			className={cn(
-				'mx-auto w-full max-w-7xl px-4 sm:px-5 lg:px-6 xl:px-7 py-5 sm:py-6 lg:py-7',
-				className,
-			)}
-		>
+		<div className={cn('mx-auto w-full max-w-7xl px-4 sm:px-5 lg:px-6 xl:px-7 py-5 sm:py-6 lg:py-7', className)}>
 			{children}
 		</div>
 	);
@@ -48,20 +43,9 @@ interface PageHeaderProps {
 	align?: 'start' | 'center';
 }
 
-export function PageHeader({
-	title,
-	description,
-	actions,
-	className,
-	align = 'start',
-}: PageHeaderProps) {
+export function PageHeader({ title, description, actions, className, align = 'start' }: PageHeaderProps) {
 	return (
-		<div
-			className={cn(
-				'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
-				className,
-			)}
-		>
+		<div className={cn('flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4', className)}>
 			<div className={cn('space-y-2', align === 'center' && 'text-center sm:text-left')}>
 				<h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
 				{description ? <p className="text-sm text-muted-foreground sm:text-base">{description}</p> : null}
@@ -70,4 +54,3 @@ export function PageHeader({
 		</div>
 	);
 }
-

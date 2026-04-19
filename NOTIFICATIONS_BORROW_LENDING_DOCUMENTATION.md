@@ -22,6 +22,7 @@
 ## Introduction
 
 The notifications, borrow requests, lending, and item requests features enable users to:
+
 - Receive real-time notifications for various events (borrow requests, transactions, item requests)
 - Request to borrow items from other users
 - Manage a queue system for unavailable items
@@ -63,13 +64,13 @@ The system follows a client-server architecture with real-time capabilities:
 ### Data Flow
 
 1. **Creating a Borrow Request**:
-   - User requests item → API validates → Database insert → Notification created → Supabase broadcast → Owner receives notification
+    - User requests item → API validates → Database insert → Notification created → Supabase broadcast → Owner receives notification
 
 2. **Receiving a Notification**:
-   - Supabase broadcast → NotificationsProvider receives → Toast shown → Redux queries invalidated → UI updates
+    - Supabase broadcast → NotificationsProvider receives → Toast shown → Redux queries invalidated → UI updates
 
 3. **Transaction Status Change**:
-   - Owner approves/declines → Database update → Notification created → Supabase broadcast → Both parties see update
+    - Owner approves/declines → Database update → Notification created → Supabase broadcast → Both parties see update
 
 ---
 
@@ -82,6 +83,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 **Purpose**: Stores all user notifications (alerts and actionable requests)
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique notification identifier
 - `user_id` (TEXT, Foreign Key → users.id): Recipient of the notification
 - `type` (NotificationType): Type of notification (see enum below)
@@ -93,6 +95,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - `created_at`, `read_at`: Timestamps
 
 **Notification Types** (enum):
+
 - **Item Request**: `ITEM_REQUEST_CREATED`, `ITEM_REQUEST_FULFILLED`
 - **Borrow Request**: `BORROW_REQUEST_RECEIVED`, `BORROW_REQUEST_APPROVED`, `BORROW_REQUEST_DECLINED`
 - **Queue**: `QUEUE_POSITION_UPDATED`, `QUEUE_ITEM_READY`
@@ -100,6 +103,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - **Messages**: `NEW_MESSAGE`
 
 **Indexes**:
+
 - `(user_id, status)` - Fast querying of unread notifications
 - `(user_id, created_at)` - Efficient sorting by date
 
@@ -108,6 +112,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 **Purpose**: Stores requests to borrow specific items
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique request identifier
 - `item_id` (TEXT, Foreign Key → items.id): Item being requested
 - `requester_id` (TEXT, Foreign Key → users.id): User requesting to borrow
@@ -120,9 +125,11 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - `created_at`, `updated_at`: Timestamps
 
 **Status Flow**:
+
 - `PENDING` → `APPROVED` (creates transaction) or `DECLINED` or `CANCELLED`
 
 **Indexes**:
+
 - `item_id`, `requester_id`, `owner_id`, `status` - Fast filtering
 
 ### 3. `borrow_queue` Table
@@ -130,6 +137,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 **Purpose**: Queue system for items that are currently unavailable
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique queue entry identifier
 - `item_id` (TEXT, Foreign Key → items.id): Item in queue
 - `requester_id` (TEXT, Foreign Key → users.id): User in queue
@@ -140,12 +148,14 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - `created_at`, `updated_at`: Timestamps
 
 **Status Flow**:
+
 - `WAITING` → `READY` (when item becomes available) → `SKIPPED` (converted to request)
 - Can be `CANCELLED` at any time
 
 **Unique Constraint**: `(item_id, requester_id)` - Prevents duplicate queue entries
 
 **Indexes**:
+
 - `(item_id, position)` - Efficient queue ordering
 - `requester_id`, `status` - Fast filtering
 
@@ -154,6 +164,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 **Purpose**: Tracks active borrow transactions (when item is actually borrowed)
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique transaction identifier
 - `borrow_request_id` (TEXT, Unique Foreign Key → borrow_requests.id): Related request
 - `item_id` (TEXT, Foreign Key → items.id): Item being borrowed
@@ -167,9 +178,11 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - `created_at`, `updated_at`: Timestamps
 
 **Status Flow**:
+
 - `ACTIVE` → `RETURN_PENDING` (borrower marks returned) → `COMPLETED` (owner confirms)
 
 **Indexes**:
+
 - `item_id`, `borrower_id`, `owner_id`, `status` - Fast filtering
 
 ### 5. `item_requests` Table
@@ -177,6 +190,7 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 **Purpose**: Requests for items users need (posted in circles)
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique request identifier
 - `requester_id` (TEXT, Foreign Key → users.id): User requesting item
 - `circle_id` (TEXT, Foreign Key → circles.id): Circle where request is posted
@@ -188,9 +202,11 @@ The system uses 5 main models for notifications, borrow requests, transactions, 
 - `created_at`, `updated_at`: Timestamps
 
 **Status Flow**:
+
 - `OPEN` → `FULFILLED` (when someone fulfills) or `CANCELLED`
 
 **Indexes**:
+
 - `requester_id`, `circle_id`, `status` - Fast filtering
 
 ### Relationships Summary
@@ -242,24 +258,26 @@ The system uses **Supabase Realtime** for WebSocket-based communication. Supabas
 **Used By**: `NotificationsProvider` component
 
 **Events**:
+
 - `new_notification`: When a new notification is created for the user
 - `request_status_changed`: When a borrow request status changes
 - `transaction_updated`: When a transaction status changes
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel(`notifications:${userId}`);
 channel
-  .on('broadcast', { event: 'new_notification' }, (payload) => {
-    // Show toast and invalidate queries
-  })
-  .on('broadcast', { event: 'request_status_changed' }, () => {
-    // Refresh borrow requests data
-  })
-  .on('broadcast', { event: 'transaction_updated' }, () => {
-    // Refresh transactions data
-  })
-  .subscribe();
+	.on('broadcast', { event: 'new_notification' }, payload => {
+		// Show toast and invalidate queries
+	})
+	.on('broadcast', { event: 'request_status_changed' }, () => {
+		// Refresh borrow requests data
+	})
+	.on('broadcast', { event: 'transaction_updated' }, () => {
+		// Refresh transactions data
+	})
+	.subscribe();
 ```
 
 **Why**: Users need instant notifications regardless of which page they're on. This channel provides global notification updates.
@@ -271,20 +289,22 @@ channel
 **Used By**: `useRealtimeCircleRequests` hook
 
 **Events**:
+
 - `new_item_request`: When a new item request is created in the circle
 - `item_request_update`: When an item request status changes
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel(`circle-requests:${circleId}`);
 channel
-  .on('broadcast', { event: 'new_item_request' }, (payload) => {
-    // Add new request to list
-  })
-  .on('broadcast', { event: 'item_request_update' }, (payload) => {
-    // Update request status
-  })
-  .subscribe();
+	.on('broadcast', { event: 'new_item_request' }, payload => {
+		// Add new request to list
+	})
+	.on('broadcast', { event: 'item_request_update' }, payload => {
+		// Update request status
+	})
+	.subscribe();
 ```
 
 **Why**: Circle members need to see new item requests in real-time when viewing the item requests page.
@@ -296,6 +316,7 @@ channel
 **Used By**: `NotificationsProvider` for toast notifications and unread count
 
 **Events**:
+
 - `new_message`: When user receives a message in any conversation
 - `messages_read`: When messages are marked as read
 
@@ -310,6 +331,7 @@ channel
 Notifications are categorized into two types:
 
 #### Alert Notifications (Informational)
+
 - `ITEM_REQUEST_CREATED`: Someone created an item request in your circle
 - `ITEM_REQUEST_FULFILLED`: Your item request was fulfilled
 - `BORROW_REQUEST_APPROVED`: Your borrow request was approved
@@ -320,6 +342,7 @@ Notifications are categorized into two types:
 - `NEW_MESSAGE`: You received a new message
 
 #### Request Notifications (Actionable)
+
 - `BORROW_REQUEST_RECEIVED`: Someone wants to borrow your item
 - `RETURN_REQUESTED`: Borrower marked your item as returned (needs confirmation)
 
@@ -333,26 +356,28 @@ Notifications are categorized into two types:
 **Function**: `createNotification()` in `lib/notifications.ts`
 
 **Process**:
+
 1. Create notification record in database
 2. Broadcast via Supabase Realtime to user's channel
 3. Frontend receives broadcast and shows toast
 4. Redux queries are invalidated to refresh data
 
 **Example**:
+
 ```typescript
 await createNotification({
-  userId: item.ownerId,
-  type: NotificationType.BORROW_REQUEST_RECEIVED,
-  entityId: borrowRequest.id,
-  title: 'New Borrow Request',
-  body: `${requesterName} wants to borrow "${itemName}"`,
-  metadata: {
-    borrowRequestId: borrowRequest.id,
-    itemId: item.id,
-    itemName: item.name,
-    requesterId: requesterId,
-    requesterName: requesterName,
-  },
+	userId: item.ownerId,
+	type: NotificationType.BORROW_REQUEST_RECEIVED,
+	entityId: borrowRequest.id,
+	title: 'New Borrow Request',
+	body: `${requesterName} wants to borrow "${itemName}"`,
+	metadata: {
+		borrowRequestId: borrowRequest.id,
+		itemId: item.id,
+		itemName: item.name,
+		requesterId: requesterId,
+		requesterName: requesterName,
+	},
 });
 ```
 
@@ -365,15 +390,16 @@ await createNotification({
 **Use Case**: When someone creates an item request, all circle members are notified
 
 **Example**:
+
 ```typescript
 await notifyCircleMembers({
-  circleId,
-  actorId: userId,
-  type: NotificationType.ITEM_REQUEST_CREATED,
-  entityId: itemRequest.id,
-  title: 'New Item Request',
-  body: `${userName} is looking for "${title}" in ${circleName}`,
-  metadata: { itemRequestId, requesterId, circleId },
+	circleId,
+	actorId: userId,
+	type: NotificationType.ITEM_REQUEST_CREATED,
+	entityId: itemRequest.id,
+	title: 'New Item Request',
+	body: `${userName} is looking for "${title}" in ${circleName}`,
+	metadata: { itemRequestId, requesterId, circleId },
 });
 ```
 
@@ -386,18 +412,20 @@ await notifyCircleMembers({
 **Endpoint**: `POST /api/borrow-requests`
 
 **Process**:
+
 1. Validate user authentication
 2. Check if item exists and is available
 3. If item is unavailable and `joinQueue` is true:
-   - Create queue entry instead of request
-   - Return queue entry response
+    - Create queue entry instead of request
+    - Return queue entry response
 4. If item is available:
-   - Create borrow request with status `PENDING`
-   - Create notification for owner
-   - Broadcast notification via real-time
-   - Return borrow request
+    - Create borrow request with status `PENDING`
+    - Create notification for owner
+    - Broadcast notification via real-time
+    - Return borrow request
 
 **Request Body**:
+
 ```typescript
 {
   itemId: string;
@@ -409,6 +437,7 @@ await notifyCircleMembers({
 ```
 
 **Response**:
+
 ```typescript
 // If queue entry
 {
@@ -428,13 +457,14 @@ await notifyCircleMembers({
 **Endpoint**: `PATCH /api/borrow-requests/[id]` with `action: 'approve'`
 
 **Process**:
+
 1. Verify user is the owner
 2. Check request status is `PENDING`
 3. Check item is still available
 4. Use transaction to:
-   - Update request status to `APPROVED`
-   - Create borrow transaction with status `ACTIVE`
-   - Mark item as unavailable (`isAvailable = false`)
+    - Update request status to `APPROVED`
+    - Create borrow transaction with status `ACTIVE`
+    - Mark item as unavailable (`isAvailable = false`)
 5. Create notification for requester
 6. Broadcast status change to both parties
 7. Return updated request and transaction
@@ -446,6 +476,7 @@ await notifyCircleMembers({
 **Endpoint**: `PATCH /api/borrow-requests/[id]` with `action: 'decline'`
 
 **Process**:
+
 1. Verify user is the owner
 2. Check request status is `PENDING`
 3. Update request status to `DECLINED`
@@ -458,6 +489,7 @@ await notifyCircleMembers({
 **Endpoint**: `PATCH /api/borrow-requests/[id]` with `action: 'cancel'`
 
 **Process**:
+
 1. Verify user is the requester
 2. Update request status to `CANCELLED`
 3. No notification needed (requester cancelled their own request)
@@ -473,26 +505,27 @@ ACTIVE → RETURN_PENDING → COMPLETED
 ```
 
 1. **ACTIVE**: Item is currently borrowed
-   - Created when borrow request is approved
-   - Item is marked as unavailable
-   - `borrowed_at` timestamp set
+    - Created when borrow request is approved
+    - Item is marked as unavailable
+    - `borrowed_at` timestamp set
 
 2. **RETURN_PENDING**: Borrower marked item as returned
-   - Borrower calls `POST /api/borrow-requests/[id]/return`
-   - Owner receives notification to confirm return
-   - `return_note` can be added by borrower
+    - Borrower calls `POST /api/borrow-requests/[id]/return`
+    - Owner receives notification to confirm return
+    - `return_note` can be added by borrower
 
 3. **COMPLETED**: Owner confirmed return
-   - Owner calls `POST /api/borrow-requests/[id]/confirm-return`
-   - Item is marked as available
-   - Next person in queue (if any) is promoted to `READY`
-   - `returned_at` timestamp set
+    - Owner calls `POST /api/borrow-requests/[id]/confirm-return`
+    - Item is marked as available
+    - Next person in queue (if any) is promoted to `READY`
+    - `returned_at` timestamp set
 
 ### Marking Item as Returned
 
 **Endpoint**: `POST /api/borrow-requests/[id]/return`
 
 **Process**:
+
 1. Verify user is the borrower
 2. Check transaction exists and status is `ACTIVE`
 3. Update transaction status to `RETURN_PENDING`
@@ -501,6 +534,7 @@ ACTIVE → RETURN_PENDING → COMPLETED
 6. Broadcast status change to both parties
 
 **Request Body**:
+
 ```typescript
 {
   returnNote?: string;
@@ -512,14 +546,15 @@ ACTIVE → RETURN_PENDING → COMPLETED
 **Endpoint**: `POST /api/borrow-requests/[id]/confirm-return`
 
 **Process**:
+
 1. Verify user is the owner
 2. Check transaction status is `RETURN_PENDING` or `ACTIVE`
 3. Use transaction to:
-   - Update transaction status to `COMPLETED`
-   - Set `returned_at` timestamp
-   - Mark item as available (`isAvailable = true`)
-   - Find next person in queue (if any)
-   - Update queue entry status to `READY`
+    - Update transaction status to `COMPLETED`
+    - Set `returned_at` timestamp
+    - Mark item as available (`isAvailable = true`)
+    - Find next person in queue (if any)
+    - Update queue entry status to `READY`
 4. Create notification for borrower (`RETURN_CONFIRMED`)
 5. If queue entry promoted, create notification for that user (`QUEUE_ITEM_READY`)
 6. Broadcast status changes
@@ -546,6 +581,7 @@ When an item is unavailable, users can join a queue instead of creating a borrow
 **When**: User tries to borrow an unavailable item and opts to join queue
 
 **Process**:
+
 1. Check if user already has a queue entry for this item
 2. Get current max position for this item
 3. Create queue entry with `position = maxPosition + 1`
@@ -557,8 +593,10 @@ When an item is unavailable, users can join a queue instead of creating a borrow
 **When**: Someone leaves the queue or is removed
 
 **Process**:
+
 1. Update remaining entries: `position = position - 1` for all entries after removed one
 2. Done via raw SQL for efficiency:
+
 ```sql
 UPDATE borrow_queue
 SET position = position - 1
@@ -571,12 +609,13 @@ AND status = 'WAITING'
 **Endpoint**: `POST /api/borrow-queue/[id]`
 
 **Process**:
+
 1. Verify user is the requester
 2. Check queue entry status is `READY`
 3. Check item is available
 4. Use transaction to:
-   - Create borrow request
-   - Update queue entry status to `SKIPPED`
+    - Create borrow request
+    - Update queue entry status to `SKIPPED`
 5. Create notification for owner
 6. Return borrow request
 
@@ -585,6 +624,7 @@ AND status = 'WAITING'
 **Endpoint**: `DELETE /api/borrow-queue/[id]`
 
 **Process**:
+
 1. Verify user is requester or owner
 2. Update queue entry status to `CANCELLED`
 3. Reposition remaining entries
@@ -599,6 +639,7 @@ AND status = 'WAITING'
 **Endpoint**: `POST /api/item-requests`
 
 **Process**:
+
 1. Validate required fields (title, circleId)
 2. Verify user is a member of the circle
 3. Create item request with status `OPEN`
@@ -607,6 +648,7 @@ AND status = 'WAITING'
 6. Return created request
 
 **Request Body**:
+
 ```typescript
 {
   title: string;
@@ -622,6 +664,7 @@ AND status = 'WAITING'
 **Endpoint**: `PATCH /api/item-requests/[id]` with `status: 'FULFILLED'`
 
 **Process**:
+
 1. Verify user is a member of the circle
 2. Verify item exists and is in the circle
 3. Update request status to `FULFILLED`
@@ -631,10 +674,11 @@ AND status = 'WAITING'
 7. Return updated request
 
 **Request Body**:
+
 ```typescript
 {
-  status: 'FULFILLED';
-  fulfilledBy: string; // Item ID
+	status: 'FULFILLED';
+	fulfilledBy: string; // Item ID
 }
 ```
 
@@ -643,6 +687,7 @@ AND status = 'WAITING'
 **Endpoint**: `PATCH /api/item-requests/[id]` with `status: 'CANCELLED'`
 
 **Process**:
+
 1. Verify user is the requester
 2. Update request status to `CANCELLED`
 3. Broadcast update to circle channel
@@ -658,19 +703,21 @@ AND status = 'WAITING'
 **Purpose**: Global provider that handles real-time notifications and message updates
 
 **Responsibilities**:
+
 - Subscribe to user's notification channel
 - Subscribe to user's message channel
 - Show toast notifications
 - Invalidate Redux queries when events occur
 
 **Real-time Subscriptions**:
+
 - `notifications:${userId}` channel:
-  - `new_notification`: Show toast, invalidate notification queries
-  - `request_status_changed`: Invalidate borrow request queries
-  - `transaction_updated`: Invalidate transaction queries
+    - `new_notification`: Show toast, invalidate notification queries
+    - `request_status_changed`: Invalidate borrow request queries
+    - `transaction_updated`: Invalidate transaction queries
 - `user:${userId}:messages` channel:
-  - `new_message`: Show toast (if not from self), invalidate unread count
-  - `messages_read`: Invalidate unread count
+    - `new_message`: Show toast (if not from self), invalidate unread count
+    - `messages_read`: Invalidate unread count
 
 **Usage**: Wrapped around authenticated layout in `app/(authenticated)/layout.tsx`
 
@@ -681,6 +728,7 @@ AND status = 'WAITING'
 **Purpose**: Display and manage user notifications
 
 **Features**:
+
 - Two tabs: "Alerts" and "Requests"
 - Alert notifications (informational)
 - Request notifications (actionable borrow requests)
@@ -690,6 +738,7 @@ AND status = 'WAITING'
 - Confirm returns inline
 
 **Data Fetching**:
+
 - Uses `useGetNotificationsQuery` for alerts
 - Uses `useGetBorrowRequestsQuery` for actionable requests
 - Real-time updates via NotificationsProvider
@@ -701,6 +750,7 @@ AND status = 'WAITING'
 **Purpose**: Display and manage item requests within circles
 
 **Features**:
+
 - Two tabs: "All Requests" and "My Requests"
 - Filter by circle
 - Create new item request
@@ -709,6 +759,7 @@ AND status = 'WAITING'
 - Real-time updates via `useRealtimeCircleRequests` hook
 
 **Data Fetching**:
+
 - Uses `useGetItemRequestsQuery` for requests
 - Uses `useGetAllItemsQuery` for fulfilling requests
 - Real-time updates via circle channel subscription
@@ -720,6 +771,7 @@ AND status = 'WAITING'
 **Purpose**: Display user's borrow activity (requests, queue, transactions)
 
 **Features**:
+
 - Four tabs: "Active", "Pending", "Queue", "History"
 - Active transactions (currently borrowed/lent)
 - Pending borrow requests
@@ -728,6 +780,7 @@ AND status = 'WAITING'
 - Actions: Mark as returned, confirm return, convert queue entry
 
 **Data Fetching**:
+
 - Uses `useGetTransactionsQuery` for active transactions
 - Uses `useGetBorrowRequestsQuery` for pending requests
 - Uses `useGetQueueEntriesQuery` for queue entries
@@ -744,6 +797,7 @@ AND status = 'WAITING'
 **Purpose**: Hook for listening to user-specific notifications
 
 **Parameters**:
+
 ```typescript
 {
   userId: string | null;
@@ -752,12 +806,13 @@ AND status = 'WAITING'
 ```
 
 **Usage**:
+
 ```typescript
 useRealtimeNotifications({
-  userId: currentUser?.id || null,
-  onNotification: (notification) => {
-    // Handle notification
-  },
+	userId: currentUser?.id || null,
+	onNotification: notification => {
+		// Handle notification
+	},
 });
 ```
 
@@ -770,6 +825,7 @@ useRealtimeNotifications({
 **Purpose**: Hook for listening to item requests within a circle
 
 **Parameters**:
+
 ```typescript
 {
   circleId: string | null;
@@ -779,17 +835,18 @@ useRealtimeNotifications({
 ```
 
 **Usage**:
+
 ```typescript
 useRealtimeCircleRequests({
-  circleId: selectedCircleId,
-  onItemRequest: (request) => {
-    // Add new request to list
-    setRequests(prev => [request, ...prev]);
-  },
-  onItemRequestUpdate: (update) => {
-    // Update request in list
-    setRequests(prev => prev.map(r => r.id === update.id ? { ...r, ...update } : r));
-  },
+	circleId: selectedCircleId,
+	onItemRequest: request => {
+		// Add new request to list
+		setRequests(prev => [request, ...prev]);
+	},
+	onItemRequestUpdate: update => {
+		// Update request in list
+		setRequests(prev => prev.map(r => (r.id === update.id ? { ...r, ...update } : r)));
+	},
 });
 ```
 
@@ -806,12 +863,14 @@ useRealtimeCircleRequests({
 **Purpose**: Get user's notifications
 
 **Query Parameters**:
+
 - `tab`: `'alerts'` | `'requests'` | null (all)
 - `status`: `'UNREAD'` | `'READ'` | null (all)
 - `limit`: number (default: 50)
 - `offset`: number (default: 0)
 
 **Response**:
+
 ```typescript
 {
   notifications: Notification[];
@@ -842,6 +901,7 @@ useRealtimeCircleRequests({
 **Purpose**: Clear notifications
 
 **Query Parameters**:
+
 - `tab`: `'alerts'` | `'requests'` | null (all)
 
 **Response**: `{ message: string }`
@@ -853,6 +913,7 @@ useRealtimeCircleRequests({
 **Purpose**: Get borrow requests
 
 **Query Parameters**:
+
 - `type`: `'incoming'` | `'outgoing'` | `'all'` (default: all)
 - `status`: `BorrowRequestStatus` | null
 - `itemId`: string | null
@@ -864,6 +925,7 @@ useRealtimeCircleRequests({
 **Purpose**: Create borrow request or join queue
 
 **Body**:
+
 ```typescript
 {
   itemId: string;
@@ -887,6 +949,7 @@ useRealtimeCircleRequests({
 **Purpose**: Approve, decline, or cancel borrow request
 
 **Body**:
+
 ```typescript
 {
   action: 'approve' | 'decline' | 'cancel';
@@ -901,6 +964,7 @@ useRealtimeCircleRequests({
 **Purpose**: Mark item as returned (borrower)
 
 **Body**:
+
 ```typescript
 {
   returnNote?: string;
@@ -922,6 +986,7 @@ useRealtimeCircleRequests({
 **Purpose**: Get queue entries
 
 **Query Parameters**:
+
 - `itemId`: string | null
 - `myEntries`: boolean (default: false)
 
@@ -946,6 +1011,7 @@ useRealtimeCircleRequests({
 **Purpose**: Get item requests
 
 **Query Parameters**:
+
 - `circleId`: string | null
 - `status`: `ItemRequestStatus` | null
 - `myRequests`: boolean (default: false)
@@ -957,6 +1023,7 @@ useRealtimeCircleRequests({
 **Purpose**: Create item request
 
 **Body**:
+
 ```typescript
 {
   title: string;
@@ -980,6 +1047,7 @@ useRealtimeCircleRequests({
 **Purpose**: Update item request (fulfill/cancel)
 
 **Body**:
+
 ```typescript
 {
   status: ItemRequestStatus;
@@ -996,6 +1064,7 @@ useRealtimeCircleRequests({
 **Purpose**: Get user's transactions
 
 **Query Parameters**:
+
 - `role`: `'borrower'` | `'owner'` | null (all)
 - `status`: `BorrowTransactionStatus` | null
 - `itemId`: string | null
@@ -1011,6 +1080,7 @@ useRealtimeCircleRequests({
 **File**: `lib/redux/api/notificationsApi.ts`
 
 **Endpoints**:
+
 - `getNotifications`: Query for notifications with filters
 - `markAsRead`: Mutation to mark notification as read
 - `markAllAsRead`: Mutation to mark all as read
@@ -1018,7 +1088,8 @@ useRealtimeCircleRequests({
 
 **Tag Types**: `['Notifications']`
 
-**Cache Invalidation**: 
+**Cache Invalidation**:
+
 - All mutations invalidate `['Notifications']` tag
 - Real-time updates also invalidate via NotificationsProvider
 
@@ -1029,12 +1100,14 @@ useRealtimeCircleRequests({
 **Endpoints**:
 
 **Item Requests**:
+
 - `getItemRequests`: Query for item requests
 - `getItemRequest`: Query for single item request
 - `createItemRequest`: Mutation to create request
 - `updateItemRequest`: Mutation to fulfill/cancel request
 
 **Borrow Requests**:
+
 - `getBorrowRequests`: Query for borrow requests
 - `getBorrowRequest`: Query for single borrow request
 - `createBorrowRequest`: Mutation to create request or join queue
@@ -1043,16 +1116,19 @@ useRealtimeCircleRequests({
 - `confirmReturn`: Mutation to confirm return
 
 **Queue**:
+
 - `getQueueEntries`: Query for queue entries
 - `leaveQueue`: Mutation to leave queue
 - `convertQueueEntry`: Mutation to convert to request
 
 **Transactions**:
+
 - `getTransactions`: Query for transactions
 
 **Tag Types**: `['ItemRequests', 'BorrowRequests', 'BorrowQueue', 'Transactions']`
 
 **Cache Invalidation**:
+
 - Mutations invalidate relevant tags
 - Real-time updates invalidate via NotificationsProvider
 
@@ -1061,11 +1137,13 @@ useRealtimeCircleRequests({
 **File**: `lib/redux/api/messagesApi.ts`
 
 **Endpoints**:
+
 - `getUnreadMessageCount`: Query for total unread message count
 
 **Tag Types**: `['UnreadCount']`
 
-**Cache Invalidation**: 
+**Cache Invalidation**:
+
 - Real-time updates invalidate via NotificationsProvider
 
 ---
@@ -1075,6 +1153,7 @@ useRealtimeCircleRequests({
 ### Why separate notifications from borrow requests?
 
 **Answer**: Notifications are a general system that can handle various event types (borrow requests, transactions, item requests, messages). Borrow requests are domain-specific entities. Separating them allows:
+
 - Reusable notification infrastructure
 - Different UI for alerts vs actionable requests
 - Easy to add new notification types
@@ -1082,6 +1161,7 @@ useRealtimeCircleRequests({
 ### Why use a queue system instead of just pending requests?
 
 **Answer**: When an item is unavailable, users shouldn't create pending requests that will be declined. The queue:
+
 - Manages order fairly (first come, first served)
 - Automatically promotes when item becomes available
 - Reduces notification spam (no need to notify owner of requests for unavailable items)
@@ -1090,6 +1170,7 @@ useRealtimeCircleRequests({
 ### How does real-time work when user is offline?
 
 **Answer**: Supabase Realtime maintains WebSocket connections. When user comes back online:
+
 - WebSocket reconnects automatically
 - Missed broadcasts are not replayed (by design)
 - Frontend refetches data via Redux queries
@@ -1098,6 +1179,7 @@ useRealtimeCircleRequests({
 ### Why broadcast status changes separately from notifications?
 
 **Answer**: Status changes (`request_status_changed`, `transaction_updated`) trigger UI refreshes even if no notification is created. For example:
+
 - Owner approves request → Notification sent to requester
 - But owner's UI also needs to refresh to show updated status
 - Broadcasting status change ensures both parties see updates
@@ -1105,12 +1187,15 @@ useRealtimeCircleRequests({
 ### How are queue positions managed atomically?
 
 **Answer**: Queue position updates use database transactions and raw SQL:
+
 ```sql
 UPDATE borrow_queue
 SET position = position - 1
 WHERE item_id = ? AND position > ? AND status = 'WAITING'
 ```
+
 This ensures:
+
 - No race conditions
 - Atomic updates
 - Efficient bulk updates
@@ -1118,6 +1203,7 @@ This ensures:
 ### Why mark item as unavailable when transaction starts?
 
 **Answer**: Prevents multiple simultaneous borrows of the same item. When transaction is `ACTIVE`:
+
 - Item `isAvailable = false`
 - New borrow requests are rejected or go to queue
 - Item becomes available again when transaction is `COMPLETED`
@@ -1125,6 +1211,7 @@ This ensures:
 ### How are notifications deduplicated?
 
 **Answer**: Notifications are not deduplicated by default. However:
+
 - Same event can create multiple notifications (e.g., all circle members get notified)
 - Frontend can deduplicate by checking `entityId` and `type`
 - Database has unique constraint on `(user_id, entity_id, type)` if needed (not currently enforced)
@@ -1132,6 +1219,7 @@ This ensures:
 ### Why use JSONB for notification metadata?
 
 **Answer**: Metadata contains variable data depending on notification type:
+
 - Borrow request: `borrowRequestId`, `itemId`, `requesterName`
 - Transaction: `transactionId`, `dueAt`
 - Item request: `itemRequestId`, `circleName`

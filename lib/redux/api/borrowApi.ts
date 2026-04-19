@@ -194,7 +194,10 @@ export const borrowApi = createApi({
 		}),
 
 		// Update item request (fulfill/cancel)
-		updateItemRequest: builder.mutation<ItemRequest, { id: string; status: ItemRequestStatus; fulfilledBy?: string }>({
+		updateItemRequest: builder.mutation<
+			ItemRequest,
+			{ id: string; status: ItemRequestStatus; fulfilledBy?: string }
+		>({
 			query: ({ id, ...body }) => ({
 				url: `/item-requests/${id}`,
 				method: 'PATCH',
@@ -292,7 +295,10 @@ export const borrowApi = createApi({
 		}),
 
 		// Mark item as returned (borrower)
-		markAsReturned: builder.mutation<{ message: string; transaction: BorrowTransaction }, { id: string; returnNote?: string }>({
+		markAsReturned: builder.mutation<
+			{ message: string; transaction: BorrowTransaction },
+			{ id: string; returnNote?: string }
+		>({
 			query: ({ id, ...body }) => ({
 				url: `/borrow-requests/${id}/return`,
 				method: 'POST',
@@ -329,7 +335,10 @@ export const borrowApi = createApi({
 		}),
 
 		// Extend borrow period (borrower requests new due date)
-		extendBorrow: builder.mutation<{ message: string; transaction: BorrowTransaction }, { id: string; newDueAt: string }>({
+		extendBorrow: builder.mutation<
+			{ message: string; transaction: BorrowTransaction },
+			{ id: string; newDueAt: string }
+		>({
 			query: ({ id, newDueAt }) => ({
 				url: `/borrow-requests/${id}/extend`,
 				method: 'POST',

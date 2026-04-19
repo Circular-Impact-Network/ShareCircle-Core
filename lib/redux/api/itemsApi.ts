@@ -246,11 +246,7 @@ export const itemsApi = createApi({
 			// Invalidate the specific item and all lists
 			// Note: We can't know which circle IDs to invalidate without the item data,
 			// so we invalidate all CircleItems. This is acceptable for delete operations.
-			invalidatesTags: (_result, _error, id) => [
-				{ type: 'Items', id },
-				'Items',
-				'CircleItems',
-			],
+			invalidatesTags: (_result, _error, id) => [{ type: 'Items', id }, 'Items', 'CircleItems'],
 		}),
 
 		// Search items with vector similarity
@@ -291,7 +287,8 @@ export const itemsApi = createApi({
 			},
 			serializeQueryArgs: ({ queryArgs }) => {
 				// Exclude cursor so pages merge into one cache entry per filter set
-				const { cursor, ...rest } = queryArgs;
+				const rest = { ...queryArgs };
+				delete rest.cursor;
 				return rest;
 			},
 			merge: (currentCache, newData) => {

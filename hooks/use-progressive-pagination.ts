@@ -7,10 +7,7 @@ type UseProgressivePaginationOptions<T> = {
 	pageSize?: number;
 };
 
-export function useProgressivePagination<T>({
-	items,
-	pageSize = 12,
-}: UseProgressivePaginationOptions<T>) {
+export function useProgressivePagination<T>({ items, pageSize = 12 }: UseProgressivePaginationOptions<T>) {
 	const [visibleCount, setVisibleCount] = useState(pageSize);
 	const resolvedVisibleCount = Math.min(Math.max(visibleCount, pageSize), items.length || pageSize);
 	const visibleItems = useMemo(() => items.slice(0, resolvedVisibleCount), [items, resolvedVisibleCount]);

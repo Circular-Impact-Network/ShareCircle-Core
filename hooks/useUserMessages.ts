@@ -31,10 +31,10 @@ async function markAsDelivered(messageId: string) {
  */
 export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
-	
+
 	// Use ref to store callback to avoid re-subscription when callback changes
 	const onNewMessageRef = useRef(onNewMessage);
-	
+
 	useEffect(() => {
 		onNewMessageRef.current = onNewMessage;
 	}, [onNewMessage]);

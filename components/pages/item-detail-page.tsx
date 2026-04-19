@@ -66,40 +66,35 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [borrowMessage, setBorrowMessage] = useState('');
 	const [desiredFrom, setDesiredFrom] = useState('');
 	const [desiredTo, setDesiredTo] = useState('');
-	
+
 	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
-	
+
 	// Get existing borrow requests and queue for this item
-	const { data: existingRequests = [] } = useGetBorrowRequestsQuery(
-		{ itemId, type: 'outgoing' },
-		{ skip: !itemId }
-	);
-	const { data: queueEntries = [] } = useGetQueueEntriesQuery(
-		{ itemId },
-		{ skip: !itemId }
-	);
+	const { data: existingRequests = [] } = useGetBorrowRequestsQuery({ itemId, type: 'outgoing' }, { skip: !itemId });
+	const { data: queueEntries = [] } = useGetQueueEntriesQuery({ itemId }, { skip: !itemId });
 	// Get user's active transactions for this item
 	const { data: borrowerTransactions = [] } = useGetTransactionsQuery(
 		{ role: 'borrower', itemId },
-		{ skip: !itemId }
+		{ skip: !itemId },
 	);
-	
+
 	// Borrow/extend mutations
 	const [createBorrowRequest, { isLoading: isCreatingRequest }] = useCreateBorrowRequestMutation();
 	const [extendBorrow, { isLoading: isExtending }] = useExtendBorrowMutation();
-	
+
 	// Check if user already has a pending request
 	const hasPendingRequest = existingRequests.some(r => r.status === 'PENDING');
 	const isInQueue = queueEntries.some(q => q.status === 'WAITING' || q.status === 'READY');
 	const queuePosition = queueEntries.find(q => q.status === 'WAITING')?.position;
-	
+
 	// Check if user is currently borrowing this item (all non-completed active statuses)
 	const activeTransaction = borrowerTransactions.find(
-		t => t.item.id === itemId &&
-		['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED', 'RETURN_PENDING'].includes(t.status)
+		t =>
+			t.item.id === itemId &&
+			['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED', 'RETURN_PENDING'].includes(t.status),
 	);
 	const isCurrentBorrower = !!activeTransaction;
-	
+
 	// Item with availability info (cast since API returns isAvailable)
 	const itemWithAvailability = item as (Item & { isAvailable?: boolean }) | undefined;
 
@@ -176,7 +171,10 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 		}
 		try {
 			await extendBorrow({ id: activeTransaction.borrowRequestId, newDueAt: newDueDate }).unwrap();
-			toast({ title: 'Borrow period extended!', description: `New due date: ${new Date(newDueDate).toLocaleDateString()}` });
+			toast({
+				title: 'Borrow period extended!',
+				description: `New due date: ${new Date(newDueDate).toLocaleDateString()}`,
+			});
 			setShowExtendModal(false);
 			setNewDueDate('');
 		} catch (error) {
@@ -201,13 +199,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				desiredTo,
 				joinQueue,
 			}).unwrap();
-			
+
 			// Close modal and reset state immediately on success
 			setShowBorrowModal(false);
 			setBorrowMessage('');
 			setDesiredFrom('');
 			setDesiredTo('');
-			
+
 			if (result.type === 'queue') {
 				toast({
 					title: 'Added to queue!',
@@ -221,9 +219,10 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			}
 		} catch (error: unknown) {
 			console.error('Borrow request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error
-				: 'Please try again.';
+			const errorMessage =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error
+					: 'Please try again.';
 			toast({
 				title: 'Failed to submit request',
 				description: errorMessage,
@@ -267,7 +266,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 						<h2 className="text-xl font-semibold mb-2">Access Denied</h2>
 						<p className="text-muted-foreground mb-6">
-							You don&apos;t have access to this item. You must be a member of the circle this item belongs to.
+							You don&apos;t have access to this item. You must be a member of the circle this item
+							belongs to.
 						</p>
 						<div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
 							<Button
@@ -280,11 +280,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							>
 								Request Access
 							</Button>
-							<Button 
-								variant="outline" 
-								onClick={() => router.push('/browse')}
-								className="gap-2"
-							>
+							<Button variant="outline" onClick={() => router.push('/browse')} className="gap-2">
 								<ArrowLeft className="h-4 w-4" />
 								Go to Browse
 							</Button>
@@ -308,11 +304,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<p className="text-muted-foreground mb-6">
 							This item doesn&apos;t exist or may have been deleted.
 						</p>
-						<Button 
-							variant="outline" 
-							onClick={() => router.push('/browse')}
-							className="gap-2"
-						>
+						<Button variant="outline" onClick={() => router.push('/browse')} className="gap-2">
 							<ArrowLeft className="h-4 w-4" />
 							Go to Browse
 						</Button>
@@ -349,9 +341,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							</Button>
 						</div>
 						{item.description && (
-							<p className="mt-2 text-muted-foreground leading-relaxed">
-								{item.description}
-							</p>
+							<p className="mt-2 text-muted-foreground leading-relaxed">{item.description}</p>
 						)}
 					</div>
 
@@ -399,9 +389,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							</AvatarFallback>
 						</Avatar>
 						<div className="space-y-0.5 flex-1">
-							<p className="text-sm font-semibold leading-tight">
-								{item.owner.name || 'Unknown'}
-							</p>
+							<p className="text-sm font-semibold leading-tight">{item.owner.name || 'Unknown'}</p>
 							<div className="flex items-center gap-1 text-xs text-muted-foreground">
 								<Calendar className="h-3 w-3" />
 								<span>Added {formatDate(item.createdAt)}</span>
@@ -421,11 +409,10 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 											{activeTransaction?.status === 'RETURN_PENDING'
 												? 'Return pending owner confirmation'
 												: activeTransaction?.status === 'LENDER_CONFIRMED'
-												? 'In transit — confirm when you receive it'
-												: activeTransaction?.status === 'BORROWER_CONFIRMED'
-												? `Received — due ${new Date(activeTransaction.dueAt).toLocaleDateString()}`
-												: `Due ${new Date(activeTransaction!.dueAt).toLocaleDateString()}`
-											}
+													? 'In transit — confirm when you receive it'
+													: activeTransaction?.status === 'BORROWER_CONFIRMED'
+														? `Received — due ${new Date(activeTransaction.dueAt).toLocaleDateString()}`
+														: `Due ${new Date(activeTransaction!.dueAt).toLocaleDateString()}`}
 										</p>
 									</div>
 								</>
@@ -433,7 +420,9 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								<>
 									<CheckCircle2 className="h-5 w-5 text-green-500" />
 									<div>
-										<p className="text-sm font-medium text-green-700 dark:text-green-400">Available</p>
+										<p className="text-sm font-medium text-green-700 dark:text-green-400">
+											Available
+										</p>
 										<p className="text-xs text-muted-foreground">Ready to borrow</p>
 									</div>
 								</>
@@ -441,12 +430,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								<>
 									<AlertCircle className="h-5 w-5 text-amber-500" />
 									<div className="flex-1">
-										<p className="text-sm font-medium text-amber-700 dark:text-amber-400">Currently Borrowed</p>
+										<p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+											Currently Borrowed
+										</p>
 										<p className="text-xs text-muted-foreground">
-											{queueEntries.length > 0 
+											{queueEntries.length > 0
 												? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
-												: 'You can join the queue'
-											}
+												: 'You can join the queue'}
 										</p>
 									</div>
 								</>
@@ -494,12 +484,16 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								onClick={handleStartChat}
 								disabled={isStartingChat}
 							>
-								{isStartingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+								{isStartingChat ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<MessageCircle className="h-4 w-4" />
+								)}
 								Chat with owner
 							</Button>
 						)}
 						{!item.isOwner && !isCurrentBorrower && (
-							<Button 
+							<Button
 								className="min-w-36"
 								onClick={() => setShowBorrowModal(true)}
 								disabled={hasPendingRequest || isInQueue}
@@ -508,25 +502,22 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							</Button>
 						)}
 						{isCurrentBorrower && (
-							<Button
-								variant="secondary"
-								onClick={() => router.push('/activity')}
-							>
+							<Button variant="secondary" onClick={() => router.push('/activity')}>
 								View in My Activity
 							</Button>
 						)}
 						{isCurrentBorrower &&
 							activeTransaction &&
 							['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED'].includes(activeTransaction.status) && (
-							<Button
-								variant="outline"
-								className="gap-2 bg-transparent"
-								onClick={() => setShowExtendModal(true)}
-							>
-								<CalendarPlus className="h-4 w-4" />
-								Extend Borrow
-							</Button>
-						)}
+								<Button
+									variant="outline"
+									className="gap-2 bg-transparent"
+									onClick={() => setShowExtendModal(true)}
+								>
+									<CalendarPlus className="h-4 w-4" />
+									Extend Borrow
+								</Button>
+							)}
 					</div>
 				</div>
 			</div>
@@ -539,10 +530,9 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							{itemWithAvailability?.isAvailable !== false ? 'Request to Borrow' : 'Join Queue'}
 						</DialogTitle>
 						<DialogDescription>
-							{itemWithAvailability?.isAvailable !== false 
+							{itemWithAvailability?.isAvailable !== false
 								? `Request to borrow "${item.name}" from ${item.owner.name || 'the owner'}`
-								: `This item is currently borrowed. Join the queue to be notified when it's available.`
-							}
+								: `This item is currently borrowed. Join the queue to be notified when it's available.`}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
@@ -583,13 +573,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<Button variant="outline" onClick={() => setShowBorrowModal(false)}>
 							Cancel
 						</Button>
-						<Button 
+						<Button
 							onClick={() => handleBorrowRequest(itemWithAvailability?.isAvailable === false)}
 							disabled={isCreatingRequest || !desiredFrom || !desiredTo}
 						>
-							{isCreatingRequest ? (
-								<Loader2 className="h-4 w-4 animate-spin mr-2" />
-							) : null}
+							{isCreatingRequest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
 							{itemWithAvailability?.isAvailable !== false ? 'Send Request' : 'Join Queue'}
 						</Button>
 					</DialogFooter>
@@ -631,7 +619,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							Cancel
 						</Button>
 						<Button onClick={handleExtend} disabled={isExtending || !newDueDate} className="gap-2">
-							{isExtending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}
+							{isExtending ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<CalendarPlus className="h-4 w-4" />
+							)}
 							Confirm Extension
 						</Button>
 					</DialogFooter>

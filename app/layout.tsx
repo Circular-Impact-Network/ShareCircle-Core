@@ -14,8 +14,18 @@ export const metadata: Metadata = {
 		default: 'ShareCircle - Share Items with Your Community',
 		template: '%s | ShareCircle',
 	},
-	description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste through peer-to-peer item sharing.',
-	keywords: ['sharing economy', 'item sharing', 'borrow', 'lend', 'community', 'peer-to-peer', 'circular economy', 'sustainability'],
+	description:
+		'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste through peer-to-peer item sharing.',
+	keywords: [
+		'sharing economy',
+		'item sharing',
+		'borrow',
+		'lend',
+		'community',
+		'peer-to-peer',
+		'circular economy',
+		'sustainability',
+	],
 	authors: [{ name: 'ShareCircle Team' }],
 	creator: 'ShareCircle',
 	publisher: 'ShareCircle',
@@ -39,7 +49,8 @@ export const metadata: Metadata = {
 		url: 'https://sharecircle.app',
 		siteName: 'ShareCircle',
 		title: 'ShareCircle - Share Items with Your Community',
-		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		description:
+			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
 		images: [
 			{
 				url: '/share-circle-logo.png',
@@ -52,7 +63,8 @@ export const metadata: Metadata = {
 	twitter: {
 		card: 'summary_large_image',
 		title: 'ShareCircle - Share Items with Your Community',
-		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		description:
+			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
 		images: ['/share-circle-logo.png'],
 		creator: '@sharecircle',
 	},

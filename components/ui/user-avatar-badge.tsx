@@ -21,9 +21,7 @@ export function UserAvatarBadge({ user, size = 'sm', label, className }: UserAva
 			{label && <span>{label}</span>}
 			<Avatar className={s.avatar}>
 				<AvatarImage src={user?.image || undefined} />
-				<AvatarFallback className={s.fallback}>
-					{user?.name?.[0]?.toUpperCase() || '?'}
-				</AvatarFallback>
+				<AvatarFallback className={s.fallback}>{user?.name?.[0]?.toUpperCase() || '?'}</AvatarFallback>
 			</Avatar>
 			<span className="truncate">{user?.name || 'Unknown'}</span>
 		</div>

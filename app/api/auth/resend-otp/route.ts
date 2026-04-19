@@ -108,7 +108,10 @@ export async function POST(req: NextRequest) {
 				);
 			}
 
-			return NextResponse.json({ message: 'A new verification code has been sent to your email.' }, { status: 200 });
+			return NextResponse.json(
+				{ message: 'A new verification code has been sent to your email.' },
+				{ status: 200 },
+			);
 		}
 
 		// Phone flow
@@ -174,17 +177,15 @@ export async function POST(req: NextRequest) {
 			await sendOtpSms({
 				toE164: phoneE164,
 				code: otp,
-				context: otpPurpose === 'phone_update' ? 'update_phone' : otpPurpose === 'phone_signup' ? 'signup' : 'login',
+				context:
+					otpPurpose === 'phone_update' ? 'update_phone' : otpPurpose === 'phone_signup' ? 'signup' : 'login',
 			});
 		} catch (sendErr) {
 			console.error('Resend phone OTP SMS failed:', sendErr);
 			await prisma.verificationToken.deleteMany({ where: { identifier: otpIdentifier } });
 			return NextResponse.json(
 				{
-					error:
-						sendErr instanceof Error
-							? sendErr.message
-							: 'An error occurred while resending the code',
+					error: sendErr instanceof Error ? sendErr.message : 'An error occurred while resending the code',
 				},
 				{ status: 502 },
 			);

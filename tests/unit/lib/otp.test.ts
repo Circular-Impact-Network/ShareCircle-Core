@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-	normalizeEmail,
-	normalizePhoneE164,
-	getOtpIdentifier,
-	hashOtp,
-	timingSafeEqualHex,
-} from '@/lib/otp';
+import { normalizeEmail, normalizePhoneE164, getOtpIdentifier, hashOtp, timingSafeEqualHex } from '@/lib/otp';
 
 describe('otp utilities', () => {
 	describe('normalizeEmail', () => {

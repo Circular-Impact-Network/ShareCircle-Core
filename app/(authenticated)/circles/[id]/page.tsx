@@ -3,10 +3,10 @@ import { PageSkeleton } from '@/components/ui/skeletons';
 
 const CircleDetailsPage = dynamic(
 	() =>
-		import('@/components/pages/circle-details-page').then((m) => ({
+		import('@/components/pages/circle-details-page').then(m => ({
 			default: m.CircleDetailsPage,
 		})),
-	{ loading: () => <PageSkeleton /> }
+	{ loading: () => <PageSkeleton /> },
 );
 
 interface CircleDetailRouteProps {

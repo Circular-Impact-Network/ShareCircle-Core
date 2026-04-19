@@ -59,7 +59,11 @@ export function ChatHeader({
 							<span className="inline-flex items-center gap-1">
 								<span
 									className={`h-2 w-2 rounded-full ${
-										isTyping ? 'bg-amber-500' : isOnline ? 'bg-emerald-500' : 'bg-muted-foreground/50'
+										isTyping
+											? 'bg-amber-500'
+											: isOnline
+												? 'bg-emerald-500'
+												: 'bg-muted-foreground/50'
 									}`}
 								/>
 								{isTyping ? 'typing...' : isOnline ? 'online' : 'offline'}

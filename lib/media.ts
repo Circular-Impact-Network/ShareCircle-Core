@@ -6,12 +6,7 @@ export const MAX_UPLOAD_SIZE_BYTES = 5 * MB;
 export const MAX_MEDIA_ATTACHMENTS = 5;
 
 export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
-export const SUPPORTED_MEDIA_TYPES = [
-	...SUPPORTED_IMAGE_TYPES,
-	'video/mp4',
-	'video/webm',
-	'video/quicktime',
-] as const;
+export const SUPPORTED_MEDIA_TYPES = [...SUPPORTED_IMAGE_TYPES, 'video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const IOS_UNSUPPORTED_IMAGE_TYPES = [
 	'image/heic',
 	'image/heif',
@@ -59,11 +54,7 @@ export function getUploadValidationError(
 
 export async function prepareImageForUpload(
 	file: File,
-	{
-		maxSizeBytes = MAX_UPLOAD_SIZE_BYTES,
-		maxDimension = 2048,
-		quality = 0.86,
-	}: CompressionOptions = {},
+	{ maxSizeBytes = MAX_UPLOAD_SIZE_BYTES, maxDimension = 2048, quality = 0.86 }: CompressionOptions = {},
 ) {
 	if (
 		typeof window === 'undefined' ||

@@ -45,7 +45,7 @@ describe('notification-catalog', () => {
 
 	describe('NOTIFICATION_CATALOG', () => {
 		it('has an entry for every category id', () => {
-			const catalogIds = NOTIFICATION_CATALOG.map((c) => c.id);
+			const catalogIds = NOTIFICATION_CATALOG.map(c => c.id);
 			for (const id of NOTIFICATION_CATEGORY_IDS) {
 				expect(catalogIds).toContain(id);
 			}

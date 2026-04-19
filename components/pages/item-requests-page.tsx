@@ -3,15 +3,7 @@
 // Item requests: multi-circle create, list, fulfill
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-	Package,
-	Plus,
-	Clock,
-	Loader2,
-	Search,
-	Send,
-	Check,
-} from 'lucide-react';
+import { Package, Plus, Clock, Loader2, Search, Send, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,7 +60,12 @@ function RequestCard({
 	const circleNames = request.circles?.map(entry => entry.circle.name) ?? [];
 
 	return (
-		<Card className={isOpen ? '' : 'opacity-60'} data-testid="request-card" data-status={request.status} data-has-dates={hasDates ? 'true' : 'false'}>
+		<Card
+			className={isOpen ? '' : 'opacity-60'}
+			data-testid="request-card"
+			data-status={request.status}
+			data-has-dates={hasDates ? 'true' : 'false'}
+		>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					<div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
@@ -82,9 +79,7 @@ function RequestCard({
 							</Badge>
 						</div>
 						{request.description && (
-							<p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-								{request.description}
-							</p>
+							<p className="text-sm text-muted-foreground line-clamp-2 mb-2">{request.description}</p>
 						)}
 						<div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="requester">
 							<Avatar className="h-4 w-4">
@@ -116,7 +111,11 @@ function RequestCard({
 									disabled={isFulfilling}
 									onClick={() => onFulfill(request.id, request.requester.id, request.title)}
 								>
-									{isFulfilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+									{isFulfilling ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<Plus className="h-4 w-4" />
+									)}
 									I have this item
 								</Button>
 							</div>
@@ -130,7 +129,11 @@ function RequestCard({
 									disabled={isClosing}
 									onClick={() => onClose(request.id)}
 								>
-									{isClosing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+									{isClosing ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<Clock className="h-4 w-4" />
+									)}
 									Close request
 								</Button>
 							</div>
@@ -210,13 +213,14 @@ export function ItemRequestsPage() {
 			setRequestCircleIds([]);
 		} catch (error) {
 			console.error('Create item request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error || 'Failed to create request'
-				: 'Failed to create request. Please try again.';
-			toast({ 
-				title: 'Failed to create request', 
+			const errorMessage =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to create request'
+					: 'Failed to create request. Please try again.';
+			toast({
+				title: 'Failed to create request',
 				description: errorMessage,
-				variant: 'destructive' 
+				variant: 'destructive',
 			});
 		}
 	};
@@ -278,105 +282,117 @@ export function ItemRequestsPage() {
 	return (
 		<PageShell>
 			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
-			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
-				<div className="flex items-center justify-between">
-					<PageHeader
-						title="Item Requests"
-						description="See what items people in your circles are looking for"
-					/>
-				<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-					<DialogTrigger asChild>
-						<Button className="gap-2">
-							<Plus className="h-4 w-4" />
-							New Request
-						</Button>
-					</DialogTrigger>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Request an Item</DialogTitle>
-							<DialogDescription>
-								Let your circles know what you&apos;re looking for
-							</DialogDescription>
-						</DialogHeader>
-						<div className="space-y-4 py-4">
-							<div className="space-y-2">
-								<Input
-									placeholder="What are you looking for?"
-									value={requestTitle}
-									onChange={e => setRequestTitle(e.target.value)}
-								/>
-							</div>
-							<div className="space-y-2">
-								<Textarea
-									placeholder="Add details (optional)"
-									value={requestDescription}
-									onChange={e => setRequestDescription(e.target.value)}
-									rows={3}
-								/>
-							</div>
-							<div className="space-y-2">
-								<p className="text-sm text-muted-foreground">Share this request with circles *</p>
-								{circles.length > 1 && (
-									<Button variant="outline" type="button" onClick={toggleSelectAllCircles}>
-										{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
-									</Button>
-								)}
-								<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
-									{circles.map(circle => {
-										const isSelected = requestCircleIds.includes(circle.id);
-										return (
-											<button
-												key={circle.id}
-												type="button"
-												onClick={() => toggleCircleSelection(circle.id)}
-												className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
-													isSelected ? 'bg-primary/10' : 'hover:bg-muted'
-												}`}
-											>
-												<div
-													className={`h-4 w-4 rounded border flex items-center justify-center ${
-														isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'
-													}`}
-												>
-													{isSelected && <Check className="h-3 w-3" />}
-												</div>
-												<span>{circle.name}</span>
-											</button>
-										);
-									})}
+				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+					<div className="flex items-center justify-between">
+						<PageHeader
+							title="Item Requests"
+							description="See what items people in your circles are looking for"
+						/>
+						<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+							<DialogTrigger asChild>
+								<Button className="gap-2">
+									<Plus className="h-4 w-4" />
+									New Request
+								</Button>
+							</DialogTrigger>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Request an Item</DialogTitle>
+									<DialogDescription>
+										Let your circles know what you&apos;re looking for
+									</DialogDescription>
+								</DialogHeader>
+								<div className="space-y-4 py-4">
+									<div className="space-y-2">
+										<Input
+											placeholder="What are you looking for?"
+											value={requestTitle}
+											onChange={e => setRequestTitle(e.target.value)}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Textarea
+											placeholder="Add details (optional)"
+											value={requestDescription}
+											onChange={e => setRequestDescription(e.target.value)}
+											rows={3}
+										/>
+									</div>
+									<div className="space-y-2">
+										<p className="text-sm text-muted-foreground">
+											Share this request with circles *
+										</p>
+										{circles.length > 1 && (
+											<Button variant="outline" type="button" onClick={toggleSelectAllCircles}>
+												{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
+											</Button>
+										)}
+										<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
+											{circles.map(circle => {
+												const isSelected = requestCircleIds.includes(circle.id);
+												return (
+													<button
+														key={circle.id}
+														type="button"
+														onClick={() => toggleCircleSelection(circle.id)}
+														className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+															isSelected ? 'bg-primary/10' : 'hover:bg-muted'
+														}`}
+													>
+														<div
+															className={`h-4 w-4 rounded border flex items-center justify-center ${
+																isSelected
+																	? 'border-primary bg-primary text-primary-foreground'
+																	: 'border-muted-foreground'
+															}`}
+														>
+															{isSelected && <Check className="h-3 w-3" />}
+														</div>
+														<span>{circle.name}</span>
+													</button>
+												);
+											})}
+										</div>
+									</div>
 								</div>
-							</div>
-						</div>
-						<DialogFooter>
-							<Button variant="outline" onClick={() => setShowCreateModal(false)}>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleCreate}
-								disabled={isCreating || !requestTitle.trim() || requestCircleIds.length === 0}
-							>
-								{isCreating ? (
-									<Loader2 className="h-4 w-4 animate-spin mr-2" />
-								) : (
-									<Send className="h-4 w-4 mr-2" />
-								)}
-								Create Request
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-				</div>
-				<PageTabsList>
-					<PageTabsTrigger value="all" className="gap-2" badge={openRequests.length > 0 ? openRequests.length : undefined}>
-						<Search className="h-4 w-4" />
-						All Requests
-					</PageTabsTrigger>
-					<PageTabsTrigger value="mine" className="gap-2" badge={myOpenRequests.length > 0 ? myOpenRequests.length : undefined}>
-						<Clock className="h-4 w-4" />
-						My Requests
-					</PageTabsTrigger>
-				</PageTabsList>
-			</PageStickyHeader>
+								<DialogFooter>
+									<Button variant="outline" onClick={() => setShowCreateModal(false)}>
+										Cancel
+									</Button>
+									<Button
+										onClick={handleCreate}
+										disabled={isCreating || !requestTitle.trim() || requestCircleIds.length === 0}
+									>
+										{isCreating ? (
+											<Loader2 className="h-4 w-4 animate-spin mr-2" />
+										) : (
+											<Send className="h-4 w-4 mr-2" />
+										)}
+										Create Request
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
+					</div>
+					<PageTabsList>
+						<PageTabsTrigger
+							value="all"
+							className="gap-2"
+							badge={openRequests.length > 0 ? openRequests.length : undefined}
+						>
+							<Search className="h-4 w-4" />
+							All Requests
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="mine"
+							className="gap-2"
+							badge={myOpenRequests.length > 0 ? myOpenRequests.length : undefined}
+						>
+							<Clock className="h-4 w-4" />
+							My Requests
+						</PageTabsTrigger>
+					</PageTabsList>
+				</PageStickyHeader>
 
 				{/* All Requests Tab */}
 				<PageTabsContent value="all" className="space-y-3">

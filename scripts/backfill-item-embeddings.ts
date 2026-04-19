@@ -85,7 +85,9 @@ async function main(): Promise<void> {
 		throw new Error('BACKFILL_CONCURRENCY must be a positive number.');
 	}
 
-	const whereClause = nullOnly ? Prisma.sql`WHERE embedding IS NULL AND image_path IS NOT NULL` : Prisma.sql`WHERE image_path IS NOT NULL`;
+	const whereClause = nullOnly
+		? Prisma.sql`WHERE embedding IS NULL AND image_path IS NOT NULL`
+		: Prisma.sql`WHERE image_path IS NOT NULL`;
 	const modeLabel = nullOnly ? 'null-only' : 'all items (regenerating)';
 	console.log(`Backfill mode: ${modeLabel}`);
 	console.log(`Batch size: ${batchSize}, Concurrency: ${concurrency}, Max: ${maxItems || 'unlimited'}`);

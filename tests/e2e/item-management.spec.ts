@@ -28,7 +28,7 @@ test.describe('item management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				test.skip();
@@ -46,10 +46,10 @@ test.describe('item management', () => {
 			// Look for edit button - edit might be in settings/menu
 			const editButton = page.getByRole('button', { name: /Edit/i });
 			const settingsMenu = page.locator('[data-testid="item-actions"]');
-			
+
 			const hasEdit = await editButton.isVisible({ timeout: 5000 }).catch(() => false);
 			const hasMenu = await settingsMenu.isVisible({ timeout: 2000 }).catch(() => false);
-			
+
 			// Edit functionality exists if button or menu is present
 			expect(hasEdit || hasMenu || true).toBeTruthy();
 		});
@@ -73,7 +73,7 @@ test.describe('item management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				test.skip();
@@ -110,7 +110,7 @@ test.describe('item management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				test.skip();
@@ -145,7 +145,7 @@ test.describe('item management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				test.skip();
@@ -190,7 +190,7 @@ test.describe('item management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				test.skip();
@@ -217,11 +217,11 @@ test.describe('item management', () => {
 				},
 			});
 			expect(circleResponse.ok()).toBeTruthy();
-			
+
 			// Navigate to listings page - tags would be added during item creation
 			await page.goto('/listings');
 			await page.waitForLoadState('networkidle');
-			
+
 			// Page should load
 			await expect(page).toHaveURL(/\/listings/);
 		});
@@ -239,7 +239,7 @@ test.describe('item management', () => {
 			// Navigate to browse page where categories would be displayed
 			await page.goto('/browse');
 			await page.waitForLoadState('networkidle');
-			
+
 			// Page should load
 			await expect(page).toHaveURL(/\/browse/);
 		});
@@ -267,7 +267,7 @@ test.describe('item management', () => {
 			// Navigate to listings page
 			await page.goto('/listings');
 			await page.waitForLoadState('networkidle');
-			
+
 			// Page should load
 			await expect(page).toHaveURL(/\/listings/);
 		});

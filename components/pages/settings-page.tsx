@@ -567,7 +567,10 @@ export function SettingsPage() {
 						<CardContent className="space-y-6">
 							<div className="flex flex-col md:flex-row gap-6 items-start">
 								<div className="flex flex-col items-center gap-4" data-testid="avatar-section">
-									<Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-background shadow-xl" data-testid="avatar">
+									<Avatar
+										className="w-24 h-24 md:w-32 md:h-32 border-4 border-background shadow-xl"
+										data-testid="avatar"
+									>
 										<AvatarImage src={profileImage} />
 										<AvatarFallback className="text-2xl md:text-4xl bg-primary text-primary-foreground">
 											{getInitials(name)}
@@ -671,8 +674,12 @@ export function SettingsPage() {
 											</SelectTrigger>
 											<SelectContent>
 												{PHONE_COUNTRIES.map(phoneCountryOption => (
-													<SelectItem key={phoneCountryOption.iso2} value={phoneCountryOption.iso2}>
-														{phoneCountryOption.flag} {getDialCodeForCountry(phoneCountryOption.iso2)}
+													<SelectItem
+														key={phoneCountryOption.iso2}
+														value={phoneCountryOption.iso2}
+													>
+														{phoneCountryOption.flag}{' '}
+														{getDialCodeForCountry(phoneCountryOption.iso2)}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -689,9 +696,7 @@ export function SettingsPage() {
 											/>
 										</div>
 									</div>
-									{contactError && (
-										<p className="text-xs text-destructive">{contactError}</p>
-									)}
+									{contactError && <p className="text-xs text-destructive">{contactError}</p>}
 									{contactSuccess && (
 										<p className="text-xs text-green-600 dark:text-green-300">{contactSuccess}</p>
 									)}

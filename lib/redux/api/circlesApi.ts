@@ -93,10 +93,7 @@ export const circlesApi = createApi({
 			query: () => '/circles',
 			providesTags: result =>
 				result
-					? [
-							...result.map(({ id }) => ({ type: 'Circles' as const, id })),
-							{ type: 'Circles', id: 'LIST' },
-						]
+					? [...result.map(({ id }) => ({ type: 'Circles' as const, id })), { type: 'Circles', id: 'LIST' }]
 					: [{ type: 'Circles', id: 'LIST' }],
 		}),
 

@@ -42,11 +42,11 @@ export function ChatThreadPage({ threadId, initialDraft = null }: ChatThreadPage
 					</Button>
 				)}
 				{/* On desktop, show chat list alongside the thread; on mobile, hide the list */}
-				<ChatContainer 
-					initialThreadId={threadId} 
+				<ChatContainer
+					initialThreadId={threadId}
 					initialMessageDraft={initialDraft}
-					hideList={!isDesktop} 
-					fullBleed 
+					hideList={!isDesktop}
+					fullBleed
 				/>
 			</div>
 		</GlobalPresenceProvider>

@@ -40,11 +40,11 @@ export function Sidebar() {
 	// Get unread notification count via lightweight endpoint
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
 	const { data: notificationsData } = useGetUnreadNotificationCountQuery();
-	
+
 	// Get unread message count
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
 	const { data: messagesData } = useGetUnreadMessageCountQuery();
-	
+
 	// Use total unread count from API
 	const totalNotificationUnread = notificationsData?.unreadCount || 0;
 	const totalMessageUnread = messagesData?.unreadCount || 0;
@@ -85,13 +85,13 @@ export function Sidebar() {
 			<div className="flex items-center justify-center gap-3 border-b border-border">
 				<Link href="/home" className="flex-1 items-center justify-center" onClick={handleNavClick}>
 					<Image
-							src="/share-circle-logo-1.png"
-							alt="ShareCircle"
-							width={160}
-							height={48}
-							// className="h-auto w-36 object-contain"
-							priority
-						/>
+						src="/share-circle-logo-1.png"
+						alt="ShareCircle"
+						width={160}
+						height={48}
+						// className="h-auto w-36 object-contain"
+						priority
+					/>
 				</Link>
 				<Button
 					variant="ghost"

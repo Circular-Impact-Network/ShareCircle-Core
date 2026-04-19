@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
 					...entry.item,
 					imageUrl: await getSignedUrl(entry.item.imagePath, 'items'),
 				},
-			}))
+			})),
 		);
 
 		return NextResponse.json(entriesWithUrls, { status: 200 });

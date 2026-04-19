@@ -10,11 +10,11 @@ test.describe('settings and profile', () => {
 
 	test('user can navigate to settings page', async ({ page }) => {
 		await page.goto('/home');
-		
+
 		// Look for settings link in sidebar or menu
 		const settingsLink = page.getByRole('link', { name: /Settings/i });
 		const settingsButton = page.getByRole('button', { name: /Settings/i });
-		
+
 		if (await settingsLink.isVisible()) {
 			await settingsLink.click();
 		} else if (await settingsButton.isVisible()) {
@@ -23,49 +23,49 @@ test.describe('settings and profile', () => {
 			// Direct navigation
 			await page.goto('/settings');
 		}
-		
+
 		await expect(page).toHaveURL(/\/settings/);
 	});
 
 	test('settings page shows user profile section', async ({ page }) => {
 		await page.goto('/settings');
-		
+
 		// Should show profile section
 		const profileSection = page.getByRole('heading', { name: /Profile|Account/i });
-		
+
 		await expect(profileSection.first()).toBeVisible();
 	});
 
 	test('user can update their display name', async ({ page }) => {
 		await page.goto('/settings');
-		
+
 		// Find name input
 		const nameInput = page.getByLabel(/Name|Display Name/i);
-		
+
 		if (await nameInput.isVisible()) {
 			// Get current value
 			const currentName = await nameInput.inputValue();
-			
+
 			// Update name
 			await nameInput.clear();
 			const newName = `Test User ${Date.now()}`;
 			await nameInput.fill(newName);
-			
+
 			// Save changes
 			const saveButton = page.getByRole('button', { name: /Save|Update/i });
 			if (await saveButton.isVisible()) {
 				await saveButton.click();
-				
+
 				// Wait for save to complete
 				await page.waitForTimeout(1000);
-				
+
 				// Verify success message or name is saved
 				const successMessage = page.getByText(/Saved|Updated|Success/i);
 				if (await successMessage.isVisible()) {
 					expect(await successMessage.isVisible()).toBeTruthy();
 				}
 			}
-			
+
 			// Restore original name
 			await nameInput.clear();
 			await nameInput.fill(currentName || 'Test User');
@@ -78,11 +78,11 @@ test.describe('settings and profile', () => {
 
 	test('user can view their email (read-only)', async ({ page, users }) => {
 		await page.goto('/settings');
-		
+
 		// Email should be displayed (might be read-only)
 		const emailField = page.getByText(users.user1.email);
 		const emailInput = page.getByLabel(/Email/i);
-		
+
 		if (await emailField.isVisible()) {
 			expect(await emailField.textContent()).toContain(users.user1.email);
 		} else if (await emailInput.isVisible()) {
@@ -100,41 +100,41 @@ test.describe('settings and profile', () => {
 			await notificationsTab.click();
 			await page.waitForTimeout(500);
 		}
-		
+
 		// Look for notification preferences section with the data-testid we added
 		const notificationPrefs = page.locator('[data-testid="notification-preferences"]');
 		const notificationToggle = page.locator('[data-testid="notification-toggle"]');
 		const notificationText = page.getByText(/Notifications/i);
-		
+
 		// At least one notification setting should exist
 		const hasNotifPrefs = await notificationPrefs.isVisible({ timeout: 3000 }).catch(() => false);
 		const hasToggle = await notificationToggle.isVisible({ timeout: 2000 }).catch(() => false);
 		const hasNotifText = await notificationText.isVisible({ timeout: 2000 }).catch(() => false);
-		
+
 		// Some notification-related content should be visible
 		expect(hasNotifPrefs || hasToggle || hasNotifText).toBeTruthy();
 	});
 
 	test('user can toggle notification preferences', async ({ page }) => {
 		await page.goto('/settings');
-		
+
 		// Navigate to notifications tab if exists
 		const notificationTab = page.getByRole('tab', { name: /Notification/i });
 		if (await notificationTab.isVisible()) {
 			await notificationTab.click();
 		}
-		
+
 		// Find a toggle switch
 		const toggles = page.locator('[role="switch"]');
-		
-		if (await toggles.count() > 0) {
+
+		if ((await toggles.count()) > 0) {
 			const firstToggle = toggles.first();
 			const initialState = await firstToggle.getAttribute('aria-checked');
-			
+
 			// Toggle it
 			await firstToggle.click();
 			await page.waitForTimeout(500);
-			
+
 			// Toggle back
 			await firstToggle.click();
 			await page.waitForTimeout(500);
@@ -144,24 +144,24 @@ test.describe('settings and profile', () => {
 	test('settings shows profile avatar', async ({ page }) => {
 		await page.goto('/settings');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Make sure we're on the Profile tab
 		const profileTab = page.getByRole('tab', { name: /Profile/i });
 		if (await profileTab.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await profileTab.click();
 			await page.waitForTimeout(500);
 		}
-		
+
 		// Should show avatar area with the data-testid we added
 		const avatarSection = page.locator('[data-testid="avatar-section"]');
 		const avatar = page.locator('[data-testid="avatar"]');
 		const changePhotoButton = page.getByRole('button', { name: /Change Photo/i });
-		
+
 		// At least some avatar-related element should be visible
 		const hasAvatarSection = await avatarSection.isVisible({ timeout: 3000 }).catch(() => false);
 		const hasAvatar = await avatar.isVisible({ timeout: 2000 }).catch(() => false);
 		const hasChangePhoto = await changePhotoButton.isVisible({ timeout: 2000 }).catch(() => false);
-		
+
 		// Profile page should have some visual representation
 		expect(hasAvatarSection || hasAvatar || hasChangePhoto).toBeTruthy();
 	});
@@ -169,67 +169,67 @@ test.describe('settings and profile', () => {
 	test('user can access security settings', async ({ page }) => {
 		await page.goto('/settings');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Navigate to Account tab where Security settings are
 		const accountTab = page.getByRole('tab', { name: /Account/i });
 		if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await accountTab.click();
 			await page.waitForTimeout(500);
 		}
-		
+
 		// Look for Security section heading
 		const securityHeading = page.getByRole('heading', { name: /Security/i });
 		const changePasswordButton = page.getByRole('button', { name: /Change Password/i });
-		
+
 		// Security-related content should be accessible
 		const hasSecurityHeading = await securityHeading.isVisible({ timeout: 3000 }).catch(() => false);
 		const hasChangePassword = await changePasswordButton.isVisible({ timeout: 2000 }).catch(() => false);
-		
+
 		expect(hasSecurityHeading || hasChangePassword).toBeTruthy();
 	});
 
 	test('settings validates required fields', async ({ page }) => {
 		await page.goto('/settings');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Ensure we're on the profile tab
 		const profileTab = page.getByRole('tab', { name: /Profile/i });
 		if (await profileTab.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await profileTab.click();
 			await page.waitForTimeout(500);
 		}
-		
+
 		const nameInput = page.locator('input#name').or(page.getByPlaceholder(/name/i));
-		
+
 		if (await nameInput.isVisible({ timeout: 3000 }).catch(() => false)) {
 			// Get original value
 			const originalValue = await nameInput.inputValue();
-			
+
 			// Clear the name
 			await nameInput.clear();
-			
+
 			// Try to save
 			const saveButton = page.getByRole('button', { name: /Save/i });
 			if (await saveButton.isVisible()) {
 				await saveButton.click();
-				
+
 				// Wait for potential response
 				await page.waitForTimeout(1000);
-				
+
 				// Check for various validation states
 				const errorMessage = page.getByText(/required|cannot be empty|please enter/i);
 				const errorToast = page.locator('[role="alert"]');
-				
+
 				const hasError = await errorMessage.isVisible().catch(() => false);
 				const hasToast = await errorToast.isVisible().catch(() => false);
-				const hasInvalidState = await nameInput.evaluate(
-					el => el.getAttribute('aria-invalid') === 'true'
-				).catch(() => false);
-				
+				const hasInvalidState = await nameInput
+					.evaluate(el => el.getAttribute('aria-invalid') === 'true')
+					.catch(() => false);
+
 				// Either validation happens or empty name is allowed - both are acceptable
 				// The important thing is the form handles the edge case gracefully
 				expect(hasError || hasToast || hasInvalidState || true).toBeTruthy();
-				
+
 				// Restore original value if validation allowed empty
 				if (!hasError && !hasInvalidState && originalValue) {
 					await nameInput.fill(originalValue);
@@ -240,35 +240,35 @@ test.describe('settings and profile', () => {
 
 	test('settings page is responsive', async ({ page }) => {
 		await page.goto('/settings');
-		
+
 		// Test at different viewport sizes
 		await page.setViewportSize({ width: 1200, height: 800 });
 		await page.waitForTimeout(300);
-		
+
 		// Mobile viewport
 		await page.setViewportSize({ width: 375, height: 667 });
 		await page.waitForTimeout(300);
-		
+
 		// Settings should still be accessible
 		const settingsContent = page.locator('main, [role="main"]');
 		await expect(settingsContent.first()).toBeVisible();
-		
+
 		// Reset viewport
 		await page.setViewportSize({ width: 1280, height: 720 });
 	});
 
 	test('unsaved changes prompt when navigating away', async ({ page }) => {
 		await page.goto('/settings');
-		
+
 		const nameInput = page.getByLabel(/Name|Display Name/i);
-		
+
 		if (await nameInput.isVisible()) {
 			// Make a change
 			await nameInput.fill('Unsaved Change');
-			
+
 			// Try to navigate away
 			await page.goto('/home');
-			
+
 			// Browser might show confirmation dialog - this is handled differently
 			// Just verify navigation happens or is prevented
 			await page.waitForTimeout(500);
@@ -326,7 +326,7 @@ test.describe('settings and profile', () => {
 			// Create a test image
 			const imageBuffer = Buffer.from(
 				'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-				'base64'
+				'base64',
 			);
 
 			const fileInput = page.locator('input[type="file"][accept="image/*"]');

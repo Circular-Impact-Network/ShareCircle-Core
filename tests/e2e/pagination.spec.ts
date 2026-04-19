@@ -12,7 +12,10 @@ test.describe('Browse page pagination', () => {
 		const emptyState = page.getByText(/No items yet/i);
 
 		const eitherVisible = await Promise.race([
-			items.first().waitFor({ state: 'visible', timeout: 5000 }).then(() => 'items'),
+			items
+				.first()
+				.waitFor({ state: 'visible', timeout: 5000 })
+				.then(() => 'items'),
 			emptyState.waitFor({ state: 'visible', timeout: 5000 }).then(() => 'empty'),
 		]).catch(() => 'neither');
 

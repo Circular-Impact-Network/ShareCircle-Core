@@ -191,11 +191,8 @@ export async function GET(req: NextRequest) {
 		// When limit param is present, return paginated response format
 		// Otherwise return flat array for backward compatibility
 		if (limit !== null) {
-			const nextCursor = hasMore ? itemsWithUrls[itemsWithUrls.length - 1]?.id ?? null : null;
-			return NextResponse.json(
-				{ items: itemsWithUrls, nextCursor, hasMore },
-				{ status: 200 },
-			);
+			const nextCursor = hasMore ? (itemsWithUrls[itemsWithUrls.length - 1]?.id ?? null) : null;
+			return NextResponse.json({ items: itemsWithUrls, nextCursor, hasMore }, { status: 200 });
 		}
 
 		return NextResponse.json(itemsWithUrls, { status: 200 });
@@ -276,7 +273,8 @@ export async function POST(req: NextRequest) {
 					{
 						error: 'Listing does not match photo(s)',
 						code: 'ITEM_MISMATCH',
-						message: 'Your description does not match one or more photos. Please update the text or photos.',
+						message:
+							'Your description does not match one or more photos. Please update the text or photos.',
 						details: validation.failures.map(f => ({
 							imageLabel: f.imageLabel,
 							reason: f.reason,
@@ -334,9 +332,7 @@ export async function POST(req: NextRequest) {
 				description: item.description,
 				categories: categories || [],
 				tags: tags || [],
-			}).catch(err =>
-				console.error('Background embedding generation failed:', err)
-			);
+			}).catch(err => console.error('Background embedding generation failed:', err));
 		}
 
 		// Generate signed URLs for all media files (main image + supporting media)
@@ -370,5 +366,3 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
 	}
 }
-
-

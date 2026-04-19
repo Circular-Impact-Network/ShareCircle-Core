@@ -88,10 +88,10 @@ test.describe('circles and items', () => {
 		// Fill in item details
 		const nameInput = page.getByPlaceholder('e.g., Camping Tent');
 		await nameInput.fill('Camping Tent');
-		
+
 		const descInput = page.getByPlaceholder('Describe your item, its condition, and any important details...');
 		await descInput.fill('A reliable tent for weekend trips.');
-		
+
 		// Select circle - try multiple selector patterns
 		const circleButton = page.getByRole('button', { name: circleName });
 		const circleCheckbox = page.getByLabel(circleName);
@@ -100,14 +100,14 @@ test.describe('circles and items', () => {
 		} else if (await circleCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
 			await circleCheckbox.click();
 		}
-		
+
 		// Wait for validation
 		await page.waitForTimeout(500);
-		
+
 		// Check if Create Item button is enabled
 		const createButton = page.getByRole('button', { name: 'Create Item' });
 		const isEnabled = await createButton.isEnabled().catch(() => false);
-		
+
 		if (isEnabled) {
 			// Create the item
 			await createButton.click();
@@ -123,7 +123,7 @@ test.describe('circles and items', () => {
 			// Item creation requires additional setup (e.g., circle selection in modal)
 			await page.keyboard.press('Escape');
 			await page.waitForTimeout(500);
-			
+
 			// At least verify we're on the listings page
 			await expect(page).toHaveURL(/\/listings/);
 		}

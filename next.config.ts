@@ -20,9 +20,7 @@ const withPWA = withPWAInit({
 			},
 			{
 				urlPattern: ({ request, url }) =>
-					request.url.startsWith('http') &&
-					url.pathname.startsWith('/api/') &&
-					request.method !== 'GET',
+					request.url.startsWith('http') && url.pathname.startsWith('/api/') && request.method !== 'GET',
 				handler: 'NetworkOnly',
 			},
 			{
@@ -44,8 +42,7 @@ const withPWA = withPWAInit({
 				},
 			},
 			{
-				urlPattern: ({ request, url }) =>
-					request.url.startsWith('http') && request.destination === 'document',
+				urlPattern: ({ request, url }) => request.url.startsWith('http') && request.destination === 'document',
 				handler: 'NetworkFirst',
 				options: {
 					cacheName: 'sharecircle-page-cache',

@@ -35,14 +35,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 		}
 
-		const otherParticipants = conversation.participants
-			.filter(p => p.userId !== userId)
-			.map(p => p.user);
+		const otherParticipants = conversation.participants.filter(p => p.userId !== userId).map(p => p.user);
 
 		const otherUserId =
-			conversation.type === 'DIRECT'
-				? await getDirectConversationOtherUserId(conversation.id, userId)
-				: null;
+			conversation.type === 'DIRECT' ? await getDirectConversationOtherUserId(conversation.id, userId) : null;
 		const canMessage =
 			otherUserId && conversation.type === 'DIRECT' ? await canUsersChat(userId, otherUserId) : true;
 

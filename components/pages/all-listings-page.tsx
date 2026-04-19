@@ -28,11 +28,7 @@ export function AllListingsPage() {
 			item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
 			item.circles.some(circle => circle.name.toLowerCase().includes(searchTerm.toLowerCase())),
 	);
-	const {
-		visibleItems,
-		hasMore,
-		loadMore,
-	} = useProgressivePagination({ items: filteredItems, pageSize: 12 });
+	const { visibleItems, hasMore, loadMore } = useProgressivePagination({ items: filteredItems, pageSize: 12 });
 
 	return (
 		<PageShell>
@@ -124,7 +120,9 @@ export function AllListingsPage() {
 											event.stopPropagation();
 										}}
 									>
-										<span className="text-xs text-muted-foreground">Browse across your circles</span>
+										<span className="text-xs text-muted-foreground">
+											Browse across your circles
+										</span>
 									</div>
 								}
 							/>

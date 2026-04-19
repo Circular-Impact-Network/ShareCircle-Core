@@ -33,29 +33,27 @@ export function DashboardHome() {
 	const { data: recentThreads = [], isLoading: isRecentThreadsLoading } = useGetRecentThreadsQuery({ limit: 3 });
 
 	const userName = user?.name || session?.user?.name || 'there';
+	const [clientNow] = useState(() => Date.now());
 	const newUserWindowMs = 2 * 60 * 60 * 1000;
 	const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : null;
-	const isNewUser = userCreatedAt ? Date.now() - userCreatedAt.getTime() < newUserWindowMs : false;
+	const isNewUser = userCreatedAt ? clientNow - userCreatedAt.getTime() < newUserWindowMs : false;
 	const welcomeTitle = isNewUser ? `Welcome, ${userName}!` : `Welcome back, ${userName}!`;
 	const unreadNotifications = notificationsData?.unreadCount ?? 0;
 	const unreadMessages = unreadMessagesData?.unreadCount ?? 0;
-	
+
 	// Memoize filtered arrays to prevent recalculation on every render
 	const pendingRequests = useMemo(
 		() => incomingRequests.filter(request => request.status === 'PENDING'),
-		[incomingRequests]
+		[incomingRequests],
 	);
-	const openItemRequests = useMemo(
-		() => itemRequests.filter(request => request.status === 'OPEN'),
-		[itemRequests]
-	);
+	const openItemRequests = useMemo(() => itemRequests.filter(request => request.status === 'OPEN'), [itemRequests]);
 	const recentNotifications = useMemo(() => notificationsData?.notifications?.slice(0, 3) ?? [], [notificationsData]);
 	const messageNotifications = useMemo(
 		() =>
 			(notificationsData?.notifications ?? [])
 				.filter(notification => notification.type === 'NEW_MESSAGE')
 				.slice(0, 3),
-		[notificationsData]
+		[notificationsData],
 	);
 
 	const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -91,9 +89,7 @@ export function DashboardHome() {
 							className="bg-white/10 text-white hover:bg-white/20"
 							asChild
 						>
-							<Link href="/browse">
-								Browse items
-							</Link>
+							<Link href="/browse">Browse items</Link>
 						</Button>
 						<Button
 							variant="outline"
@@ -138,10 +134,14 @@ export function DashboardHome() {
 					<Card className="flex flex-col border-border/60">
 						<CardHeader className="space-y-1 pb-2">
 							<div className="flex items-center justify-between gap-2">
-								<CardTitle className="text-base sm:text-lg">Borrow requests ({pendingRequests.length})</CardTitle>
+								<CardTitle className="text-base sm:text-lg">
+									Borrow requests ({pendingRequests.length})
+								</CardTitle>
 								<HandshakeIcon className="h-4 w-4 text-primary" />
 							</div>
-							<CardDescription className="text-xs sm:text-sm">Your pending incoming borrow requests</CardDescription>
+							<CardDescription className="text-xs sm:text-sm">
+								Your pending incoming borrow requests
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isIncomingLoading ? (
@@ -153,7 +153,10 @@ export function DashboardHome() {
 								<p className="text-sm text-muted-foreground">No pending requests right now.</p>
 							) : (
 								pendingRequests.slice(0, 3).map(request => (
-									<div key={request.id} className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+									<div
+										key={request.id}
+										className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
+									>
 										<p className="text-sm font-medium text-foreground">{request.item.name}</p>
 										<p className="text-xs text-muted-foreground">
 											From {request.requester?.name || 'Unknown'} -{' '}
@@ -173,10 +176,14 @@ export function DashboardHome() {
 					<Card className="flex flex-col border-border/60">
 						<CardHeader className="space-y-1 pb-2">
 							<div className="flex items-center justify-between gap-2">
-								<CardTitle className="text-base sm:text-lg">Notifications ({unreadNotifications})</CardTitle>
+								<CardTitle className="text-base sm:text-lg">
+									Notifications ({unreadNotifications})
+								</CardTitle>
 								<Bell className="h-4 w-4 text-primary" />
 							</div>
-							<CardDescription className="text-xs sm:text-sm">Recent alerts for your account</CardDescription>
+							<CardDescription className="text-xs sm:text-sm">
+								Recent alerts for your account
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isNotificationsLoading ? (
@@ -193,7 +200,9 @@ export function DashboardHome() {
 										className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
 									>
 										<p className="text-sm font-medium text-foreground">{notification.title}</p>
-										<p className="line-clamp-1 text-xs text-muted-foreground">{notification.body}</p>
+										<p className="line-clamp-1 text-xs text-muted-foreground">
+											{notification.body}
+										</p>
 									</div>
 								))
 							)}
@@ -211,7 +220,9 @@ export function DashboardHome() {
 								<CardTitle className="text-base sm:text-lg">Messages ({unreadMessages})</CardTitle>
 								<MessageCircle className="h-4 w-4 text-primary" />
 							</div>
-							<CardDescription className="text-xs sm:text-sm">Recent unread message activity</CardDescription>
+							<CardDescription className="text-xs sm:text-sm">
+								Recent unread message activity
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
 							{isUnreadMessagesLoading || isRecentThreadsLoading ? (
@@ -235,7 +246,9 @@ export function DashboardHome() {
 												</p>
 												<span className="shrink-0 text-[11px] text-muted-foreground">
 													{thread.lastMessageAt
-														? formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: true })
+														? formatDistanceToNow(new Date(thread.lastMessageAt), {
+																addSuffix: true,
+															})
 														: 'New'}
 												</span>
 											</div>
@@ -244,7 +257,8 @@ export function DashboardHome() {
 											</p>
 											{hasUnread ? (
 												<p className="mt-1 text-[11px] font-medium text-primary">
-													{thread.unreadCount} unread {thread.unreadCount === 1 ? 'message' : 'messages'}
+													{thread.unreadCount} unread{' '}
+													{thread.unreadCount === 1 ? 'message' : 'messages'}
 												</p>
 											) : null}
 										</Link>
@@ -257,7 +271,9 @@ export function DashboardHome() {
 										className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
 									>
 										<p className="text-sm font-medium text-foreground">{notification.title}</p>
-										<p className="line-clamp-1 text-xs text-muted-foreground">{notification.body}</p>
+										<p className="line-clamp-1 text-xs text-muted-foreground">
+											{notification.body}
+										</p>
 									</div>
 								))
 							) : (
@@ -278,7 +294,9 @@ export function DashboardHome() {
 				<Card className="border-border/60">
 					<CardHeader className="space-y-1 pb-3">
 						<CardTitle>Requested Items</CardTitle>
-						<CardDescription className="text-sm">Your friends need a few items. Do you have these?</CardDescription>
+						<CardDescription className="text-sm">
+							Your friends need a few items. Do you have these?
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-2.5 pt-0">
 						{isItemRequestsLoading ? (
@@ -290,7 +308,8 @@ export function DashboardHome() {
 								<div key={request.id} className="rounded-md border border-border/60 px-3.5 py-3">
 									<p className="text-sm font-medium text-foreground">{request.title}</p>
 									<p className="mt-1 text-xs text-muted-foreground">
-										From {request.requester?.name || 'Unknown'} in {request.circle?.name || 'your circle'} -{' '}
+										From {request.requester?.name || 'Unknown'} in{' '}
+										{request.circle?.name || 'your circle'} -{' '}
 										{formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
 									</p>
 								</div>
@@ -320,12 +339,16 @@ export function DashboardHome() {
 
 					{isCirclesLoading ? (
 						<Card className="border-border/60">
-							<CardContent className="py-8 text-center text-sm text-muted-foreground">Loading circles...</CardContent>
+							<CardContent className="py-8 text-center text-sm text-muted-foreground">
+								Loading circles...
+							</CardContent>
 						</Card>
 					) : circles.length === 0 ? (
 						<Card className="border-border/60">
 							<CardContent className="py-8 text-center">
-								<p className="text-sm text-muted-foreground">No circles yet. Join or create one to get started.</p>
+								<p className="text-sm text-muted-foreground">
+									No circles yet. Join or create one to get started.
+								</p>
 							</CardContent>
 						</Card>
 					) : (
@@ -344,8 +367,8 @@ export function DashboardHome() {
 										</CardHeader>
 										<CardContent className="pt-0">
 											<p className="text-xs text-muted-foreground">
-												{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'} -{' '}
-												{circle.userRole === 'ADMIN' ? 'Admin' : 'Member'}
+												{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'}{' '}
+												- {circle.userRole === 'ADMIN' ? 'Admin' : 'Member'}
 											</p>
 										</CardContent>
 									</Card>

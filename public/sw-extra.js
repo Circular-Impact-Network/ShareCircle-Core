@@ -8,13 +8,15 @@ self.addEventListener('message', event => {
 
 	if (event.data?.type === 'CLEAR_RUNTIME_CACHES') {
 		event.waitUntil(
-			caches.keys().then(cacheNames =>
-				Promise.all(
-					cacheNames
-						.filter(cacheName => !cacheName.includes('precache'))
-						.map(cacheName => caches.delete(cacheName)),
+			caches
+				.keys()
+				.then(cacheNames =>
+					Promise.all(
+						cacheNames
+							.filter(cacheName => !cacheName.includes('precache'))
+							.map(cacheName => caches.delete(cacheName)),
+					),
 				),
-			),
 		);
 	}
 });
@@ -78,9 +80,7 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
 	const rawUrl = event.notification.data?.url || '/notifications';
-	const absoluteUrl = /^https?:\/\//i.test(rawUrl)
-		? rawUrl
-		: new URL(rawUrl, self.registration.scope).href;
+	const absoluteUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : new URL(rawUrl, self.registration.scope).href;
 
 	event.notification.close();
 	event.waitUntil(

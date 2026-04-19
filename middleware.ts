@@ -16,18 +16,6 @@ export async function middleware(request: NextRequest) {
 		secret: process.env.NEXTAUTH_SECRET,
 	});
 
-	// Define public routes that don't require authentication
-	const publicRoutes = [
-		'/',
-		'/login',
-		'/signup',
-		'/forgot-password',
-		'/reset-password',
-		'/verify-email',
-		'/landing',
-		'/join',
-	];
-
 	// Define routes that require authentication
 	const protectedRoutePatterns = [
 		/^\/items\/[^/]+$/, // /items/[id] - shareable item links
@@ -44,7 +32,6 @@ export async function middleware(request: NextRequest) {
 
 	// Check if current path is a protected route
 	const isProtectedRoute = protectedRoutePatterns.some(pattern => pattern.test(pathname));
-	const isPublicRoute = publicRoutes.includes(pathname);
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {

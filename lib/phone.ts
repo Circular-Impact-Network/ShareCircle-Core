@@ -51,7 +51,10 @@ export function normalizePhoneNumber(phoneNumber: string, country: SupportedPhon
 	};
 }
 
-export function validatePhoneByCountry(phoneNumber: string, country: SupportedPhoneCountry): {
+export function validatePhoneByCountry(
+	phoneNumber: string,
+	country: SupportedPhoneCountry,
+): {
 	valid: boolean;
 	error?: string;
 	normalized?: NormalizedPhone;

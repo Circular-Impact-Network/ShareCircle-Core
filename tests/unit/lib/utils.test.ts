@@ -16,13 +16,9 @@ describe('Utility Functions', () => {
 		it('handles conditional classes', () => {
 			const isActive = true;
 			const isDisabled = false;
-			
-			const result = cn(
-				'base-class',
-				isActive && 'active',
-				isDisabled && 'disabled'
-			);
-			
+
+			const result = cn('base-class', isActive && 'active', isDisabled && 'disabled');
+
 			expect(result).toBe('base-class active');
 		});
 
@@ -60,38 +56,24 @@ describe('Utility Functions', () => {
 		it('handles object syntax from clsx', () => {
 			const result = cn({
 				'base-class': true,
-				'active': true,
-				'disabled': false,
+				active: true,
+				disabled: false,
 			});
 			expect(result).toBe('base-class active');
 		});
 
 		it('handles mixed inputs', () => {
-			const result = cn(
-				'base',
-				['array-class'],
-				{ 'object-class': true, 'disabled': false },
-				'end'
-			);
+			const result = cn('base', ['array-class'], { 'object-class': true, disabled: false }, 'end');
 			expect(result).toBe('base array-class object-class end');
 		});
 
 		it('handles complex Tailwind responsive classes', () => {
-			const result = cn(
-				'flex',
-				'md:hidden',
-				'lg:flex',
-				'items-center'
-			);
+			const result = cn('flex', 'md:hidden', 'lg:flex', 'items-center');
 			expect(result).toBe('flex md:hidden lg:flex items-center');
 		});
 
 		it('handles hover and focus states', () => {
-			const result = cn(
-				'bg-white',
-				'hover:bg-gray-100',
-				'focus:ring-2'
-			);
+			const result = cn('bg-white', 'hover:bg-gray-100', 'focus:ring-2');
 			expect(result).toBe('bg-white hover:bg-gray-100 focus:ring-2');
 		});
 

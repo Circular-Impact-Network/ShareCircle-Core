@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
 					...transaction.item,
 					imageUrl: await getSignedUrl(transaction.item.imagePath, 'items'),
 				},
-			}))
+			})),
 		);
 
 		return NextResponse.json(transactionsWithUrls, { status: 200 });

@@ -283,7 +283,11 @@ function SignupContent() {
 				});
 
 				if (signInResult?.error) {
-					setError(signInResult.error === 'CredentialsSignin' ? 'Invalid code. Please try again.' : signInResult.error);
+					setError(
+						signInResult.error === 'CredentialsSignin'
+							? 'Invalid code. Please try again.'
+							: signInResult.error,
+					);
 					setIsVerifying(false);
 					setVerificationStatus('idle');
 					return;

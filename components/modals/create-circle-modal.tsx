@@ -31,7 +31,7 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 	const [error, setError] = useState('');
 	const [createdCircle, setCreatedCircle] = useState<Circle | null>(null);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
-	
+
 	// Use RTK Query mutation
 	const [createCircle, { isLoading }] = useCreateCircleMutation();
 
@@ -56,9 +56,10 @@ export function CreateCircleModal({ open, onOpenChange, onCircleCreated }: Creat
 			setCreatedCircle(circle);
 		} catch (err) {
 			console.error('Error creating circle:', err);
-			const errorMessage = err && typeof err === 'object' && 'data' in err
-				? (err as { data?: { error?: string } }).data?.error || 'Failed to create circle'
-				: 'Failed to create circle. Please try again.';
+			const errorMessage =
+				err && typeof err === 'object' && 'data' in err
+					? (err as { data?: { error?: string } }).data?.error || 'Failed to create circle'
+					: 'Failed to create circle. Please try again.';
 			setError(errorMessage);
 		}
 	};

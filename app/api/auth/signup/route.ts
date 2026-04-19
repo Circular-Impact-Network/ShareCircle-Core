@@ -62,7 +62,10 @@ export async function POST(req: NextRequest) {
 
 		if (hasPhone) {
 			if (!normalizedCountry || !isSupportedPhoneCountry(normalizedCountry)) {
-				return NextResponse.json({ error: 'A supported country is required for phone signup' }, { status: 400 });
+				return NextResponse.json(
+					{ error: 'A supported country is required for phone signup' },
+					{ status: 400 },
+				);
 			}
 
 			const validated = validatePhoneByCountry(body.phoneNumber!, normalizedCountry);
