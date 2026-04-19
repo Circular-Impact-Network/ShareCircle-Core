@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import { chromium, request, type FullConfig } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
@@ -11,6 +12,19 @@ type CreatedUser = {
 };
 
 export default async function globalSetup(config: FullConfig) {
+	// Mirror Next.js env loading so this process sees DATABASE_URL when only .env.local defines it.
+	dotenv.config({ path: path.join(process.cwd(), '.env') });
+	dotenv.config({ path: path.join(process.cwd(), '.env.local'), override: true });
+
+	if (!process.env.DATABASE_URL?.trim()) {
+		throw new Error(
+			'E2E global setup requires DATABASE_URL (Prisma). ' +
+				'Locally: ensure .env / .env.local defines DATABASE_URL. ' +
+				'GitHub Actions: set repository secrets TEST_DATABASE_URL and TEST_DIRECT_URL (CI maps them to DATABASE_URL / DIRECT_URL). ' +
+				'This is not an email/SMS issue — signup hits the DB before any mail is sent.',
+		);
+	}
+
 	const baseURL = (config.projects[0]?.use?.baseURL as string) || 'http://localhost:3003';
 	const authDir = path.join(process.cwd(), '.playwright', 'auth');
 	const usersPath = path.join(authDir, 'users.json');

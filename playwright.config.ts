@@ -25,7 +25,14 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: true, // Allow reusing existing server for local development
 		timeout: 120_000,
-		env: { E2E_AUTO_VERIFY: 'true', SKIP_SMS: 'true' }, // Keep OTP flows testable without external email/SMS providers
+		// Inherit full env (CI sets DATABASE_URL from secrets; Next also reads .env.local locally).
+		// Do not replace with a tiny object only — that can drop DATABASE_URL for the dev server.
+		env: {
+			...process.env,
+			E2E_AUTO_VERIFY: process.env.E2E_AUTO_VERIFY ?? 'true',
+			SKIP_SMS: process.env.SKIP_SMS ?? 'true',
+			SKIP_EMAIL: process.env.SKIP_EMAIL ?? 'true',
+		},
 	},
 	projects: [
 		{

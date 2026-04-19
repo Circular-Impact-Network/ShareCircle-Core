@@ -53,6 +53,7 @@ jobs:
                   path: coverage/
                   retention-days: 14
 
+    # E2E needs a real Postgres URL and NextAuth/Supabase secrets; add repo secrets or this job will fail at signup (empty DATABASE_URL).
     e2e-tests:
         runs-on: ubuntu-latest
         needs: [lint, type-check, unit-tests]
