@@ -406,8 +406,8 @@ export function NotificationsPage() {
 						title="Notifications"
 						description="Stay updated with your circles, borrow requests, and item requests"
 					/>
-					<div className="flex items-center justify-between">
-						<PageTabsList>
+					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+						<PageTabsList className="w-full sm:w-auto">
 							<PageTabsTrigger
 								value="alerts"
 								className="gap-2"
@@ -434,7 +434,7 @@ export function NotificationsPage() {
 							</PageTabsTrigger>
 						</PageTabsList>
 
-						<div className="flex gap-2">
+						<div className="flex gap-2 self-end sm:self-auto">
 							{activeTab === 'alerts' && alerts.length > 0 && (
 								<>
 									<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
