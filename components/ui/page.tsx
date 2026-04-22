@@ -11,7 +11,7 @@ export function PageStickyHeader({ children, className }: PageStickyHeaderProps)
 	return (
 		<div
 			className={cn(
-				'sticky top-14 lg:top-0 z-10',
+				'sticky top-0 z-10',
 				'bg-background/95 backdrop-blur-sm',
 				'-mx-4 px-4 sm:-mx-5 sm:px-5 lg:-mx-6 lg:px-6 xl:-mx-7 xl:px-7',
 				className,
