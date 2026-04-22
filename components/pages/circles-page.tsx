@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Link2, Users, Calendar, ArrowRight, LayoutGrid, List, Shield, Crown, Loader2 } from 'lucide-react';
+import { Plus, Link2, Users, Calendar, ArrowRight, LayoutGrid, List, Shield, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CreateCircleModal } from '@/components/modals/create-circle-modal';
@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { PageHeader, PageShell } from '@/components/ui/page';
+import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
+import { CircleGridSkeleton } from '@/components/ui/skeletons';
 import { useGetCirclesQuery, type Circle } from '@/lib/redux/api/circlesApi';
 
 interface CircleMemberPreview {
@@ -122,59 +123,58 @@ export function CirclesPage() {
 
 	return (
 		<PageShell className="space-y-6 sm:space-y-8">
-			<PageHeader
-				title="My Circles"
-				description="Join communities and share items with friends"
-				actions={
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-						<div className="flex gap-2 sm:gap-3">
-							<Button
-								onClick={() => setShowCreateModal(true)}
-								className="flex-1 gap-2 shadow-md hover:shadow-lg transition-all duration-200 sm:flex-none"
-							>
-								<Plus className="w-4 h-4" />
-								<span className="hidden sm:inline">Create Circle</span>
-								<span className="sm:hidden">Create</span>
-							</Button>
-							<Button
-								onClick={() => setShowJoinModal(true)}
-								variant="outline"
-								className="flex-1 gap-2 bg-transparent transition-all duration-200 sm:flex-none"
-							>
-								<Link2 className="w-4 h-4" />
-								<span className="hidden sm:inline">Join via Code</span>
-								<span className="sm:hidden">Join</span>
-							</Button>
+			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+				<PageHeader
+					title="My Circles"
+					description="Join communities and share items with friends"
+					actions={
+						<div className="flex flex-wrap items-center gap-2">
+							<div className="flex gap-2">
+								<Button
+									onClick={() => setShowCreateModal(true)}
+									className="gap-2 shadow-md hover:shadow-lg transition-all duration-200"
+									size="sm"
+								>
+									<Plus className="w-4 h-4" />
+									<span className="hidden sm:inline">Create Circle</span>
+									<span className="sm:hidden">Create</span>
+								</Button>
+								<Button
+									onClick={() => setShowJoinModal(true)}
+									variant="outline"
+									size="sm"
+									className="gap-2 bg-transparent transition-all duration-200"
+								>
+									<Link2 className="w-4 h-4" />
+									<span className="hidden sm:inline">Join via Code</span>
+									<span className="sm:hidden">Join</span>
+								</Button>
+							</div>
+							<div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+								<Button
+									variant={viewMode === 'grid' ? 'default' : 'ghost'}
+									size="sm"
+									onClick={() => setViewMode('grid')}
+									className="h-8 px-3"
+								>
+									<LayoutGrid className="w-4 h-4" />
+								</Button>
+								<Button
+									variant={viewMode === 'list' ? 'default' : 'ghost'}
+									size="sm"
+									onClick={() => setViewMode('list')}
+									className="h-8 px-3"
+								>
+									<List className="w-4 h-4" />
+								</Button>
+							</div>
 						</div>
-						<div className="flex items-center gap-1 rounded-lg bg-muted p-1 sm:self-auto">
-							<Button
-								variant={viewMode === 'grid' ? 'default' : 'ghost'}
-								size="sm"
-								onClick={() => setViewMode('grid')}
-								className="h-8 px-3"
-							>
-								<LayoutGrid className="w-4 h-4" />
-							</Button>
-							<Button
-								variant={viewMode === 'list' ? 'default' : 'ghost'}
-								size="sm"
-								onClick={() => setViewMode('list')}
-								className="h-8 px-3"
-							>
-								<List className="w-4 h-4" />
-							</Button>
-						</div>
-					</div>
-				}
-			/>
+					}
+				/>
+			</PageStickyHeader>
 
 			{/* Loading State */}
-			{isLoading && (
-				<div className="flex flex-col items-center justify-center py-16">
-					<Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-					<p className="text-muted-foreground">Loading your circles...</p>
-				</div>
-			)}
+			{isLoading && <CircleGridSkeleton count={6} />}
 
 			{/* Empty State */}
 			{!isLoading && circles.length === 0 && (
