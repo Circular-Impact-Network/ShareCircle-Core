@@ -62,6 +62,7 @@ import {
 	useUpdateItemRequestMutation,
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
+import { CircleDetailSkeleton, ItemGridSkeleton, RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
@@ -442,12 +443,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 	// Loading state
 	if (isLoading) {
-		return (
-			<div className="flex flex-col items-center justify-center min-h-[60vh]">
-				<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-				<p className="text-muted-foreground">Loading circle details...</p>
-			</div>
-		);
+		return <CircleDetailSkeleton />;
 	}
 
 	// Not found state
@@ -931,8 +927,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 			{/* Items & Requests Section */}
 			<div className="space-y-4">
 				<PageTabs value={itemsTab} onValueChange={v => setItemsTab(v as 'shared' | 'requested')}>
-					<div className="flex items-center justify-between">
-						<PageTabsList>
+					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+						<PageTabsList className="w-full sm:w-auto">
 							<PageTabsTrigger
 								value="shared"
 								className="gap-2"
@@ -956,24 +952,18 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 								Requested Items
 							</PageTabsTrigger>
 						</PageTabsList>
-						<div className="flex gap-2">
-							{itemsTab === 'shared' && (
-								<Button onClick={() => setShowAddItem(true)} className="gap-2" size="sm">
-									<Plus className="h-4 w-4" />
-									<span className="hidden sm:inline">Add Item</span>
-									<span className="sm:hidden">Add</span>
-								</Button>
-							)}
-						</div>
+						{itemsTab === 'shared' && (
+							<Button onClick={() => setShowAddItem(true)} className="gap-2 self-end sm:self-auto" size="sm">
+								<Plus className="h-4 w-4" />
+								Add Item
+							</Button>
+						)}
 					</div>
 
 					{/* Shared Items Tab */}
 					<PageTabsContent value="shared" className="space-y-4">
 						{isLoadingItems ? (
-							<div className="flex flex-col items-center justify-center py-12">
-								<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-								<p className="text-sm text-muted-foreground">Loading items...</p>
-							</div>
+							<ItemGridSkeleton count={3} />
 						) : items.length === 0 ? (
 							<Card className="border-dashed border-border/70 bg-card">
 								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -1045,10 +1035,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					<PageTabsContent value="requested" className="space-y-3">
 						<ItemRequestFilter value={circleItemFilter} onChange={setCircleItemFilter} />
 						{isLoadingRequests ? (
-							<div className="flex flex-col items-center justify-center py-12">
-								<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-								<p className="text-sm text-muted-foreground">Loading requests...</p>
-							</div>
+							<RequestCardListSkeleton count={3} />
 						) : filteredCircleRequests.length === 0 ? (
 							<Card className="border-dashed border-border/70 bg-card">
 								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
