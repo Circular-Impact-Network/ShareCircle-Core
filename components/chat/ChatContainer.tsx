@@ -291,11 +291,21 @@ export function ChatContainer({
 				fetchThreads();
 				return;
 			}
-			// Add message to current conversation
 			setMessages(prev => {
-				// Skip if message already exists
+				// Already present by real id — no-op
 				if (prev.some(existing => existing.id === message.id)) {
 					return prev;
+				}
+				// Race condition: broadcast arrived while the optimistic entry (local-*)
+				// is still in state. Replace it so the HTTP response replacement won't
+				// create a second message with the same real id.
+				if (message.clientId) {
+					const optimisticIdx = prev.findIndex(existing => existing.clientId === message.clientId);
+					if (optimisticIdx !== -1) {
+						const next = [...prev];
+						next[optimisticIdx] = { ...message, localStatus: undefined };
+						return next;
+					}
 				}
 				return [...prev, message];
 			});
@@ -359,7 +369,7 @@ export function ChatContainer({
 	const isTyping = activeUser ? typingUserIds.includes(activeUser.id) : false;
 
 	return (
-		<PageShell className={cn('flex flex-col', fullBleed && 'h-[100dvh] max-w-none overflow-hidden')}>
+		<PageShell className={cn('flex flex-col', fullBleed && 'h-full max-w-none overflow-hidden')}>
 			<div className="flex-shrink-0">
 				<PageHeader title="Messages" description="Chat with people in your circles" />
 			</div>
@@ -367,7 +377,7 @@ export function ChatContainer({
 				className={cn(
 					'flex flex-1 flex-col overflow-hidden md:flex-row',
 					fullBleed
-						? 'h-[calc(100dvh-8rem)] md:h-[calc(100dvh-7rem)] border-0'
+						? 'border-0'
 						: 'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
 				)}
 			>
