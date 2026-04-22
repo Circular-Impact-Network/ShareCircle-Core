@@ -367,16 +367,11 @@ export function BrowseListingsPage() {
 			</PageStickyHeader>
 
 			{/* Results Count */}
-			<div className="flex items-center justify-between text-sm text-muted-foreground">
-				{isLoadingData ? (
-					<div className="flex items-center gap-2">
-						<Loader2 className="h-4 w-4 animate-spin" />
-						{isSearching ? 'Searching...' : 'Loading items...'}
-					</div>
-				) : (
+			{!isLoadingData && (
+				<div className="flex items-center justify-between text-sm text-muted-foreground">
 					<span>{getResultsText()}</span>
-				)}
-			</div>
+				</div>
+			)}
 
 			{/* Loading State */}
 			{isLoading && <ItemGridSkeleton count={8} />}
