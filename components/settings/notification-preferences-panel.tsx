@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { NotificationPrefsSkeleton } from '@/components/ui/skeletons';
 import {
 	useGetNotificationPreferencesQuery,
 	useUpdateNotificationPreferencesMutation,
@@ -128,12 +129,7 @@ export function NotificationPreferencesPanel() {
 					: 'Turn on to register this device for push when your account allows it.';
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-				<Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-				<span>Loading notification settings…</span>
-			</div>
-		);
+		return <NotificationPrefsSkeleton />;
 	}
 
 	if (isError || !data) {
