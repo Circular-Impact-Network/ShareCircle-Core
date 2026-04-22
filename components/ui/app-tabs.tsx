@@ -20,7 +20,8 @@ export function PageTabsList({ className, ...props }: PageTabsListProps) {
 	return (
 		<TabsList
 			className={cn(
-				'inline-flex h-auto w-full flex-wrap items-center justify-start gap-1 rounded-xl border border-border/70 bg-muted/40 p-1 sm:w-auto',
+				'flex h-auto w-full items-center justify-start gap-1 rounded-xl border border-border/70 bg-muted/40 p-1',
+				'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
 				className,
 			)}
 			{...props}
@@ -31,7 +32,10 @@ export function PageTabsList({ className, ...props }: PageTabsListProps) {
 export function PageTabsTrigger({ className, children, badge, ...props }: PageTabsTriggerProps) {
 	return (
 		<TabsTrigger
-			className={cn('min-h-10 rounded-lg px-3 py-2 text-sm font-medium sm:px-4 [&>svg]:size-4', className)}
+			className={cn(
+				'min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium sm:px-4 [&>svg]:size-4',
+				className,
+			)}
 			{...props}
 		>
 			<span className="inline-flex min-w-0 items-center gap-2">
