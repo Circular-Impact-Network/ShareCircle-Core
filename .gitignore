@@ -168,7 +168,7 @@ vite.config.ts.timestamp-*
 .agents/
 
 # Claude Code (user-specific cache only)
-.claude/cache/
-.claude/skills/
+.claude/*
 .gitnexus
 graphify-out/*
+.mcp.json
