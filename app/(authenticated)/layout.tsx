@@ -46,33 +46,35 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 	if (!mounted || status === 'loading' || status === 'unauthenticated') {
 		return (
 			<div className="flex min-h-[100dvh] items-center justify-center bg-background">
-				<div className="text-center">
-					{/* Local static asset; <img> avoids next/image in loading shell */}
-					<img src="/share-circle-logo-no-name.png" alt="ShareCircle" className="h-14 w-14 mx-auto mb-4" />
-					<p className="text-muted-foreground">Loading...</p>
-				</div>
+				{/* Local static asset; <img> avoids next/image in loading shell */}
+				<img src="/share-circle-logo-no-name.png" alt="ShareCircle" className="h-16 w-16 animate-pulse" />
 			</div>
 		);
 	}
 
 	return (
 		<NotificationsProvider>
-			<div className="h-[100dvh] bg-background">
+			<div className="flex h-[100dvh] flex-col bg-background">
 				<Sidebar />
-				<main
-					data-scroll-root="authenticated-main"
-					className="app-scrollbar h-[100dvh] overflow-x-hidden overflow-y-auto pt-14 lg:ml-60 lg:pt-0"
-				>
-					{/* Mobile menu button */}
+				{/* Fixed mobile top bar — visual layer */}
+				<div className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 bg-background/95 backdrop-blur-sm px-3 lg:hidden">
 					<Button
 						type="button"
-						variant="outline"
+						variant="ghost"
 						size="icon"
 						onClick={() => dispatch(toggleMobileSidebar())}
-						className="fixed left-3 top-3 z-30 h-9 w-9 bg-card shadow-lg lg:hidden"
+						className="h-9 w-9 shrink-0"
 					>
 						<Menu className="h-4 w-4" />
 					</Button>
+					<img src="/share-circle-logo-1.png" alt="ShareCircle" className="h-7 w-auto object-contain" />
+				</div>
+				{/* Spacer that reserves the top-bar height so <main> starts below it */}
+				<div className="h-14 shrink-0 lg:hidden" aria-hidden="true" />
+				<main
+					data-scroll-root="authenticated-main"
+					className="app-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto lg:ml-60"
+				>
 					{children}
 				</main>
 			</div>
