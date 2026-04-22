@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
 				return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
 			}
 			if (error.message.includes('rate limit')) {
-				return NextResponse.json({ error: 'AI service rate limit reached. Please try again later.' }, { status: 429 });
+				return NextResponse.json(
+					{ error: 'AI service rate limit reached. Please try again later.' },
+					{ status: 429 },
+				);
 			}
 		}
 

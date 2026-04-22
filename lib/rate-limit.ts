@@ -12,14 +12,17 @@ type RateLimitRecord = {
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
 // Clean up expired entries periodically (every 5 minutes)
-setInterval(() => {
-	const now = Date.now();
-	for (const [key, record] of rateLimitStore.entries()) {
-		if (now > record.resetTime) {
-			rateLimitStore.delete(key);
+setInterval(
+	() => {
+		const now = Date.now();
+		for (const [key, record] of rateLimitStore.entries()) {
+			if (now > record.resetTime) {
+				rateLimitStore.delete(key);
+			}
 		}
-	}
-}, 5 * 60 * 1000);
+	},
+	5 * 60 * 1000,
+);
 
 export type RateLimitConfig = {
 	/** Maximum number of requests allowed within the window */
@@ -42,11 +45,7 @@ export type RateLimitResult = {
  * @param config - Rate limit configuration
  * @returns Result indicating if request is allowed and remaining quota
  */
-export function checkRateLimit(
-	identifier: string,
-	endpoint: string,
-	config: RateLimitConfig
-): RateLimitResult {
+export function checkRateLimit(identifier: string, endpoint: string, config: RateLimitConfig): RateLimitResult {
 	const key = `${endpoint}:${identifier}`;
 	const now = Date.now();
 	const windowMs = config.windowSeconds * 1000;
@@ -127,7 +126,7 @@ export function rateLimitResponse(result: RateLimitResult): Response {
 				'X-RateLimit-Remaining': String(result.remaining),
 				'X-RateLimit-Reset': String(Math.floor(result.resetAt / 1000)),
 			},
-		}
+		},
 	);
 }
 

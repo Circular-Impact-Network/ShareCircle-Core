@@ -84,6 +84,8 @@ export const circlesApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 300,
+	refetchOnReconnect: true,
 	tagTypes: ['Circles', 'CircleDetails', 'CircleMembers'],
 	endpoints: builder => ({
 		// Get all circles the user is a member of
@@ -91,10 +93,7 @@ export const circlesApi = createApi({
 			query: () => '/circles',
 			providesTags: result =>
 				result
-					? [
-							...result.map(({ id }) => ({ type: 'Circles' as const, id })),
-							{ type: 'Circles', id: 'LIST' },
-						]
+					? [...result.map(({ id }) => ({ type: 'Circles' as const, id })), { type: 'Circles', id: 'LIST' }]
 					: [{ type: 'Circles', id: 'LIST' }],
 		}),
 

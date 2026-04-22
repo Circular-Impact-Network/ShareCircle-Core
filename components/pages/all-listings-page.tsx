@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, Package, X } from 'lucide-react';
+import { Search, Package, X } from 'lucide-react';
+import { ItemGridSkeleton } from '@/components/ui/skeletons';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
@@ -27,11 +28,7 @@ export function AllListingsPage() {
 			item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
 			item.circles.some(circle => circle.name.toLowerCase().includes(searchTerm.toLowerCase())),
 	);
-	const {
-		visibleItems,
-		hasMore,
-		loadMore,
-	} = useProgressivePagination({ items: filteredItems, pageSize: 12 });
+	const { visibleItems, hasMore, loadMore } = useProgressivePagination({ items: filteredItems, pageSize: 12 });
 
 	return (
 		<PageShell>
@@ -58,12 +55,7 @@ export function AllListingsPage() {
 			</PageStickyHeader>
 
 			{/* Loading State */}
-			{isLoading && (
-				<div className="flex flex-col items-center justify-center py-12">
-					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-					<p className="text-sm text-muted-foreground">Loading items...</p>
-				</div>
-			)}
+			{isLoading && <ItemGridSkeleton count={8} />}
 
 			{/* Error State */}
 			{error && (
@@ -128,7 +120,9 @@ export function AllListingsPage() {
 											event.stopPropagation();
 										}}
 									>
-										<span className="text-xs text-muted-foreground">Browse across your circles</span>
+										<span className="text-xs text-muted-foreground">
+											Browse across your circles
+										</span>
 									</div>
 								}
 							/>

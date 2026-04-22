@@ -288,10 +288,9 @@ describe('useTypingIndicator Hook', () => {
 	});
 
 	it('resubscribes when conversationId changes', () => {
-		const { rerender } = renderHook(
-			({ conversationId }) => useTypingIndicator(conversationId, currentUser),
-			{ initialProps: { conversationId: 'conversation-1' } }
-		);
+		const { rerender } = renderHook(({ conversationId }) => useTypingIndicator(conversationId, currentUser), {
+			initialProps: { conversationId: 'conversation-1' },
+		});
 
 		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1');
 

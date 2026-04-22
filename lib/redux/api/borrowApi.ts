@@ -153,6 +153,9 @@ export const borrowApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 90,
+	refetchOnFocus: true,
+	refetchOnReconnect: true,
 	tagTypes: ['ItemRequests', 'BorrowRequests', 'BorrowQueue', 'Transactions', 'Items'],
 	endpoints: builder => ({
 		// ===== Item Requests =====
@@ -191,7 +194,10 @@ export const borrowApi = createApi({
 		}),
 
 		// Update item request (fulfill/cancel)
-		updateItemRequest: builder.mutation<ItemRequest, { id: string; status: ItemRequestStatus; fulfilledBy?: string }>({
+		updateItemRequest: builder.mutation<
+			ItemRequest,
+			{ id: string; status: ItemRequestStatus; fulfilledBy?: string }
+		>({
 			query: ({ id, ...body }) => ({
 				url: `/item-requests/${id}`,
 				method: 'PATCH',
@@ -283,13 +289,16 @@ export const borrowApi = createApi({
 				{ type: 'BorrowRequests', id },
 				'BorrowRequests',
 				'Transactions',
-				// Invalidate the item if we have the result
-				...(result?.item?.id ? [{ type: 'Items' as const, id: result.item.id }] : ['Items' as const]),
+				// Invalidate the specific item if available (skip on error -- nothing changed)
+				...(result?.item?.id ? [{ type: 'Items' as const, id: result.item.id }] : []),
 			],
 		}),
 
 		// Mark item as returned (borrower)
-		markAsReturned: builder.mutation<{ message: string; transaction: BorrowTransaction }, { id: string; returnNote?: string }>({
+		markAsReturned: builder.mutation<
+			{ message: string; transaction: BorrowTransaction },
+			{ id: string; returnNote?: string }
+		>({
 			query: ({ id, ...body }) => ({
 				url: `/borrow-requests/${id}/return`,
 				method: 'POST',
@@ -326,7 +335,10 @@ export const borrowApi = createApi({
 		}),
 
 		// Extend borrow period (borrower requests new due date)
-		extendBorrow: builder.mutation<{ message: string; transaction: BorrowTransaction }, { id: string; newDueAt: string }>({
+		extendBorrow: builder.mutation<
+			{ message: string; transaction: BorrowTransaction },
+			{ id: string; newDueAt: string }
+		>({
 			query: ({ id, newDueAt }) => ({
 				url: `/borrow-requests/${id}/extend`,
 				method: 'POST',

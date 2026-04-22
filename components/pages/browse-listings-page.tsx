@@ -4,19 +4,24 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, X, Loader2, Package, MessageCircle, Send, HandHelping, Check } from 'lucide-react';
+import { ItemGridSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetAllItemsQuery, useSearchItemsMutation, type GetItemsFilters } from '@/lib/redux/api/itemsApi';
+import {
+	useGetItemsPaginatedQuery,
+	useGetItemCategoriesQuery,
+	useSearchItemsMutation,
+	type GetItemsFilters,
+} from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/use-toast';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 export function BrowseListingsPage() {
 	const router = useRouter();
@@ -28,26 +33,40 @@ export function BrowseListingsPage() {
 	const hasShownSearchErrorRef = useRef(false);
 	const lastSearchKeyRef = useRef<string | null>(null);
 	const [startingChatId, setStartingChatId] = useState<string | null>(null);
-	
+
 	// Item request form state
 	const [showRequestForm, setShowRequestForm] = useState(false);
 	const [requestTitle, setRequestTitle] = useState('');
 	const [requestDescription, setRequestDescription] = useState('');
 	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
-	
+
 	// Item request mutation
 	const [createItemRequest, { isLoading: isCreatingRequest }] = useCreateItemRequestMutation();
 
-	// Build filters for the query
-	const filters: GetItemsFilters = useMemo(() => ({
-		category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
-	}), [selectedCategory]);
+	// Cursor state for infinite scroll pagination
+	const [cursor, setCursor] = useState<string | undefined>(undefined);
 
-	// Fetch filtered items (for display)
-	const { data: items = [], isLoading, error } = useGetAllItemsQuery(filters);
-	
-	// Fetch ALL items (unfiltered) for category extraction - this ensures dropdown always has all options
-	const { data: allItems = [] } = useGetAllItemsQuery();
+	// Reset cursor when category filter changes
+	useEffect(() => {
+		setCursor(undefined);
+	}, [selectedCategory]);
+
+	// Build filters for the paginated query (memoized to avoid spurious hook re-runs)
+	const filters = useMemo<GetItemsFilters & { limit: number; cursor?: string }>(
+		() => ({
+			category: selectedCategory !== 'All Categories' ? selectedCategory : undefined,
+			limit: 24,
+			cursor,
+		}),
+		[selectedCategory, cursor],
+	);
+
+	// Fetch paginated items (server-side cursor pagination)
+	const { data: paginatedData, isLoading, error } = useGetItemsPaginatedQuery(filters);
+	const items = useMemo(() => paginatedData?.items ?? [], [paginatedData?.items]);
+
+	// Lightweight categories query (no item data / signed URLs)
+	const { data: allCategories = [] } = useGetItemCategoriesQuery();
 
 	// Semantic search mutation
 	const [searchItems, { data: searchResults, isLoading: isSearching, error: searchError, reset: resetSearch }] =
@@ -122,12 +141,15 @@ export function BrowseListingsPage() {
 	}, [normalizedQueryFromUrl, resetSearch, searchItems, selectedCategory]);
 
 	// Handle search on Enter key press
-	const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			executeSearch();
-		}
-	}, [executeSearch]);
+	const handleSearchKeyDown = useCallback(
+		(e: React.KeyboardEvent<HTMLInputElement>) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				executeSearch();
+			}
+		},
+		[executeSearch],
+	);
 
 	// Clear search and reset to default items
 	const clearSearch = useCallback(() => {
@@ -156,15 +178,8 @@ export function BrowseListingsPage() {
 		return items;
 	}, [isSearchActive, searchResults, items]);
 
-	// Extract unique categories from ALL items (unfiltered) for the dropdown
-	// This ensures the dropdown always shows all available categories
-	const categories = useMemo(() => {
-		const cats = new Set<string>();
-		allItems.forEach(item => {
-			item.categories.forEach(cat => cats.add(cat));
-		});
-		return ['All Categories', ...Array.from(cats).sort()];
-	}, [allItems]);
+	// Categories from lightweight API endpoint (no item data / signed URLs)
+	const categories = useMemo(() => ['All Categories', ...allCategories], [allCategories]);
 
 	// Get user's circles (only circles the user is a member of)
 	const { data: userCircles = [] } = useGetCirclesQuery();
@@ -207,13 +222,14 @@ export function BrowseListingsPage() {
 			setRequestCircleIds([]);
 		} catch (error) {
 			console.error('Create item request error:', error);
-			const errorMessage = error && typeof error === 'object' && 'data' in error
-				? (error.data as { error?: string })?.error || 'Failed to create request'
-				: 'Failed to create request. Please try again.';
-			toast({ 
-				title: 'Failed to create request', 
+			const errorMessage =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to create request'
+					: 'Failed to create request. Please try again.';
+			toast({
+				title: 'Failed to create request',
 				description: errorMessage,
-				variant: 'destructive' 
+				variant: 'destructive',
 			});
 		}
 	};
@@ -234,42 +250,43 @@ export function BrowseListingsPage() {
 		}
 	}, [queryFromUrl, router]);
 
-	const handleStartChat = useCallback(
-		async (ownerId: string) => {
-			if (!ownerId) return;
-			setStartingChatId(ownerId);
-			try {
-				const response = await fetch('/api/messages/threads', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ otherUserId: ownerId }),
-				});
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.error || 'Failed to start chat');
-				}
-				const data = await response.json();
-				router.push(`/messages/${data.id}`);
-			} catch (error) {
-				console.error('Start chat error:', error);
-				toast({
-					title: 'Unable to start chat',
-					description: error instanceof Error ? error.message : 'Please try again.',
-					variant: 'destructive',
-				});
-			} finally {
-				setStartingChatId(null);
+	async function handleStartChat(ownerId: string) {
+		if (!ownerId) return;
+		setStartingChatId(ownerId);
+		try {
+			const response = await fetch('/api/messages/threads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ otherUserId: ownerId }),
+			});
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to start chat');
 			}
-		},
-		[router, toast],
-	);
+			const data = await response.json();
+			router.push(`/messages/${data.id}`);
+		} catch (error) {
+			console.error('Start chat error:', error);
+			toast({
+				title: 'Unable to start chat',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setStartingChatId(null);
+		}
+	}
 
 	const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || isSearchActive;
-	const {
-		visibleItems: visibleDisplayItems,
-		hasMore: hasMoreDisplayItems,
-		loadMore: loadMoreDisplayItems,
-	} = useProgressivePagination({ items: displayItems, pageSize: 12 });
+
+	// For search results, show all (already limited by search API). For browse, use server pagination.
+	const visibleDisplayItems = displayItems;
+	const hasMoreDisplayItems = isSearchActive ? false : (paginatedData?.hasMore ?? false);
+	const loadMoreDisplayItems = useCallback(() => {
+		if (paginatedData?.nextCursor) {
+			setCursor(paginatedData.nextCursor);
+		}
+	}, [paginatedData?.nextCursor]);
 
 	// Combined loading state
 	const isLoadingData = isLoading || isSearching;
@@ -278,7 +295,7 @@ export function BrowseListingsPage() {
 	const getResultsText = () => {
 		const count = displayItems.length;
 		const itemText = count === 1 ? 'item' : 'items';
-		
+
 		if (isSearchActive && searchResults) {
 			return `${count} ${itemText} found`;
 		}
@@ -308,12 +325,7 @@ export function BrowseListingsPage() {
 						/>
 						<div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
 							{searchQuery && (
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 w-7 p-0"
-									onClick={clearSearch}
-								>
+								<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={clearSearch}>
 									<X className="h-4 w-4" />
 								</Button>
 							)}
@@ -324,11 +336,7 @@ export function BrowseListingsPage() {
 								onClick={() => executeSearch()}
 								disabled={searchQuery.trim().length < 2 || isSearching}
 							>
-								{isSearching ? (
-									<Loader2 className="h-3 w-3 animate-spin" />
-								) : (
-									'Search'
-								)}
+								{isSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Search'}
 							</Button>
 						</div>
 					</div>
@@ -365,16 +373,13 @@ export function BrowseListingsPage() {
 						<Loader2 className="h-4 w-4 animate-spin" />
 						{isSearching ? 'Searching...' : 'Loading items...'}
 					</div>
-				) : <span>{getResultsText()}</span>}
+				) : (
+					<span>{getResultsText()}</span>
+				)}
 			</div>
 
 			{/* Loading State */}
-			{isLoading && (
-				<div className="flex flex-col items-center justify-center py-12">
-					<Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-					<p className="text-sm text-muted-foreground">Loading items...</p>
-				</div>
-			)}
+			{isLoading && <ItemGridSkeleton count={8} />}
 
 			{/* Empty State - No Items at all */}
 			{!isLoadingData && items.length === 0 && !isSearchActive && (
@@ -431,7 +436,9 @@ export function BrowseListingsPage() {
 									<div className="space-y-2">
 										{userCircles.length > 1 && (
 											<Button variant="outline" type="button" onClick={toggleAllRequestCircles}>
-												{allRequestCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
+												{allRequestCirclesSelected
+													? 'Deselect All Circles'
+													: 'Select All Circles'}
 											</Button>
 										)}
 										<div className="app-scrollbar app-scrollbar-thin max-h-44 space-y-2 overflow-auto rounded-md border p-2">
@@ -448,7 +455,9 @@ export function BrowseListingsPage() {
 													>
 														<div
 															className={`h-4 w-4 rounded border flex items-center justify-center ${
-																isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'
+																isSelected
+																	? 'border-primary bg-primary text-primary-foreground'
+																	: 'border-muted-foreground'
 															}`}
 														>
 															{isSelected && <Check className="h-3 w-3" />}
@@ -473,7 +482,11 @@ export function BrowseListingsPage() {
 										</Button>
 										<Button
 											onClick={handleSubmitItemRequest}
-											disabled={isCreatingRequest || !requestTitle.trim() || requestCircleIds.length === 0}
+											disabled={
+												isCreatingRequest ||
+												!requestTitle.trim() ||
+												requestCircleIds.length === 0
+											}
 											className="gap-2"
 										>
 											{isCreatingRequest ? (
@@ -500,9 +513,7 @@ export function BrowseListingsPage() {
 						</div>
 						<div>
 							<p className="font-medium text-foreground mb-1">No items in this category</p>
-							<p className="text-sm text-muted-foreground mb-4">
-								Try selecting a different category
-							</p>
+							<p className="text-sm text-muted-foreground mb-4">Try selecting a different category</p>
 							<Button variant="outline" onClick={() => setSelectedCategory('All Categories')}>
 								Show All Categories
 							</Button>
@@ -514,7 +525,10 @@ export function BrowseListingsPage() {
 			{/* Items Grid */}
 			{!isLoading && displayItems.length > 0 && (
 				<>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="items-grid">
+					<div
+						className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+						data-testid="items-grid"
+					>
 						{visibleDisplayItems.map(item => (
 							<ItemSummaryCard
 								key={item.id}
@@ -549,7 +563,11 @@ export function BrowseListingsPage() {
 												</Button>
 											</>
 										) : (
-											<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => router.push(`/items/${item.id}`)}
+											>
 												View item
 											</Button>
 										)}

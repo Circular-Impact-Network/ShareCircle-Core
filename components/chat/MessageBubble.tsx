@@ -72,9 +72,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 						? 'rounded-xl p-0 shadow-none'
 						: cn(
 								'rounded-2xl px-4 py-3 shadow-sm ring-1 ring-black/5',
-								isOwn
-									? 'bg-primary text-primary-foreground'
-									: 'bg-background text-foreground',
+								isOwn ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground',
 							),
 				)}
 			>
@@ -91,7 +89,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 								src={attachment.url}
 								alt="Message attachment"
 								className={cn(
-							'w-full rounded-xl object-cover',
+									'w-full rounded-xl object-cover',
 									message.attachments.length > 1 ? 'h-32' : 'max-h-72',
 								)}
 							/>
@@ -104,7 +102,9 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 					</p>
 				)}
 				<div className="mt-2 flex items-center justify-end gap-2 text-[11px] opacity-70">
-					<span>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+					<span>
+						{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+					</span>
 					{isOwn && (
 						<span className="flex items-center gap-1">
 							{state === 'sending' && <Check className="h-3 w-3" />}

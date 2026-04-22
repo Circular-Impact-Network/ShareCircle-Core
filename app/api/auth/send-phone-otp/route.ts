@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
 
 		const body = (await req.json()) as SendPhoneOtpBody;
 		const normalizedCountry = body.country?.toUpperCase() || '';
-		const purpose = PHONE_PURPOSES.includes(body.purpose || 'phone_login') ? body.purpose || 'phone_login' : 'phone_login';
+		const purpose = PHONE_PURPOSES.includes(body.purpose || 'phone_login')
+			? body.purpose || 'phone_login'
+			: 'phone_login';
 
 		if (!body.phoneNumber || !normalizedCountry || !isSupportedPhoneCountry(normalizedCountry)) {
 			return NextResponse.json({ error: 'Phone number and supported country are required' }, { status: 400 });
@@ -92,8 +94,7 @@ export async function POST(req: NextRequest) {
 			await prisma.verificationToken.deleteMany({ where: { identifier: otpIdentifier } });
 			return NextResponse.json(
 				{
-					error:
-						sendErr instanceof Error ? sendErr.message : 'Failed to send verification code',
+					error: sendErr instanceof Error ? sendErr.message : 'Failed to send verification code',
 				},
 				{ status: 502 },
 			);

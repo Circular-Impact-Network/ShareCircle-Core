@@ -146,7 +146,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [updateItemRequest] = useUpdateItemRequestMutation();
 	const myRequestIds = useMemo(() => new Set(myItemRequests.map(r => r.id)), [myItemRequests]);
 	const filteredCircleRequests = useMemo(() => {
-		if (circleItemFilter === 'from-others') return circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN');
+		if (circleItemFilter === 'from-others')
+			return circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN');
 		if (circleItemFilter === 'mine') return circleItemRequests.filter(r => myRequestIds.has(r.id));
 		return circleItemRequests;
 	}, [circleItemRequests, myRequestIds, circleItemFilter]);
@@ -206,7 +207,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						description: 'You are not a member of this circle.',
 						variant: 'destructive',
 					});
-						router.push('/circles');
+					router.push('/circles');
 					return;
 				}
 				throw new Error('Failed to fetch circle');
@@ -364,7 +365,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						title: 'Left circle',
 						description: 'You have left this circle.',
 					});
-						router.push('/circles');
+					router.push('/circles');
 					return;
 				}
 
@@ -413,7 +414,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 			year: 'numeric',
 		});
 	};
-
 
 	const getShareUrl = () => {
 		if (typeof window !== 'undefined' && circle) {
@@ -495,137 +495,139 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 					<div className="min-w-0 flex-1">
 						<div className="flex flex-wrap items-center gap-2">
-							<Button onClick={() => router.push('/circles')} variant="ghost" size="icon" className="shrink-0 -ml-2">
+							<Button
+								onClick={() => router.push('/circles')}
+								variant="ghost"
+								size="icon"
+								className="shrink-0 -ml-2"
+							>
 								<ArrowLeft className="h-4 w-4" />
 								<span className="sr-only">Back to Circles</span>
 							</Button>
 							<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
-								{isAdmin && (
-									<Badge
-										variant="secondary"
-										className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-									>
-										<Crown className="h-3 w-3" />
-										Admin
-									</Badge>
-								)}
-							</div>
-							<p className="mt-1 line-clamp-2 text-base text-muted-foreground">{circle.description || 'No description'}</p>
-
-							{/* Inline Stats */}
-							<div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-								<span className="inline-flex items-center gap-1.5">
-									<Users className="h-4 w-4" />
-									{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'}
-								</span>
-								<span className="inline-flex items-center gap-1.5">
-									<Calendar className="h-4 w-4" />
-									{formatDate(circle.createdAt)}
-								</span>
-							</div>
+							{isAdmin && (
+								<Badge
+									variant="secondary"
+									className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+								>
+									<Crown className="h-3 w-3" />
+									Admin
+								</Badge>
+							)}
 						</div>
-					</div>
+						<p className="mt-1 line-clamp-2 text-base text-muted-foreground">
+							{circle.description || 'No description'}
+						</p>
 
-					{/* Right: Action Buttons */}
-					<div className="flex flex-shrink-0 gap-2">
-						{isAdmin && (
-							<Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSettings(true)}>
-								<Settings className="h-4 w-4" />
-								<span className="hidden sm:inline">Settings</span>
-							</Button>
-						)}
-						<Button
-							variant="outline"
-							size="sm"
-							className="gap-2"
-							onClick={handleInviteToggle}
-						>
-							<Share2 className="h-4 w-4" />
-							<span className="hidden sm:inline">Invite</span>
-						</Button>
+						{/* Inline Stats */}
+						<div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
+							<span className="inline-flex items-center gap-1.5">
+								<Users className="h-4 w-4" />
+								{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'}
+							</span>
+							<span className="inline-flex items-center gap-1.5">
+								<Calendar className="h-4 w-4" />
+								{formatDate(circle.createdAt)}
+							</span>
+						</div>
 					</div>
 				</div>
 
-				{/* Collapsible Invite Section */}
-				{showInviteSection && (
-					<Card className="border-border/70 bg-muted/30">
-						<CardContent className="p-4">
-							<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-								{/* Invite Code */}
-								<div className="flex-1">
-									<div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-										<Link2 className="h-3 w-3" />
-										Invite Code
-									</div>
-									<div className="flex items-center gap-2">
-										<code className="font-mono text-lg font-bold tracking-widest text-foreground sm:text-xl">
-											{circle.inviteCode}
-										</code>
+				{/* Right: Action Buttons */}
+				<div className="flex flex-shrink-0 gap-2">
+					{isAdmin && (
+						<Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSettings(true)}>
+							<Settings className="h-4 w-4" />
+							<span className="hidden sm:inline">Settings</span>
+						</Button>
+					)}
+					<Button variant="outline" size="sm" className="gap-2" onClick={handleInviteToggle}>
+						<Share2 className="h-4 w-4" />
+						<span className="hidden sm:inline">Invite</span>
+					</Button>
+				</div>
+			</div>
+
+			{/* Collapsible Invite Section */}
+			{showInviteSection && (
+				<Card className="border-border/70 bg-muted/30">
+					<CardContent className="p-4">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+							{/* Invite Code */}
+							<div className="flex-1">
+								<div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+									<Link2 className="h-3 w-3" />
+									Invite Code
+								</div>
+								<div className="flex items-center gap-2">
+									<code className="font-mono text-lg font-bold tracking-widest text-foreground sm:text-xl">
+										{circle.inviteCode}
+									</code>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-8 w-8 p-0"
+										onClick={() => handleCopy(circle.inviteCode, 'code')}
+									>
+										{copied === 'code' ? (
+											<Check className="h-4 w-4 text-emerald-500" />
+										) : (
+											<Copy className="h-4 w-4" />
+										)}
+									</Button>
+									{isAdmin && (
 										<Button
 											variant="ghost"
 											size="sm"
 											className="h-8 w-8 p-0"
-											onClick={() => handleCopy(circle.inviteCode, 'code')}
+											onClick={handleRegenerateCode}
+											disabled={isRegeneratingCode}
 										>
-											{copied === 'code' ? (
-												<Check className="h-4 w-4 text-emerald-500" />
+											{isRegeneratingCode ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
 											) : (
-												<Copy className="h-4 w-4" />
+												<RefreshCw className="h-4 w-4" />
 											)}
 										</Button>
-										{isAdmin && (
-											<Button
-												variant="ghost"
-												size="sm"
-												className="h-8 w-8 p-0"
-												onClick={handleRegenerateCode}
-												disabled={isRegeneratingCode}
-											>
-												{isRegeneratingCode ? (
-													<Loader2 className="h-4 w-4 animate-spin" />
-												) : (
-													<RefreshCw className="h-4 w-4" />
-												)}
-											</Button>
-										)}
-									</div>
-								</div>
-
-								<Separator orientation="vertical" className="hidden h-12 sm:block" />
-								<Separator className="sm:hidden" />
-
-								{/* Share Link */}
-								<div className="flex-1">
-									<div className="mb-1 text-xs text-muted-foreground">Share Link</div>
-									<div className="flex items-center gap-2">
-										<code className="flex-1 truncate rounded bg-muted/50 px-2 py-1 text-sm text-primary">
-											{getShareUrl()}
-										</code>
-										<Button
-											variant="secondary"
-											size="sm"
-											className="shrink-0 gap-1"
-											onClick={() => handleCopy(getShareUrl(), 'link')}
-										>
-											{copied === 'link' ? (
-												<>
-													<Check className="h-3 w-3" />
-													<span className="hidden sm:inline">Copied</span>
-												</>
-											) : (
-												<>
-													<Copy className="h-3 w-3" />
-													<span className="hidden sm:inline">Copy</span>
-												</>
-											)}
-										</Button>
-									</div>
+									)}
 								</div>
 							</div>
-							<p className="mt-3 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
-						</CardContent>
-					</Card>
-				)}
+
+							<Separator orientation="vertical" className="hidden h-12 sm:block" />
+							<Separator className="sm:hidden" />
+
+							{/* Share Link */}
+							<div className="flex-1">
+								<div className="mb-1 text-xs text-muted-foreground">Share Link</div>
+								<div className="flex items-center gap-2">
+									<code className="flex-1 truncate rounded bg-muted/50 px-2 py-1 text-sm text-primary">
+										{getShareUrl()}
+									</code>
+									<Button
+										variant="secondary"
+										size="sm"
+										className="shrink-0 gap-1"
+										onClick={() => handleCopy(getShareUrl(), 'link')}
+									>
+										{copied === 'link' ? (
+											<>
+												<Check className="h-3 w-3" />
+												<span className="hidden sm:inline">Copied</span>
+											</>
+										) : (
+											<>
+												<Copy className="h-3 w-3" />
+												<span className="hidden sm:inline">Copy</span>
+											</>
+										)}
+									</Button>
+								</div>
+							</div>
+						</div>
+						<p className="mt-3 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
+					</CardContent>
+				</Card>
+			)}
 
 			{/* Members Section - Horizontal Carousel on Desktop, Stack on Mobile */}
 			<div className="space-y-4 sm:space-y-6">
@@ -659,7 +661,10 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						const isCreator = member.joinType === 'CREATED';
 
 						return (
-							<Card key={`desktop-${member.id}`} className="group flex-shrink-0 w-[260px] border-border/70 snap-start">
+							<Card
+								key={`desktop-${member.id}`}
+								className="group flex-shrink-0 w-[260px] border-border/70 snap-start"
+							>
 								<CardContent className="flex items-start gap-3 p-4">
 									<Tooltip>
 										<TooltipTrigger asChild>
@@ -928,11 +933,25 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				<PageTabs value={itemsTab} onValueChange={v => setItemsTab(v as 'shared' | 'requested')}>
 					<div className="flex items-center justify-between">
 						<PageTabsList>
-							<PageTabsTrigger value="shared" className="gap-2" badge={items.length > 0 ? items.length : undefined}>
+							<PageTabsTrigger
+								value="shared"
+								className="gap-2"
+								badge={items.length > 0 ? items.length : undefined}
+							>
 								<Package className="h-4 w-4" />
 								Shared Items
 							</PageTabsTrigger>
-							<PageTabsTrigger value="requested" className="gap-2" badge={circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN').length > 0 ? circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN').length : undefined}>
+							<PageTabsTrigger
+								value="requested"
+								className="gap-2"
+								badge={
+									circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN')
+										.length > 0
+										? circleItemRequests.filter(r => !myRequestIds.has(r.id) && r.status === 'OPEN')
+												.length
+										: undefined
+								}
+							>
 								<PackageOpen className="h-4 w-4" />
 								Requested Items
 							</PageTabsTrigger>
@@ -945,7 +964,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									<span className="sm:hidden">Add</span>
 								</Button>
 							)}
-							</div>
+						</div>
 					</div>
 
 					{/* Shared Items Tab */}
@@ -963,7 +982,9 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									</div>
 									<div>
 										<p className="font-medium text-foreground mb-1">No items shared yet</p>
-										<p className="text-sm text-muted-foreground">Be the first to share something with this circle!</p>
+										<p className="text-sm text-muted-foreground">
+											Be the first to share something with this circle!
+										</p>
 									</div>
 									<Button onClick={() => setShowAddItem(true)} variant="outline" className="gap-2">
 										<Plus className="h-4 w-4" />
@@ -988,7 +1009,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 														event.stopPropagation();
 													}}
 												>
-													<Button variant="outline" size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => router.push(`/items/${item.id}`)}
+													>
 														View item
 													</Button>
 													{item.isOwner ? (
@@ -1032,14 +1057,18 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									</div>
 									<div>
 										<p className="font-medium text-foreground mb-1">
-											{circleItemFilter === 'from-others' ? 'No open requests from others' : circleItemFilter === 'mine' ? 'You have no requests' : 'No item requests'}
+											{circleItemFilter === 'from-others'
+												? 'No open requests from others'
+												: circleItemFilter === 'mine'
+													? 'You have no requests'
+													: 'No item requests'}
 										</p>
 										<p className="text-sm text-muted-foreground">
 											{circleItemFilter === 'from-others'
 												? 'When circle members need something, their requests will appear here'
 												: circleItemFilter === 'mine'
-												? 'Post a request if you need to borrow something from this circle'
-												: 'Item requests for this circle will appear here'}
+													? 'Post a request if you need to borrow something from this circle'
+													: 'Item requests for this circle will appear here'}
 										</p>
 									</div>
 								</CardContent>
@@ -1081,7 +1110,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					<DialogHeader>
 						<DialogTitle>Delete Item</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be undone.
+							Are you sure you want to delete &quot;{itemToDelete?.name}&quot;? This action cannot be
+							undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="gap-2 sm:gap-0">
@@ -1208,7 +1238,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							title: 'Circle deleted',
 							description: 'Redirecting to circles list...',
 						});
-							router.push('/circles');
+						router.push('/circles');
 					}}
 					onMemberUpdated={member => {
 						setCircle(prev => {

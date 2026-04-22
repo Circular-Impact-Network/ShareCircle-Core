@@ -39,6 +39,7 @@ The email system checks these conditions before sending emails:
 #### Logs:
 
 When emails are skipped during tests, you'll see console logs like:
+
 ```
 [E2E Test Mode] Skipping OTP email to e2e+test@example.com (OTP: 123456)
 [E2E Test Mode] Skipping password reset email to e2e+test@example.com (token: abc123)
@@ -87,6 +88,7 @@ If you see 429 errors during parallel test execution, the tests will automatical
 #### Flaky Tests
 
 Some tests may be marked as "flaky" when they pass on retry. This is often due to:
+
 - Rate limiting on signup API
 - UI timing issues (modals, animations)
 - Network latency

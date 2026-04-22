@@ -15,10 +15,7 @@ const ALERT_TYPES = [
 	'NEW_MESSAGE',
 ] as const;
 
-const REQUEST_TYPES = [
-	'BORROW_REQUEST_RECEIVED',
-	'RETURN_REQUESTED',
-] as const;
+const REQUEST_TYPES = ['BORROW_REQUEST_RECEIVED', 'RETURN_REQUESTED'] as const;
 
 // GET /api/notifications - Get user's notifications
 export async function GET(req: NextRequest) {
@@ -107,7 +104,7 @@ export async function GET(req: NextRequest) {
 					requests: requestsUnread,
 				},
 			},
-			{ status: 200 }
+			{ status: 200 },
 		);
 	} catch (error) {
 		console.error('Get notifications error:', error);

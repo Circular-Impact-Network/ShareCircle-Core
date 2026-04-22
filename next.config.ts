@@ -20,9 +20,7 @@ const withPWA = withPWAInit({
 			},
 			{
 				urlPattern: ({ request, url }) =>
-					request.url.startsWith('http') &&
-					url.pathname.startsWith('/api/') &&
-					request.method !== 'GET',
+					request.url.startsWith('http') && url.pathname.startsWith('/api/') && request.method !== 'GET',
 				handler: 'NetworkOnly',
 			},
 			{
@@ -44,8 +42,7 @@ const withPWA = withPWAInit({
 				},
 			},
 			{
-				urlPattern: ({ request, url }) =>
-					request.url.startsWith('http') && request.destination === 'document',
+				urlPattern: ({ request, url }) => request.url.startsWith('http') && request.destination === 'document',
 				handler: 'NetworkFirst',
 				options: {
 					cacheName: 'sharecircle-page-cache',
@@ -66,6 +63,21 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
 	serverExternalPackages: ['@prisma/client', 'prisma'],
+	experimental: {
+		optimizePackageImports: [
+			'lucide-react',
+			'date-fns',
+			'@radix-ui/react-dialog',
+			'@radix-ui/react-dropdown-menu',
+			'@radix-ui/react-select',
+			'@radix-ui/react-tabs',
+			'@radix-ui/react-avatar',
+			'@radix-ui/react-collapsible',
+			'@radix-ui/react-scroll-area',
+			'@radix-ui/react-switch',
+			'@radix-ui/react-tooltip',
+		],
+	},
 	images: {
 		formats: ['image/webp', 'image/avif'],
 		deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

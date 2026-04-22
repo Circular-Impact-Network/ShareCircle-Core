@@ -106,26 +106,6 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		dispatch(messagesApi.util.invalidateTags(['UnreadCount']));
 	}, [dispatch]);
 
-	const getMessagePreview = useCallback(
-		(message: {
-			body: string;
-			attachments?: { type: string }[];
-		}) => {
-			if (message.body?.trim()) {
-				return message.body.substring(0, 50) + (message.body.length > 50 ? '...' : '');
-			}
-
-			if (message.attachments?.length) {
-				return message.attachments.length === 1
-					? 'Sent a photo'
-					: `Sent ${message.attachments.length} photos`;
-			}
-
-			return 'Sent a new message';
-		},
-		[],
-	);
-
 	const fetchPushStatus = useCallback(async () => {
 		const response = await fetch('/api/push/subscriptions', {
 			credentials: 'include',
@@ -229,9 +209,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			}
 
 			const permission =
-				Notification.permission === 'granted'
-					? 'granted'
-					: await Notification.requestPermission();
+				Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
 			setPushPermission(permission);
 
 			if (permission !== 'granted') {
@@ -270,8 +248,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			console.error('Failed to enable push notifications:', error);
 			toast({
 				title: 'Could not enable push',
-				description:
-					error instanceof Error ? error.message : 'Please try again from a supported browser.',
+				description: error instanceof Error ? error.message : 'Please try again from a supported browser.',
 				variant: 'destructive',
 			});
 		} finally {
@@ -347,6 +324,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
 				// Invalidate queries to refresh data
 				invalidateNotificationQueries();
+
+				// Also refresh message count for NEW_MESSAGE notifications
+				if (notification.type === 'NEW_MESSAGE') {
+					invalidateMessageQueries();
+				}
 			})
 			.on('broadcast', { event: 'request_status_changed' }, () => {
 				// Refresh borrow requests data
@@ -358,44 +340,16 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			})
 			.subscribe();
 
-		// Subscribe to user's message channel for new messages
-		const messageChannel = supabase.channel(`user:${userId}:messages`);
-		messageChannelRef.current = messageChannel;
-
-		messageChannel
-			.on('broadcast', { event: 'new_message' }, payload => {
-				const message = payload.payload as {
-					id: string;
-					senderId: string;
-					body: string;
-					sender?: { id: string; name: string | null; image: string | null };
-					attachments?: { type: string }[];
-				};
-
-				// Only show toast if it's from someone else
-				if (message.senderId !== userId) {
-					toast({
-						title: message.sender?.name || 'New message',
-						description: getMessagePreview(message),
-					});
-				}
-
-				// Invalidate message count query
-				invalidateMessageQueries();
-			})
-			.on('broadcast', { event: 'messages_read' }, () => {
-				// Invalidate message count query when messages are marked as read
-				invalidateMessageQueries();
-			})
-			.subscribe();
+		// NOTE: Message channel (user:${userId}:messages) is handled by useUserMessages hook
+		// in ChatContainer to avoid duplicate subscriptions. Unread count is updated above
+		// via the NEW_MESSAGE notification type.
 
 		return () => {
 			notificationChannel.unsubscribe();
-			messageChannel.unsubscribe();
 			notificationChannelRef.current = null;
 			messageChannelRef.current = null;
 		};
-	}, [userId, toast, invalidateNotificationQueries, invalidateMessageQueries, getMessagePreview]);
+	}, [userId, toast, invalidateNotificationQueries, invalidateMessageQueries]);
 
 	useEffect(() => {
 		if (!userId) {

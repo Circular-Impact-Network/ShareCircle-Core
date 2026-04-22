@@ -118,7 +118,6 @@ export async function POST(req: NextRequest) {
 		// We use Prisma.raw to inject the vector directly since parameterized vectors can be tricky
 		const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
 
-
 		// Prepare query text for hybrid full-text search (null for image-only searches)
 		const queryText = query?.trim() || null;
 

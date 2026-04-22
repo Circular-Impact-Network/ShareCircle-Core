@@ -188,14 +188,11 @@ describe('EditItemDialog', () => {
 				itemTitle='Item "with" <special> chars & stuff'
 				itemCircle="Circle's Name"
 				onConfirm={onConfirm}
-			/>
+			/>,
 		);
 
 		await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-		expect(onConfirm).toHaveBeenCalledWith(
-			'Item "with" <special> chars & stuff',
-			"Circle's Name"
-		);
+		expect(onConfirm).toHaveBeenCalledWith('Item "with" <special> chars & stuff', "Circle's Name");
 	});
 });

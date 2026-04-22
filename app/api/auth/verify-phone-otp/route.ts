@@ -25,10 +25,15 @@ export async function POST(req: NextRequest) {
 
 		const body = (await req.json()) as VerifyPhoneOtpBody;
 		const normalizedCountry = body.country?.toUpperCase() || '';
-		const purpose = PHONE_PURPOSES.includes(body.purpose || 'phone_login') ? body.purpose || 'phone_login' : 'phone_login';
+		const purpose = PHONE_PURPOSES.includes(body.purpose || 'phone_login')
+			? body.purpose || 'phone_login'
+			: 'phone_login';
 
 		if (!body.phoneNumber || !body.code || !normalizedCountry || !isSupportedPhoneCountry(normalizedCountry)) {
-			return NextResponse.json({ error: 'Phone number, country, and verification code are required' }, { status: 400 });
+			return NextResponse.json(
+				{ error: 'Phone number, country, and verification code are required' },
+				{ status: 400 },
+			);
 		}
 
 		const validated = validatePhoneByCountry(body.phoneNumber, normalizedCountry);
@@ -53,7 +58,10 @@ export async function POST(req: NextRequest) {
 					},
 				},
 			});
-			return NextResponse.json({ error: 'Verification code has expired. Please request a new one.' }, { status: 400 });
+			return NextResponse.json(
+				{ error: 'Verification code has expired. Please request a new one.' },
+				{ status: 400 },
+			);
 		}
 
 		const expected = hashOtp(body.code, phoneE164, purpose);

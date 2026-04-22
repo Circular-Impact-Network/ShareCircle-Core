@@ -78,10 +78,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		if (!item) {
 			// Item exists but user doesn't have access (not a member of any circle the item is in)
-			return NextResponse.json({ 
-				error: 'Access denied', 
-				message: 'You are not a member of the circle(s) this item belongs to'
-			}, { status: 403 });
+			return NextResponse.json(
+				{
+					error: 'Access denied',
+					message: 'You are not a member of the circle(s) this item belongs to',
+				},
+				{ status: 403 },
+			);
 		}
 
 		if (item.archivedAt && item.ownerId !== userId) {
@@ -90,7 +93,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		// Generate signed URL for main image
 		const imageUrl = await getSignedUrl(item.imagePath, 'items');
-		
+
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			imageUrl, // Main image is first
@@ -186,7 +189,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			select: { name: true, description: true, categories: true, tags: true },
 		});
 		const finalName = name !== undefined ? name.trim() : (currentItem?.name ?? '');
-		const finalDescription = description !== undefined ? description?.trim() ?? null : (currentItem?.description ?? null);
+		const finalDescription =
+			description !== undefined ? (description?.trim() ?? null) : (currentItem?.description ?? null);
 		const finalCategories = categories !== undefined ? categories : (currentItem?.categories ?? []);
 		const finalTags = tags !== undefined ? tags : (currentItem?.tags ?? []);
 		const combinedText = buildEnrichedText({
@@ -197,9 +201,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		});
 		const imageEntries: { url: string; label: string }[] = [];
 		const mainImageUrl =
-			typeof imageUrl === 'string' && imageUrl
-				? imageUrl
-				: await getSignedUrl(item.imagePath, 'items');
+			typeof imageUrl === 'string' && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
 		imageEntries.push({ url: mainImageUrl, label: 'Main image' });
 		const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : (item.mediaPaths ?? []);
 		for (let i = 0; i < mediaPathsList.length; i++) {
@@ -236,7 +238,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		// Embedding combines image + text metadata (name, description, categories, tags)
 		let embedding: number[] | null = null;
 		const imageChanged = imagePath && imagePath !== item.imagePath;
-		const metadataChanged = name !== undefined || description !== undefined || categories !== undefined || tags !== undefined;
+		const metadataChanged =
+			name !== undefined || description !== undefined || categories !== undefined || tags !== undefined;
 		if (imageChanged || metadataChanged) {
 			const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
 			try {
@@ -323,11 +326,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		// Generate signed URL
 		const signedImageUrl = await getSignedUrl(updatedItem.imagePath, 'items');
-		
+
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			signedImageUrl, // Main image is first
-			...((updatedItem.mediaPaths || []).map(path => getSignedUrl(path, 'media'))),
+			...(updatedItem.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
 		]);
 		const updatedCircleRecords = await prisma.itemCircle.findMany({
 			where: { itemId: updatedItem.id },
@@ -425,5 +428,3 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
 	}
 }
-
-

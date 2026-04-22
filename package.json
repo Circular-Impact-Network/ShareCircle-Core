@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "next dev --webpack -p 3003",
 		"build": "prisma generate && next build --webpack",
-		"start": "next start",
+		"start": "next start -p 3003",
 		"lint": "eslint .",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
@@ -119,6 +119,7 @@
 		"tw-animate-css": "1.3.3",
 		"typescript": "^5",
 		"typescript-eslint": "^8.53.1",
-		"vitest": "^4.0.18"
+		"vitest": "^4.0.18",
+		"@vitest/coverage-v8": "^4.0.18"
 	}
 }

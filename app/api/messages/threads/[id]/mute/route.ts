@@ -10,8 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 		const { id } = await params;
 		const body = await req.json();
-		const mutedUntil =
-			body?.mutedUntil && typeof body.mutedUntil === 'string' ? new Date(body.mutedUntil) : null;
+		const mutedUntil = body?.mutedUntil && typeof body.mutedUntil === 'string' ? new Date(body.mutedUntil) : null;
 		const durationMinutes = typeof body?.durationMinutes === 'number' ? body.durationMinutes : null;
 
 		let nextMutedUntil: Date | null = null;

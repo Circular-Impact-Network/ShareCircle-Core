@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
 		// Map actions to boolean flags and optionally filter ignored
 		const mapped = itemRequests.map(request => {
 			const actionSet = new Set(request.actions.map(a => a.action));
-			const { actions, ...rest } = request;
+			const { actions: _actions, ...rest } = request;
 			return {
 				...rest,
 				circle: request.circles[0]?.circle ?? null,

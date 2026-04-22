@@ -49,7 +49,7 @@ describe('AddItemModal', () => {
 		vi.stubGlobal('fetch', fetchSpy);
 
 		render(<AddItemModal open onOpenChange={() => undefined} />);
-		
+
 		// Modal should render with heading
 		expect(screen.getByRole('heading', { name: /Add Item|New Item/i })).toBeInTheDocument();
 	});

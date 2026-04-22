@@ -142,7 +142,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			
+
 			// API might fail if user doesn't exist
 			if (!response.ok()) {
 				// Navigate to messages anyway to verify page loads
@@ -165,7 +165,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			
+
 			// API might fail if user doesn't exist
 			if (!response.ok()) {
 				await page.goto('/messages');
@@ -246,7 +246,7 @@ test.describe('message management', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// Item creation might fail if AI/image is required
 			if (!itemResponse.ok()) {
 				// Test browse page instead

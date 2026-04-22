@@ -66,8 +66,7 @@ export function PWAProvider() {
 			}
 
 			// "Not now" / close only lasts for this tab session so each new visit can prompt again.
-			const dismissedInstallPrompt =
-				window.sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === 'true';
+			const dismissedInstallPrompt = window.sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === 'true';
 			const dismissedIosPrompt = window.sessionStorage.getItem(IOS_PROMPT_DISMISS_KEY) === 'true';
 
 			setShowIosPrompt(isIosBrowser() && !dismissedIosPrompt && !installed);
@@ -125,10 +124,7 @@ export function PWAProvider() {
 				}
 
 				installingWorker.addEventListener('statechange', () => {
-					if (
-						installingWorker.state === 'installed' &&
-						navigator.serviceWorker.controller
-					) {
+					if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
 						setWaitingWorker(registration.waiting ?? installingWorker);
 						setUpdateAvailable(true);
 					}
@@ -231,7 +227,8 @@ export function PWAProvider() {
 							<div className="flex-1">
 								<p className="text-sm font-semibold">Offline mode is active</p>
 								<p className="mt-1 text-sm opacity-85">
-									You can still browse cached screens, but uploads and message sends need a connection.
+									You can still browse cached screens, but uploads and message sends need a
+									connection.
 								</p>
 							</div>
 						</div>
@@ -277,7 +274,8 @@ export function PWAProvider() {
 							<div className="flex-1">
 								<p className="text-sm font-semibold text-foreground">Install ShareCircle</p>
 								<p className="mt-1 text-sm text-muted-foreground">
-									Add the app to your home screen for full-screen use, push alerts, and faster loading.
+									Add the app to your home screen for full-screen use, push alerts, and faster
+									loading.
 								</p>
 							</div>
 							<Button
@@ -309,7 +307,8 @@ export function PWAProvider() {
 							<div className="flex-1">
 								<p className="text-sm font-semibold text-foreground">Install on iPhone</p>
 								<p className="mt-1 text-sm text-muted-foreground">
-									Open Safari&apos;s share menu, then choose Add to Home Screen to enable the full PWA experience.
+									Open Safari&apos;s share menu, then choose Add to Home Screen to enable the full PWA
+									experience.
 								</p>
 							</div>
 							<Button

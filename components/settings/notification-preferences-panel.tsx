@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- sync server-fetched prefs into local form state */
+/* eslint-disable react-hooks/preserve-manual-memoization -- isDirty useMemo vs React Compiler expectations */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, ChevronDown, Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';

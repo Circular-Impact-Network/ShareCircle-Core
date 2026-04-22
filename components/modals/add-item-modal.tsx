@@ -553,9 +553,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 					continue;
 				}
 
-				const preparedFile = file.type.startsWith('image/')
-					? await prepareImageForUpload(file)
-					: file;
+				const preparedFile = file.type.startsWith('image/') ? await prepareImageForUpload(file) : file;
 				const validationError = getUploadValidationError(preparedFile, { allowVideo: true });
 				if (validationError) {
 					toast({
@@ -652,12 +650,20 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				savePhaseTimeoutRef.current = null;
 			}
 			console.error('Failed to create item:', error);
-			const errData = error && typeof error === 'object' && 'data' in error ? (error.data as { code?: string; message?: string; details?: { imageLabel: string; reason: string; detectedItems?: string[] }[] }) : null;
+			const errData =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as {
+							code?: string;
+							message?: string;
+							details?: { imageLabel: string; reason: string; detectedItems?: string[] }[];
+						})
+					: null;
 			if (errData?.code === 'ITEM_MISMATCH') {
 				setSavePhase('validating');
 				setTimeout(() => setSavePhase('idle'), 600);
 				const detailLines = (errData.details ?? []).map(
-					d => `${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
+					d =>
+						`${d.imageLabel}: ${d.reason}${d.detectedItems?.length ? ` (Detected: ${d.detectedItems.slice(0, 5).join(', ')}${d.detectedItems.length > 5 ? '…' : ''})` : ''}`,
 				);
 				toast({
 					title: errData.message ?? 'Listing does not match photo(s)',
@@ -756,7 +762,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 							<input
 								ref={fileInputRef}
 								type="file"
-									accept="image/*"
+								accept="image/*"
 								onChange={handleFileSelect}
 								className="hidden"
 							/>
@@ -1195,12 +1201,18 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 							<Button
 								onClick={handleSave}
 								className="flex-1 gap-2"
-								disabled={!name.trim() || selectedCircleIds.length === 0 || isSaving || savePhase !== 'idle'}
+								disabled={
+									!name.trim() || selectedCircleIds.length === 0 || isSaving || savePhase !== 'idle'
+								}
 							>
 								{isSaving || savePhase !== 'idle' ? (
 									<>
 										<Loader2 className="h-4 w-4 animate-spin" />
-										{savePhase === 'validating' ? 'Validating...' : savePhase === 'saving' ? 'Saving...' : 'Creating...'}
+										{savePhase === 'validating'
+											? 'Validating...'
+											: savePhase === 'saving'
+												? 'Saving...'
+												: 'Creating...'}
 									</>
 								) : (
 									<>

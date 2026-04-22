@@ -44,6 +44,7 @@ export const notificationPreferencesApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 600,
 	tagTypes: ['NotificationPreferences'],
 	endpoints: builder => ({
 		getNotificationPreferences: builder.query<NotificationPreferencesResponse, void>({

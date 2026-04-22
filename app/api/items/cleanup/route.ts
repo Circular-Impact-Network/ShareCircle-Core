@@ -16,9 +16,11 @@ export async function DELETE(req: NextRequest) {
 
 		const userId = session.user.id;
 		const body = await req.json();
-		const path = typeof body?.path === 'string' ? body.path : typeof body?.imagePath === 'string' ? body.imagePath : null;
+		const path =
+			typeof body?.path === 'string' ? body.path : typeof body?.imagePath === 'string' ? body.imagePath : null;
 		const bucket =
-			typeof body?.bucket === 'string' && ALLOWED_BUCKETS.includes(body.bucket as (typeof ALLOWED_BUCKETS)[number])
+			typeof body?.bucket === 'string' &&
+			ALLOWED_BUCKETS.includes(body.bucket as (typeof ALLOWED_BUCKETS)[number])
 				? body.bucket
 				: 'items';
 
@@ -41,5 +43,3 @@ export async function DELETE(req: NextRequest) {
 		return NextResponse.json({ error: 'Failed to delete image' }, { status: 500 });
 	}
 }
-
-

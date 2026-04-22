@@ -12,21 +12,21 @@ type RealtimeChatOptions = {
 
 export function useRealtimeChat({ conversationId, currentUserId, onMessage, onReceipt }: RealtimeChatOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
-	
+
 	// Use refs to store callbacks to avoid re-subscription when callbacks change
 	const onMessageRef = useRef(onMessage);
 	const onReceiptRef = useRef(onReceipt);
 	const currentUserIdRef = useRef(currentUserId);
-	
+
 	// Update refs when values change
 	useEffect(() => {
 		onMessageRef.current = onMessage;
 	}, [onMessage]);
-	
+
 	useEffect(() => {
 		onReceiptRef.current = onReceipt;
 	}, [onReceipt]);
-	
+
 	useEffect(() => {
 		currentUserIdRef.current = currentUserId;
 	}, [currentUserId]);

@@ -171,3 +171,4 @@ vite.config.ts.timestamp-*
 .claude/cache/
 .claude/skills/
 .gitnexus
+graphify-out/*

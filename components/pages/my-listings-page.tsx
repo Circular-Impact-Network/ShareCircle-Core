@@ -1,11 +1,10 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Archive, ArchiveRestore, Loader2, Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ItemGridSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { AddItemModal } from '@/components/modals/add-item-modal';
 import { EditItemModal } from '@/components/modals/edit-item-modal';
 import {
@@ -22,34 +21,10 @@ import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel
 import { useGetAllItemsQuery, useDeleteItemMutation, useUpdateItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
 
 type ListingTab = 'active' | 'archived';
-
-function EmptyListingsState({
-	title,
-	description,
-	action,
-}: {
-	title: string;
-	description: string;
-	action?: ReactNode;
-}) {
-	return (
-		<Card className="border-dashed border-border/70 bg-card">
-			<CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-				<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-					<Package className="h-7 w-7 text-primary" />
-				</div>
-				<div className="space-y-1">
-					<p className="font-medium text-foreground">{title}</p>
-					<p className="text-sm text-muted-foreground">{description}</p>
-				</div>
-				{action}
-			</CardContent>
-		</Card>
-	);
-}
 
 export function MyListingsPage() {
 	const router = useRouter();
@@ -60,11 +35,7 @@ export function MyListingsPage() {
 	const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
 	const [actionItemId, setActionItemId] = useState<string | null>(null);
 
-	const {
-		data: myItems = [],
-		isLoading,
-		refetch,
-	} = useGetAllItemsQuery({
+	const { data: myItems = [], isLoading } = useGetAllItemsQuery({
 		ownerOnly: true,
 		includeArchived: true,
 	});
@@ -187,26 +158,23 @@ export function MyListingsPage() {
 						}
 					/>
 					<PageTabsList>
-					<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
-						Active
-					</PageTabsTrigger>
-					<PageTabsTrigger
-						value="archived"
-						badge={archivedItems.length > 0 ? archivedItems.length : undefined}
-					>
-						Archived
-					</PageTabsTrigger>
-				</PageTabsList>
+						<PageTabsTrigger value="active" badge={activeItems.length > 0 ? activeItems.length : undefined}>
+							Active
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="archived"
+							badge={archivedItems.length > 0 ? archivedItems.length : undefined}
+						>
+							Archived
+						</PageTabsTrigger>
+					</PageTabsList>
 				</PageStickyHeader>
 
 				<PageTabsContent value="active">
 					{isLoading ? (
-						<div className="flex flex-col items-center justify-center py-12">
-							<Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
-							<p className="text-sm text-muted-foreground">Loading your active listings...</p>
-						</div>
+						<ItemGridSkeleton count={6} />
 					) : activeItems.length === 0 ? (
-						<EmptyListingsState
+						<EmptyState
 							title="No active listings"
 							description="Create a listing to start sharing items with your circles."
 							action={
@@ -242,12 +210,9 @@ export function MyListingsPage() {
 
 				<PageTabsContent value="archived">
 					{isLoading ? (
-						<div className="flex flex-col items-center justify-center py-12">
-							<Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
-							<p className="text-sm text-muted-foreground">Loading archived listings...</p>
-						</div>
+						<ItemGridSkeleton count={6} />
 					) : archivedItems.length === 0 ? (
-						<EmptyListingsState
+						<EmptyState
 							title="No archived listings"
 							description="Archived items stay here until you restore or delete them."
 						/>
@@ -307,14 +272,14 @@ export function MyListingsPage() {
 				</DialogContent>
 			</Dialog>
 
-			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} onItemCreated={() => refetch()} />
+			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
 			<EditItemModal
 				itemId={itemToEdit?.id || null}
 				open={!!itemToEdit}
 				onOpenChange={open => {
 					if (!open) setItemToEdit(null);
 				}}
-				onSuccess={() => refetch()}
+				onSuccess={() => setItemToEdit(null)}
 			/>
 		</PageShell>
 	);

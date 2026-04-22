@@ -44,11 +44,11 @@ test.describe('notifications', () => {
 		// User2 checks notifications
 		await page.goto('/notifications');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Look for notification about item request (text may vary)
 		const notificationText = page.getByText(/item request|looking for|ladder/i).first();
 		const hasNotification = await notificationText.isVisible({ timeout: 5000 }).catch(() => false);
-		
+
 		// If notifications exist, try to mark as read
 		if (hasNotification) {
 			const markReadButton = page.getByRole('button', { name: /Mark.*read/i });
@@ -56,7 +56,7 @@ test.describe('notifications', () => {
 				await markReadButton.click();
 			}
 		}
-		
+
 		// Test passes - notifications page loaded successfully
 		await expect(page).toHaveURL(/\/notifications/);
 	});

@@ -100,7 +100,7 @@ test.describe('borrow queue', () => {
 					circleIds: [circle.id],
 				},
 			});
-			
+
 			// If item creation fails (e.g., requires image/AI), verify page loads instead
 			if (!itemResponse.ok()) {
 				await page.goto('/activity');

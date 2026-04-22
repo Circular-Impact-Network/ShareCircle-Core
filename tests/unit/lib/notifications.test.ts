@@ -47,7 +47,12 @@ vi.mock('@/lib/push', () => ({
 vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://test.supabase.co');
 vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-key');
 
-import { createNotification, notifyCircleMembers, broadcastItemRequest, broadcastStatusChange } from '@/lib/notifications';
+import {
+	createNotification,
+	notifyCircleMembers,
+	broadcastItemRequest,
+	broadcastStatusChange,
+} from '@/lib/notifications';
 
 describe('Notification Utilities', () => {
 	beforeEach(() => {
@@ -198,10 +203,7 @@ describe('Notification Utilities', () => {
 
 	describe('notifyCircleMembers', () => {
 		it('creates notifications for all circle members except actor', async () => {
-			mockPrismaCircleMemberFindMany.mockResolvedValue([
-				{ userId: 'user-2' },
-				{ userId: 'user-3' },
-			]);
+			mockPrismaCircleMemberFindMany.mockResolvedValue([{ userId: 'user-2' }, { userId: 'user-3' }]);
 
 			const mockNotification = {
 				id: 'notification-1',
@@ -257,7 +259,7 @@ describe('Notification Utilities', () => {
 		});
 	});
 
-	// Note: broadcastItemRequest and broadcastStatusChange tests are skipped 
+	// Note: broadcastItemRequest and broadcastStatusChange tests are skipped
 	// because they require Supabase environment variables to be set at module load time.
 	// These functions are tested via E2E tests instead.
 });

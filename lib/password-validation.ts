@@ -19,7 +19,10 @@ export const PASSWORD_REQUIREMENTS = {
 
 export const passwordSchema = z
 	.string()
-	.min(PASSWORD_REQUIREMENTS.minLength, `Password must be at least ${PASSWORD_REQUIREMENTS.minLength} characters long`)
+	.min(
+		PASSWORD_REQUIREMENTS.minLength,
+		`Password must be at least ${PASSWORD_REQUIREMENTS.minLength} characters long`,
+	)
 	.regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
 	.regex(/[a-z]/, 'Password must contain at least one lowercase letter')
 	.regex(/[0-9]/, 'Password must contain at least one number')
@@ -36,11 +39,11 @@ export type PasswordValidationResult = {
  */
 export function validatePassword(password: string): PasswordValidationResult {
 	const result = passwordSchema.safeParse(password);
-	
+
 	if (result.success) {
 		return { isValid: true, errors: [] };
 	}
-	
+
 	return {
 		isValid: false,
 		errors: result.error.errors.map(e => e.message),

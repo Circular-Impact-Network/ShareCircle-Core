@@ -40,9 +40,7 @@ const itemValidationSchema = z.object({
 	matchedItem: z.string().optional().describe('The name of the item that matches the description, if found'),
 	confidence: z.enum(['high', 'medium', 'low']).describe('Confidence level of the match'),
 	reason: z.string().describe('Brief explanation of why the item was or was not found'),
-	detectedItems: z
-		.array(z.string())
-		.describe('List of all items detected in the image for reference'),
+	detectedItems: z.array(z.string()).describe('List of all items detected in the image for reference'),
 });
 
 export type ItemValidation = z.infer<typeof itemValidationSchema>;
@@ -54,10 +52,7 @@ export type ItemValidation = z.infer<typeof itemValidationSchema>;
  * @param userDescription - The user's description/hint of what the item is
  * @returns Validation result indicating if the described item exists in the photo
  */
-export async function validateItemInImage(
-	imageUrl: string,
-	userDescription: string,
-): Promise<ItemValidation> {
+export async function validateItemInImage(imageUrl: string, userDescription: string): Promise<ItemValidation> {
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
 		schema: itemValidationSchema,
@@ -124,10 +119,7 @@ export interface ListingFields {
  * Strict validation: check that the listing NAME matches the primary subject of the image.
  * Used on create/update to block mismatches (e.g. name "Red shoes" but image shows tennis bags).
  */
-async function validateListingMatchInImage(
-	imageUrl: string,
-	listing: ListingFields,
-): Promise<ItemValidation> {
+async function validateListingMatchInImage(imageUrl: string, listing: ListingFields): Promise<ItemValidation> {
 	const name = listing.name.trim();
 	const desc = listing.description?.trim() || '';
 	const cats = (listing.categories ?? []).join(', ');
@@ -202,7 +194,10 @@ export async function validateListingAgainstImages(
 			failures.push({
 				imageIndex: i,
 				imageLabel: label,
-				reason: err instanceof Error ? err.message : 'Could not validate this media (may be video or unsupported format).',
+				reason:
+					err instanceof Error
+						? err.message
+						: 'Could not validate this media (may be video or unsupported format).',
 			});
 		}
 	}

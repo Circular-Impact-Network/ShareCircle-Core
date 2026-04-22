@@ -31,10 +31,7 @@ export function PageTabsList({ className, ...props }: PageTabsListProps) {
 export function PageTabsTrigger({ className, children, badge, ...props }: PageTabsTriggerProps) {
 	return (
 		<TabsTrigger
-			className={cn(
-				'min-h-10 rounded-lg px-3 py-2 text-sm font-medium sm:px-4 [&>svg]:size-4',
-				className,
-			)}
+			className={cn('min-h-10 rounded-lg px-3 py-2 text-sm font-medium sm:px-4 [&>svg]:size-4', className)}
 			{...props}
 		>
 			<span className="inline-flex min-w-0 items-center gap-2">

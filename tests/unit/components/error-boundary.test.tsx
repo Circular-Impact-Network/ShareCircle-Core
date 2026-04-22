@@ -29,7 +29,7 @@ describe('ErrorBoundary', () => {
 		render(
 			<ErrorBoundary>
 				<div>Test content</div>
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		expect(screen.getByText('Test content')).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe('ErrorBoundary', () => {
 		render(
 			<ErrorBoundary>
 				<ThrowError shouldThrow={true} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -52,7 +52,7 @@ describe('ErrorBoundary', () => {
 		render(
 			<ErrorBoundary onError={onError}>
 				<ThrowError shouldThrow={true} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		expect(onError).toHaveBeenCalled();
@@ -64,7 +64,7 @@ describe('ErrorBoundary', () => {
 		const { rerender } = render(
 			<ErrorBoundary onReset={onReset}>
 				<ThrowError shouldThrow={true} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		const resetButton = screen.getByRole('button', { name: /Try again/i });
@@ -74,7 +74,7 @@ describe('ErrorBoundary', () => {
 		rerender(
 			<ErrorBoundary onReset={onReset}>
 				<ThrowError shouldThrow={false} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		expect(onReset).toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe('ErrorBoundary', () => {
 		render(
 			<ErrorBoundary fallback={customFallback}>
 				<ThrowError shouldThrow={true} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		expect(screen.getByText('Custom error message')).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('ErrorBoundary', () => {
 		render(
 			<ErrorBoundary>
 				<ThrowError shouldThrow={true} />
-			</ErrorBoundary>
+			</ErrorBoundary>,
 		);
 
 		// Error message should be visible in dev mode
@@ -114,7 +114,7 @@ describe('PageErrorBoundary', () => {
 		render(
 			<PageErrorBoundary>
 				<ThrowError shouldThrow={true} />
-			</PageErrorBoundary>
+			</PageErrorBoundary>,
 		);
 
 		expect(screen.getByText('Page Error')).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe('ModalErrorBoundary', () => {
 		render(
 			<ModalErrorBoundary onClose={() => undefined}>
 				<ThrowError shouldThrow={true} />
-			</ModalErrorBoundary>
+			</ModalErrorBoundary>,
 		);
 
 		expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('ModalErrorBoundary', () => {
 		render(
 			<ModalErrorBoundary onClose={onClose}>
 				<ThrowError shouldThrow={true} />
-			</ModalErrorBoundary>
+			</ModalErrorBoundary>,
 		);
 
 		const closeButton = screen.getByRole('button', { name: /Close/i });

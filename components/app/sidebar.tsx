@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
 import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
-import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
+import { useGetUnreadNotificationCountQuery } from '@/lib/redux/api/notificationsApi';
 import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -37,14 +37,14 @@ export function Sidebar() {
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
 
-	// Get notification counts - fetch minimal data just to get counts
+	// Get unread notification count via lightweight endpoint
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
-	const { data: notificationsData } = useGetNotificationsQuery({ limit: 1 });
-	
+	const { data: notificationsData } = useGetUnreadNotificationCountQuery();
+
 	// Get unread message count
 	// Realtime updates are handled by NotificationsProvider which invalidates queries
 	const { data: messagesData } = useGetUnreadMessageCountQuery();
-	
+
 	// Use total unread count from API
 	const totalNotificationUnread = notificationsData?.unreadCount || 0;
 	const totalMessageUnread = messagesData?.unreadCount || 0;
@@ -85,13 +85,13 @@ export function Sidebar() {
 			<div className="flex items-center justify-center gap-3 border-b border-border">
 				<Link href="/home" className="flex-1 items-center justify-center" onClick={handleNavClick}>
 					<Image
-							src="/share-circle-logo-1.png"
-							alt="ShareCircle"
-							width={160}
-							height={48}
-							// className="h-auto w-36 object-contain"
-							priority
-						/>
+						src="/share-circle-logo-1.png"
+						alt="ShareCircle"
+						width={160}
+						height={48}
+						// className="h-auto w-36 object-contain"
+						priority
+					/>
 				</Link>
 				<Button
 					variant="ghost"

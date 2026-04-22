@@ -3,32 +3,9 @@ import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 import { ThemeProvider } from './providers';
-import {
-	Inter,
-	Poppins,
-	Plus_Jakarta_Sans as V0_Font_Plus_Jakarta_Sans,
-	Geist_Mono as V0_Font_Geist_Mono,
-	Source_Serif_4 as V0_Font_Source_Serif_4,
-} from 'next/font/google';
+import { Plus_Jakarta_Sans, Poppins } from 'next/font/google';
 
-// Initialize fonts (kept for potential future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _plusJakartaSans = V0_Font_Plus_Jakarta_Sans({
-	subsets: ['latin'],
-	weight: ['200', '300', '400', '500', '600', '700', '800'],
-});
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _geistMono = V0_Font_Geist_Mono({
-	subsets: ['latin'],
-	weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-});
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _sourceSerif_4 = V0_Font_Source_Serif_4({
-	subsets: ['latin'],
-	weight: ['200', '300', '400', '500', '600', '700', '800', '900'],
-});
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' });
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-display' });
 
 export const metadata: Metadata = {
@@ -37,8 +14,18 @@ export const metadata: Metadata = {
 		default: 'ShareCircle - Share Items with Your Community',
 		template: '%s | ShareCircle',
 	},
-	description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste through peer-to-peer item sharing.',
-	keywords: ['sharing economy', 'item sharing', 'borrow', 'lend', 'community', 'peer-to-peer', 'circular economy', 'sustainability'],
+	description:
+		'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste through peer-to-peer item sharing.',
+	keywords: [
+		'sharing economy',
+		'item sharing',
+		'borrow',
+		'lend',
+		'community',
+		'peer-to-peer',
+		'circular economy',
+		'sustainability',
+	],
 	authors: [{ name: 'ShareCircle Team' }],
 	creator: 'ShareCircle',
 	publisher: 'ShareCircle',
@@ -62,7 +49,8 @@ export const metadata: Metadata = {
 		url: 'https://sharecircle.app',
 		siteName: 'ShareCircle',
 		title: 'ShareCircle - Share Items with Your Community',
-		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		description:
+			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
 		images: [
 			{
 				url: '/share-circle-logo.png',
@@ -75,7 +63,8 @@ export const metadata: Metadata = {
 	twitter: {
 		card: 'summary_large_image',
 		title: 'ShareCircle - Share Items with Your Community',
-		description: 'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
+		description:
+			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
 		images: ['/share-circle-logo.png'],
 		creator: '@sharecircle',
 	},
@@ -106,7 +95,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`${inter.variable} ${poppins.variable} font-sans`}>
+			<body className={`${plusJakartaSans.variable} ${poppins.variable} font-sans`}>
 				<ThemeProvider>{children}</ThemeProvider>
 			</body>
 		</html>

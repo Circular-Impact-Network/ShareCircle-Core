@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Search, Pin, BellOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,13 +15,7 @@ type ChatListProps = {
 	onSelect: (threadId: string) => void;
 };
 
-export function ChatList({
-	threads,
-	activeId,
-	searchValue,
-	onSearch,
-	onSelect,
-}: ChatListProps) {
+export const ChatList = memo(function ChatList({ threads, activeId, searchValue, onSearch, onSelect }: ChatListProps) {
 	return (
 		<div className="flex h-full w-full flex-shrink-0 flex-col overflow-hidden border-b border-border/70 bg-card/80 backdrop-blur md:w-[22rem] md:border-b-0 md:border-r">
 			<div className="border-b border-border/70 px-4 py-4">
@@ -59,12 +54,13 @@ export function ChatList({
 									isActive && 'border-primary/30 bg-primary/5 shadow-sm',
 								)}
 							>
-								{isPinned && (
-									<Pin className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-								)}
+								{isPinned && <Pin className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />}
 								<div className="flex items-start gap-3">
 									<Avatar className="h-10 w-10 flex-shrink-0">
-										<AvatarImage src={otherUser?.image || undefined} alt={otherUser?.name || 'User'} />
+										<AvatarImage
+											src={otherUser?.image || undefined}
+											alt={otherUser?.name || 'User'}
+										/>
 										<AvatarFallback className="bg-primary text-primary-foreground text-sm">
 											{otherUser?.name?.[0]?.toUpperCase() || '?'}
 										</AvatarFallback>
@@ -75,15 +71,26 @@ export function ChatList({
 												{otherUser?.name || 'Unknown'}
 											</p>
 											<div className="flex items-center gap-2">
-												{isMuted ? <BellOff className="h-3.5 w-3.5 text-muted-foreground" /> : null}
+												{isMuted ? (
+													<BellOff className="h-3.5 w-3.5 text-muted-foreground" />
+												) : null}
 												{thread.lastMessageAt ? (
 													<span className="shrink-0 text-[11px] text-muted-foreground">
-														{formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: true })}
+														{formatDistanceToNow(new Date(thread.lastMessageAt), {
+															addSuffix: true,
+														})}
 													</span>
 												) : null}
 											</div>
 										</div>
-										<p className={cn('truncate text-xs', thread.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+										<p
+											className={cn(
+												'truncate text-xs',
+												thread.unreadCount > 0
+													? 'font-medium text-foreground'
+													: 'text-muted-foreground',
+											)}
+										>
 											{thread.lastMessage?.body || 'Start a conversation'}
 										</p>
 										<div className="flex items-center gap-2">
@@ -92,7 +99,9 @@ export function ChatList({
 													{thread.unreadCount} new
 												</Badge>
 											) : (
-												<span className="text-[11px] text-muted-foreground">No unread messages</span>
+												<span className="text-[11px] text-muted-foreground">
+													No unread messages
+												</span>
 											)}
 										</div>
 									</div>
@@ -104,4 +113,4 @@ export function ChatList({
 			</div>
 		</div>
 	);
-}
+});

@@ -52,13 +52,13 @@ The chat system follows a client-server architecture with real-time capabilities
 ### Data Flow
 
 1. **Sending a Message**:
-   - User types message → Optimistic UI update → API call → Database insert → Supabase broadcast → Recipients receive
+    - User types message → Optimistic UI update → API call → Database insert → Supabase broadcast → Recipients receive
 
 2. **Receiving a Message**:
-   - Supabase broadcast → React hook receives → State update → UI renders
+    - Supabase broadcast → React hook receives → State update → UI renders
 
 3. **Read Receipts**:
-   - User views conversation → API marks as read → Database update → Supabase broadcast → Sender sees blue tick
+    - User views conversation → API marks as read → Database update → Supabase broadcast → Sender sees blue tick
 
 ---
 
@@ -71,6 +71,7 @@ The chat system uses 5 main tables:
 **Purpose**: Stores conversation metadata (direct messages or group chats)
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique conversation identifier
 - `type` (ConversationType): `DIRECT` or `GROUP`
 - `created_by` (TEXT, Foreign Key → users.id): User who created the conversation
@@ -84,6 +85,7 @@ The chat system uses 5 main tables:
 **Purpose**: Tracks which users are in which conversations and their individual preferences
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique participant record ID
 - `conversation_id` (TEXT, Foreign Key → conversations.id): Which conversation
 - `user_id` (TEXT, Foreign Key → users.id): Which user
@@ -95,11 +97,13 @@ The chat system uses 5 main tables:
 - `joined_at`, `left_at`: Track participation
 
 **Why**: Each user has their own view of a conversation (pinned, muted, archived, read status). This allows:
+
 - User A can pin a conversation while User B doesn't
 - User A can archive a conversation without affecting User B
 - Tracking unread counts per user
 
 **Indexes**:
+
 - Unique constraint on `(conversation_id, user_id)` - prevents duplicate participants
 - Indexes on `conversation_id`, `user_id`, `deleted_at` for fast queries
 
@@ -108,6 +112,7 @@ The chat system uses 5 main tables:
 **Purpose**: Stores all message content
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique message identifier
 - `conversation_id` (TEXT, Foreign Key → conversations.id): Which conversation
 - `sender_id` (TEXT, Foreign Key → users.id): Who sent the message
@@ -117,6 +122,7 @@ The chat system uses 5 main tables:
 - `created_at`, `edited_at`: Timestamps
 
 **Why**:
+
 - `client_id` prevents duplicate messages when retrying failed sends
 - `message_type` allows system messages (e.g., "User joined") vs regular messages
 - Composite index on `(conversation_id, created_at)` for efficient message pagination
@@ -128,6 +134,7 @@ The chat system uses 5 main tables:
 **Purpose**: Tracks delivery and read status for each message per recipient
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique receipt ID
 - `message_id` (TEXT, Foreign Key → messages.id): Which message
 - `user_id` (TEXT, Foreign Key → users.id): Which recipient
@@ -135,11 +142,13 @@ The chat system uses 5 main tables:
 - `read_at` (TIMESTAMP, nullable): When message was read (conversation viewed)
 
 **Why**: Separate table because:
+
 - One message can have multiple recipients (future group chat support)
 - Each recipient has independent delivery/read status
 - Allows querying "all unread messages for user X"
 
 **States**:
+
 - `delivered_at = null, read_at = null`: Sent (single grey tick)
 - `delivered_at != null, read_at = null`: Delivered (double grey tick)
 - `delivered_at != null, read_at != null`: Read (double blue tick)
@@ -151,6 +160,7 @@ The chat system uses 5 main tables:
 **Purpose**: Stores file attachments (images, documents) linked to messages
 
 **Key Fields**:
+
 - `id` (TEXT, Primary Key): Unique attachment ID
 - `message_id` (TEXT, Foreign Key → messages.id): Which message
 - `type` (AttachmentType): `IMAGE` or `FILE`
@@ -159,6 +169,7 @@ The chat system uses 5 main tables:
 - `created_at`: Timestamp
 
 **Why**: Separate table allows:
+
 - Multiple attachments per message
 - Flexible metadata storage (JSONB)
 - Easy querying of all attachments for a message
@@ -205,20 +216,22 @@ The system uses **Supabase Realtime** for WebSocket-based communication. Supabas
 **Used By**: `useRealtimeChat` hook
 
 **Events**:
+
 - `new_message`: When a new message is sent in this conversation
 - `receipt_update`: When delivery/read status changes for messages in this conversation
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel(`messages:${conversationId}`);
 channel
-  .on('broadcast', { event: 'new_message' }, (payload) => {
-    // Handle new message
-  })
-  .on('broadcast', { event: 'receipt_update' }, (payload) => {
-    // Handle receipt update
-  })
-  .subscribe();
+	.on('broadcast', { event: 'new_message' }, payload => {
+		// Handle new message
+	})
+	.on('broadcast', { event: 'receipt_update' }, payload => {
+		// Handle receipt update
+	})
+	.subscribe();
 ```
 
 **Why**: Users viewing a chat need instant updates. This channel only sends events relevant to that conversation.
@@ -230,16 +243,18 @@ channel
 **Used By**: `useUserMessages` hook
 
 **Events**:
+
 - `new_message`: When user receives a message in any conversation
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel(`user:${userId}:messages`);
 channel
-  .on('broadcast', { event: 'new_message' }, (payload) => {
-    // Handle new message (even if not viewing that conversation)
-  })
-  .subscribe();
+	.on('broadcast', { event: 'new_message' }, payload => {
+		// Handle new message (even if not viewing that conversation)
+	})
+	.subscribe();
 ```
 
 **Why**: Updates the conversation list in real-time even when user is not viewing a specific chat. Also triggers automatic delivery receipt.
@@ -251,22 +266,24 @@ channel
 **Used By**: `useTypingIndicator` hook
 
 **Events**:
+
 - `typing`: When someone starts typing
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel(`typing:${conversationId}`);
 channel
-  .on('broadcast', { event: 'typing' }, (payload) => {
-    // Show typing indicator
-  })
-  .subscribe();
+	.on('broadcast', { event: 'typing' }, payload => {
+		// Show typing indicator
+	})
+	.subscribe();
 
 // Send typing event
 channel.send({
-  type: 'broadcast',
-  event: 'typing',
-  payload: { userId: currentUser.id }
+	type: 'broadcast',
+	event: 'typing',
+	payload: { userId: currentUser.id },
 });
 ```
 
@@ -281,25 +298,26 @@ channel.send({
 **Mechanism**: Uses Supabase Presence API (not broadcast)
 
 **Example**:
+
 ```typescript
 const channel = supabase.channel('presence:messages', {
-  config: {
-    presence: {
-      key: `user:${userId}`
-    }
-  }
+	config: {
+		presence: {
+			key: `user:${userId}`,
+		},
+	},
 });
 
 channel
-  .on('presence', { event: 'sync' }, () => {
-    const state = channel.presenceState<{ userId: string }>();
-    // Extract online user IDs
-  })
-  .subscribe(async (status) => {
-    if (status === 'SUBSCRIBED') {
-      await channel.track({ userId });
-    }
-  });
+	.on('presence', { event: 'sync' }, () => {
+		const state = channel.presenceState<{ userId: string }>();
+		// Extract online user IDs
+	})
+	.subscribe(async status => {
+		if (status === 'SUBSCRIBED') {
+			await channel.track({ userId });
+		}
+	});
 ```
 
 **Why**: Shows "online" status in chat headers without polling.
@@ -307,22 +325,24 @@ channel
 ### Broadcast Flow
 
 **Server-side (API Route)**:
+
 ```typescript
 // After creating a message
 const channel = supabaseAdmin.channel(`messages:${conversationId}`);
 await channel.send({
-  type: 'broadcast',
-  event: 'new_message',
-  payload: messagePayload
+	type: 'broadcast',
+	event: 'new_message',
+	payload: messagePayload,
 });
 await supabaseAdmin.removeChannel(channel);
 ```
 
 **Client-side (React Hook)**:
+
 ```typescript
-channel.on('broadcast', { event: 'new_message' }, (payload) => {
-  const message = payload.payload as ChatMessage;
-  onMessage(message); // Update React state
+channel.on('broadcast', { event: 'new_message' }, payload => {
+	const message = payload.payload as ChatMessage;
+	onMessage(message); // Update React state
 });
 ```
 
@@ -353,50 +373,52 @@ The system implements a three-state receipt system similar to WhatsApp/iMessage:
 **Process**:
 
 1. **User fetches messages** (GET `/api/messages/threads/[id]/messages`):
-   ```typescript
-   // API finds undelivered receipts for fetched messages
-   const undeliveredReceipts = await prisma.messageReceipt.findMany({
-     where: {
-       userId,
-       messageId: { in: messageIds },
-       deliveredAt: null
-     }
-   });
 
-   // Update delivery timestamp
-   await prisma.messageReceipt.updateMany({
-     where: { userId, messageId: { in: messageIds }, deliveredAt: null },
-     data: { deliveredAt: now }
-   });
+    ```typescript
+    // API finds undelivered receipts for fetched messages
+    const undeliveredReceipts = await prisma.messageReceipt.findMany({
+    	where: {
+    		userId,
+    		messageId: { in: messageIds },
+    		deliveredAt: null,
+    	},
+    });
 
-   // Broadcast to sender
-   const channel = supabaseAdmin.channel(`messages:${conversationId}`);
-   await channel.send({
-     type: 'broadcast',
-     event: 'receipt_update',
-     payload: { ...receipt, deliveredAt: now.toISOString() }
-   });
-   ```
+    // Update delivery timestamp
+    await prisma.messageReceipt.updateMany({
+    	where: { userId, messageId: { in: messageIds }, deliveredAt: null },
+    	data: { deliveredAt: now },
+    });
+
+    // Broadcast to sender
+    const channel = supabaseAdmin.channel(`messages:${conversationId}`);
+    await channel.send({
+    	type: 'broadcast',
+    	event: 'receipt_update',
+    	payload: { ...receipt, deliveredAt: now.toISOString() },
+    });
+    ```
 
 2. **Or, user receives message via real-time** (`useUserMessages` hook):
-   ```typescript
-   // Automatically mark as delivered when received
-   markAsDelivered(message.id);
-   // Calls POST /api/messages/delivered
-   ```
+
+    ```typescript
+    // Automatically mark as delivered when received
+    markAsDelivered(message.id);
+    // Calls POST /api/messages/delivered
+    ```
 
 3. **Sender receives broadcast** (`useRealtimeChat` hook):
-   ```typescript
-   channel.on('broadcast', { event: 'receipt_update' }, (payload) => {
-     const receipt = payload.payload as MessageReceipt;
-     // Update message receipts in state
-     setMessages(prev => prev.map(msg => 
-       msg.id === receipt.messageId 
-         ? { ...msg, receipts: updateReceipts(msg.receipts, receipt) }
-         : msg
-     ));
-   });
-   ```
+    ```typescript
+    channel.on('broadcast', { event: 'receipt_update' }, payload => {
+    	const receipt = payload.payload as MessageReceipt;
+    	// Update message receipts in state
+    	setMessages(prev =>
+    		prev.map(msg =>
+    			msg.id === receipt.messageId ? { ...msg, receipts: updateReceipts(msg.receipts, receipt) } : msg,
+    		),
+    	);
+    });
+    ```
 
 **Why**: Delivery receipt confirms the message reached the recipient's device, even if they haven't read it yet.
 
@@ -407,41 +429,42 @@ The system implements a three-state receipt system similar to WhatsApp/iMessage:
 **Process**:
 
 1. **User opens conversation** (GET `/api/messages/threads/[id]/messages`):
-   - API automatically marks all fetched messages as delivered (see above)
+    - API automatically marks all fetched messages as delivered (see above)
 
 2. **User explicitly marks as read** (POST `/api/messages/threads/[id]/read`):
-   ```typescript
-   // Find all unread receipts for this conversation
-   const unreadReceipts = await prisma.messageReceipt.findMany({
-     where: {
-       userId,
-       message: { conversationId },
-       readAt: null
-     }
-   });
 
-   // Update both conversation participant and receipts
-   await prisma.$transaction([
-     prisma.conversationParticipant.updateMany({
-       where: { conversationId, userId },
-       data: { lastReadAt: now }
-     }),
-     prisma.messageReceipt.updateMany({
-       where: { userId, message: { conversationId }, readAt: null },
-       data: { readAt: now, deliveredAt: now } // Also ensure delivered
-     })
-   ]);
+    ```typescript
+    // Find all unread receipts for this conversation
+    const unreadReceipts = await prisma.messageReceipt.findMany({
+    	where: {
+    		userId,
+    		message: { conversationId },
+    		readAt: null,
+    	},
+    });
 
-   // Broadcast to sender
-   const channel = supabaseAdmin.channel(`messages:${conversationId}`);
-   for (const receipt of unreadReceipts) {
-     await channel.send({
-       type: 'broadcast',
-       event: 'receipt_update',
-       payload: { ...receipt, readAt: now.toISOString(), deliveredAt: now.toISOString() }
-     });
-   }
-   ```
+    // Update both conversation participant and receipts
+    await prisma.$transaction([
+    	prisma.conversationParticipant.updateMany({
+    		where: { conversationId, userId },
+    		data: { lastReadAt: now },
+    	}),
+    	prisma.messageReceipt.updateMany({
+    		where: { userId, message: { conversationId }, readAt: null },
+    		data: { readAt: now, deliveredAt: now }, // Also ensure delivered
+    	}),
+    ]);
+
+    // Broadcast to sender
+    const channel = supabaseAdmin.channel(`messages:${conversationId}`);
+    for (const receipt of unreadReceipts) {
+    	await channel.send({
+    		type: 'broadcast',
+    		event: 'receipt_update',
+    		payload: { ...receipt, readAt: now.toISOString(), deliveredAt: now.toISOString() },
+    	});
+    }
+    ```
 
 3. **Sender receives broadcast** and sees blue ticks
 
@@ -450,26 +473,27 @@ The system implements a three-state receipt system similar to WhatsApp/iMessage:
 ### State Management
 
 **Message State Calculation** (`MessageBubble.tsx`):
+
 ```typescript
 function getDeliveryState(message: ChatMessage) {
-  // Check local optimistic status first
-  if (message.localStatus) {
-    return message.localStatus; // 'sending' or 'failed'
-  }
+	// Check local optimistic status first
+	if (message.localStatus) {
+		return message.localStatus; // 'sending' or 'failed'
+	}
 
-  const receipts = message.receipts || [];
-  
-  // Check if any receipt is read
-  if (receipts.some(receipt => receipt.readAt)) {
-    return 'read'; // Double blue tick
-  }
-  
-  // Check if any receipt is delivered
-  if (receipts.some(receipt => receipt.deliveredAt)) {
-    return 'delivered'; // Double grey tick
-  }
-  
-  return 'sent'; // Single grey tick
+	const receipts = message.receipts || [];
+
+	// Check if any receipt is read
+	if (receipts.some(receipt => receipt.readAt)) {
+		return 'read'; // Double blue tick
+	}
+
+	// Check if any receipt is delivered
+	if (receipts.some(receipt => receipt.deliveredAt)) {
+		return 'delivered'; // Double grey tick
+	}
+
+	return 'sent'; // Single grey tick
 }
 ```
 
@@ -484,81 +508,86 @@ function getDeliveryState(message: ChatMessage) {
 **Step-by-step**:
 
 1. **User types and clicks send** (`ChatContainer.tsx`):
-   ```typescript
-   const clientId = crypto.randomUUID(); // Generate unique client ID
-   const optimistic: ChatMessage = {
-     id: `local-${clientId}`,
-     conversationId: activeId,
-     senderId: currentUser.id,
-     body: messageInput.trim(),
-     localStatus: 'sending', // Optimistic state
-     clientId
-   };
-   setMessages(prev => [...prev, optimistic]); // Show immediately
-   ```
+
+    ```typescript
+    const clientId = crypto.randomUUID(); // Generate unique client ID
+    const optimistic: ChatMessage = {
+    	id: `local-${clientId}`,
+    	conversationId: activeId,
+    	senderId: currentUser.id,
+    	body: messageInput.trim(),
+    	localStatus: 'sending', // Optimistic state
+    	clientId,
+    };
+    setMessages(prev => [...prev, optimistic]); // Show immediately
+    ```
 
 2. **API call** (POST `/api/messages/threads/[id]/messages`):
-   ```typescript
-   // Check for duplicate (retry scenario)
-   if (clientId) {
-     const existing = await prisma.message.findFirst({
-       where: { senderId: userId, clientId }
-     });
-     if (existing) return existing; // Return existing, don't duplicate
-   }
 
-   // Create message and receipts in transaction
-   const createdMessage = await prisma.$transaction(async tx => {
-     const created = await tx.message.create({ ... });
-     
-     // Create receipts for all recipients
-     await tx.messageReceipt.createMany({
-       data: recipientIds.map(recipientId => ({
-         messageId: created.id,
-         userId: recipientId
-       }))
-     });
-     
-     // Update conversation last_message_at
-     await tx.conversation.update({
-       where: { id: conversation.id },
-       data: { lastMessageAt: created.createdAt }
-     });
-     
-     return created;
-   });
-   ```
+    ```typescript
+    // Check for duplicate (retry scenario)
+    if (clientId) {
+      const existing = await prisma.message.findFirst({
+        where: { senderId: userId, clientId }
+      });
+      if (existing) return existing; // Return existing, don't duplicate
+    }
+
+    // Create message and receipts in transaction
+    const createdMessage = await prisma.$transaction(async tx => {
+      const created = await tx.message.create({ ... });
+
+      // Create receipts for all recipients
+      await tx.messageReceipt.createMany({
+        data: recipientIds.map(recipientId => ({
+          messageId: created.id,
+          userId: recipientId
+        }))
+      });
+
+      // Update conversation last_message_at
+      await tx.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageAt: created.createdAt }
+      });
+
+      return created;
+    });
+    ```
 
 3. **Broadcast via Supabase**:
-   ```typescript
-   // Broadcast to conversation channel (users viewing this chat)
-   const conversationChannel = supabaseAdmin.channel(`messages:${conversationId}`);
-   await conversationChannel.send({
-     type: 'broadcast',
-     event: 'new_message',
-     payload: messagePayload
-   });
 
-   // Broadcast to each recipient's personal channel (users on chat list)
-   for (const recipientId of recipientIds) {
-     const userChannel = supabaseAdmin.channel(`user:${recipientId}:messages`);
-     await userChannel.send({
-       type: 'broadcast',
-       event: 'new_message',
-       payload: messagePayload
-     });
-   }
-   ```
+    ```typescript
+    // Broadcast to conversation channel (users viewing this chat)
+    const conversationChannel = supabaseAdmin.channel(`messages:${conversationId}`);
+    await conversationChannel.send({
+    	type: 'broadcast',
+    	event: 'new_message',
+    	payload: messagePayload,
+    });
+
+    // Broadcast to each recipient's personal channel (users on chat list)
+    for (const recipientId of recipientIds) {
+    	const userChannel = supabaseAdmin.channel(`user:${recipientId}:messages`);
+    	await userChannel.send({
+    		type: 'broadcast',
+    		event: 'new_message',
+    		payload: messagePayload,
+    	});
+    }
+    ```
 
 4. **Update optimistic message**:
-   ```typescript
-   const saved = await response.json();
-   setMessages(prev => prev.map(msg => 
-     msg.clientId === clientId 
-       ? { ...saved, localStatus: undefined } // Replace with real message
-       : msg
-   ));
-   ```
+    ```typescript
+    const saved = await response.json();
+    setMessages(prev =>
+    	prev.map(msg =>
+    		msg.clientId === clientId
+    			? { ...saved, localStatus: undefined } // Replace with real message
+    			: msg,
+    	),
+    );
+    ```
 
 **Why Optimistic Updates**: Instant feedback, no waiting for network round-trip.
 
@@ -573,23 +602,24 @@ function getDeliveryState(message: ChatMessage) {
 **Hook**: `useRealtimeChat`
 
 **Flow**:
+
 ```typescript
-channel.on('broadcast', { event: 'new_message' }, (payload) => {
-  const message = payload.payload as ChatMessage;
-  
-  // Skip if from current user (already handled optimistically)
-  if (message.senderId === currentUserId) return;
-  
-  // Add to messages
-  setMessages(prev => {
-    if (prev.some(existing => existing.id === message.id)) {
-      return prev; // Prevent duplicates
-    }
-    return [...prev, message];
-  });
-  
-  // Auto-mark as read
-  fetch(`/api/messages/threads/${conversationId}/read`, { method: 'POST' });
+channel.on('broadcast', { event: 'new_message' }, payload => {
+	const message = payload.payload as ChatMessage;
+
+	// Skip if from current user (already handled optimistically)
+	if (message.senderId === currentUserId) return;
+
+	// Add to messages
+	setMessages(prev => {
+		if (prev.some(existing => existing.id === message.id)) {
+			return prev; // Prevent duplicates
+		}
+		return [...prev, message];
+	});
+
+	// Auto-mark as read
+	fetch(`/api/messages/threads/${conversationId}/read`, { method: 'POST' });
 });
 ```
 
@@ -598,19 +628,21 @@ channel.on('broadcast', { event: 'new_message' }, (payload) => {
 **Hook**: `useUserMessages`
 
 **Flow**:
+
 ```typescript
-channel.on('broadcast', { event: 'new_message' }, (payload) => {
-  const message = payload.payload as ChatMessage;
-  
-  // Refresh thread list to show new message preview
-  fetchThreads();
-  
-  // Auto-mark as delivered
-  markAsDelivered(message.id);
+channel.on('broadcast', { event: 'new_message' }, payload => {
+	const message = payload.payload as ChatMessage;
+
+	// Refresh thread list to show new message preview
+	fetchThreads();
+
+	// Auto-mark as delivered
+	markAsDelivered(message.id);
 });
 ```
 
-**Why Two Channels**: 
+**Why Two Channels**:
+
 - Conversation channel: For users actively chatting
 - User channel: For users elsewhere in the app
 
@@ -621,23 +653,20 @@ channel.on('broadcast', { event: 'new_message' }, (payload) => {
 **Process**:
 
 1. **Mark as failed**:
-   ```typescript
-   if (!response.ok) {
-     setMessages(prev => prev.map(msg => 
-       msg.clientId === clientId 
-         ? { ...msg, localStatus: 'failed' }
-         : msg
-     ));
-   }
-   ```
+
+    ```typescript
+    if (!response.ok) {
+    	setMessages(prev => prev.map(msg => (msg.clientId === clientId ? { ...msg, localStatus: 'failed' } : msg)));
+    }
+    ```
 
 2. **User clicks retry**:
-   ```typescript
-   // POST /api/messages/threads/[id]/retry
-   // Uses same clientId, API checks for existing message
-   // If exists, returns it (no duplicate)
-   // If not, creates new message
-   ```
+    ```typescript
+    // POST /api/messages/threads/[id]/retry
+    // Uses same clientId, API checks for existing message
+    // If exists, returns it (no duplicate)
+    // If not, creates new message
+    ```
 
 **Why**: `clientId` ensures no duplicates on retry.
 
@@ -646,19 +675,21 @@ channel.on('broadcast', { event: 'new_message' }, (payload) => {
 **Mechanism**: Unique constraint on `(sender_id, client_id)` in database
 
 **Process**:
+
 ```typescript
 // Before creating message
 if (clientId) {
-  const existing = await prisma.message.findFirst({
-    where: { senderId: userId, clientId }
-  });
-  if (existing) {
-    return existing; // Return existing, don't create duplicate
-  }
+	const existing = await prisma.message.findFirst({
+		where: { senderId: userId, clientId },
+	});
+	if (existing) {
+		return existing; // Return existing, don't create duplicate
+	}
 }
 ```
 
 **Why**: Prevents duplicate messages from:
+
 - Network retries
 - User clicking send multiple times
 - Browser refresh during send
@@ -672,6 +703,7 @@ if (clientId) {
 **File**: `components/chat/ChatContainer.tsx`
 
 **Purpose**: Main orchestrator component that manages:
+
 - Conversation list state
 - Active conversation state
 - Message state
@@ -679,6 +711,7 @@ if (clientId) {
 - API calls
 
 **Key Responsibilities**:
+
 - Fetch conversations and messages
 - Handle message sending (optimistic updates)
 - Coordinate real-time hooks
@@ -686,6 +719,7 @@ if (clientId) {
 - Handle retry, pin, mute, archive, delete
 
 **State Management**:
+
 ```typescript
 const [threads, setThreads] = useState<ChatThread[]>([]);
 const [activeId, setActiveId] = useState<string | null>(null);
@@ -694,6 +728,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 ```
 
 **Real-time Integration**:
+
 - `useRealtimeChat`: For active conversation
 - `useUserMessages`: For global message updates
 - `useTypingIndicator`: For typing status
@@ -706,12 +741,14 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **Purpose**: Displays messages in a scrollable list
 
 **Features**:
+
 - Message list rendering
 - Search within messages
 - Load more (pagination)
 - Auto-scroll to bottom on new messages
 
 **Props**:
+
 - `messages`: Array of messages to display
 - `currentUserId`: For determining own vs other messages
 - `onRetry`: Callback for retrying failed messages
@@ -723,12 +760,14 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **File**: `components/chat/MessageBubble.tsx`
 
 **Purpose**: Renders individual message with:
+
 - Message content
 - Timestamp
 - Delivery/read status indicators
 - Retry button (if failed)
 
 **Status Indicators**:
+
 - `sending`: Single grey tick (optimistic)
 - `sent`: Single grey tick (no receipts yet)
 - `delivered`: Double grey tick (deliveredAt set)
@@ -736,6 +775,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 - `failed`: Red alert icon + retry button
 
 **Styling**:
+
 - Own messages: Right-aligned, primary color
 - Other messages: Left-aligned, muted color
 
@@ -746,6 +786,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **Purpose**: Input component for typing and sending messages
 
 **Features**:
+
 - Text input
 - Emoji picker (dropdown)
 - Send button
@@ -753,6 +794,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 - Typing indicator trigger (`onTyping`)
 
 **Props**:
+
 - `value`, `onChange`: Controlled input
 - `onSend`: Send callback
 - `onTyping`: Typing indicator callback
@@ -763,12 +805,14 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **File**: `components/chat/ChatHeader.tsx`
 
 **Purpose**: Header showing:
+
 - Other user's avatar and name
 - Online/offline status
 - Typing indicator
 - Actions menu (pin, mute, archive, delete)
 
 **Props**:
+
 - `user`: Other user's info
 - `isOnline`: Online status
 - `isTyping`: Typing indicator
@@ -782,6 +826,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **Purpose**: Sidebar showing list of conversations
 
 **Features**:
+
 - Search conversations
 - Conversation preview (last message, unread count)
 - Pin indicator
@@ -789,6 +834,7 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 - Active conversation highlight
 
 **Props**:
+
 - `threads`: Array of conversations
 - `activeId`: Currently selected conversation
 - `searchValue`, `onSearch`: Search functionality
@@ -805,16 +851,18 @@ const [nextCursor, setNextCursor] = useState<string | null>(null);
 **Purpose**: Subscribe to real-time updates for a specific conversation
 
 **Usage**:
+
 ```typescript
 useRealtimeChat({
-  conversationId: activeId,
-  currentUserId: currentUser?.id,
-  onMessage: handleRealtimeMessage,
-  onReceipt: handleRealtimeReceipt
+	conversationId: activeId,
+	currentUserId: currentUser?.id,
+	onMessage: handleRealtimeMessage,
+	onReceipt: handleRealtimeReceipt,
 });
 ```
 
 **What it does**:
+
 - Subscribes to `messages:{conversationId}` channel
 - Listens for `new_message` events
 - Listens for `receipt_update` events
@@ -830,14 +878,16 @@ useRealtimeChat({
 **Purpose**: Listen for new messages across ALL conversations
 
 **Usage**:
+
 ```typescript
 useUserMessages({
-  userId: currentUser?.id,
-  onNewMessage: handleUserMessage
+	userId: currentUser?.id,
+	onNewMessage: handleUserMessage,
 });
 ```
 
 **What it does**:
+
 - Subscribes to `user:{userId}:messages` channel
 - Listens for `new_message` events
 - Automatically marks messages as delivered when received
@@ -852,24 +902,27 @@ useUserMessages({
 **Purpose**: Track and display typing indicators for a conversation
 
 **Usage**:
+
 ```typescript
 const { typingUserIds, sendTyping } = useTypingIndicator(conversationId, currentUser);
 ```
 
 **What it does**:
+
 - Subscribes to `typing:{conversationId}` channel
 - Listens for `typing` events
 - Tracks typing users with 2.5s timeout (auto-clears)
 - Provides `sendTyping()` function to broadcast typing
 
 **Timeout Logic**:
+
 ```typescript
 // When typing event received
 setTypingUserIds(prev => [...prev, senderId]);
 
 // Auto-clear after 2.5s
 setTimeout(() => {
-  setTypingUserIds(prev => prev.filter(id => id !== senderId));
+	setTypingUserIds(prev => prev.filter(id => id !== senderId));
 }, 2500);
 ```
 
@@ -882,6 +935,7 @@ setTimeout(() => {
 **Purpose**: Track online/offline status of all users
 
 **Usage**:
+
 ```typescript
 <GlobalPresenceProvider userId={session?.user?.id}>
   {/* App content */}
@@ -892,6 +946,7 @@ const { onlineUserIds, isConnected } = useGlobalPresence();
 ```
 
 **What it does**:
+
 - Subscribes to `presence:messages` channel
 - Tracks own presence with `channel.track({ userId })`
 - Listens for presence sync events
@@ -909,10 +964,12 @@ const { onlineUserIds, isConnected } = useGlobalPresence();
 **Purpose**: List all conversations for the current user
 
 **Query Parameters**:
+
 - `q`: Search query (filters by participant name)
 - `archived`: Show archived conversations (default: false)
 
 **Response**:
+
 ```typescript
 ChatThread[] // Array of conversations with:
 - id, type, lastMessageAt
@@ -924,6 +981,7 @@ ChatThread[] // Array of conversations with:
 ```
 
 **Process**:
+
 1. Find all conversations where user is a participant
 2. Filter by search query (participant name)
 3. Filter archived (if not showing archived)
@@ -938,11 +996,15 @@ ChatThread[] // Array of conversations with:
 **Purpose**: Create or get existing direct conversation
 
 **Body**:
+
 ```typescript
-{ otherUserId: string }
+{
+	otherUserId: string;
+}
 ```
 
 **Response**:
+
 ```typescript
 {
   id: string,
@@ -952,6 +1014,7 @@ ChatThread[] // Array of conversations with:
 ```
 
 **Process**:
+
 1. Validate otherUserId (not self, exists, shares circle)
 2. Check for existing direct conversation
 3. If exists: Restore if deleted, return it
@@ -964,11 +1027,13 @@ ChatThread[] // Array of conversations with:
 **Purpose**: Get messages for a conversation (paginated)
 
 **Query Parameters**:
+
 - `limit`: Number of messages (default: 30, max: 50)
 - `cursor`: Message ID for pagination
 - `search`: Search within messages
 
 **Response**:
+
 ```typescript
 {
   messages: ChatMessage[],
@@ -978,6 +1043,7 @@ ChatThread[] // Array of conversations with:
 ```
 
 **Process**:
+
 1. Verify user is participant
 2. Fetch messages (paginated if cursor provided)
 3. **Auto-mark fetched messages as delivered** (delivery receipt)
@@ -991,6 +1057,7 @@ ChatThread[] // Array of conversations with:
 **Purpose**: Send a message
 
 **Body**:
+
 ```typescript
 {
   body: string,
@@ -999,11 +1066,13 @@ ChatThread[] // Array of conversations with:
 ```
 
 **Response**:
+
 ```typescript
-ChatMessage // Created message with receipts
+ChatMessage; // Created message with receipts
 ```
 
 **Process**:
+
 1. Validate message body
 2. Check for duplicate (if clientId provided)
 3. Verify user is participant
@@ -1022,16 +1091,23 @@ ChatMessage // Created message with receipts
 **Purpose**: Mark a message as delivered
 
 **Body**:
+
 ```typescript
-{ messageId: string }
+{
+	messageId: string;
+}
 ```
 
 **Response**:
+
 ```typescript
-{ success: true }
+{
+	success: true;
+}
 ```
 
 **Process**:
+
 1. Find receipt for user and message (undelivered)
 2. Update deliveredAt timestamp
 3. Broadcast receipt update to conversation channel
@@ -1045,11 +1121,15 @@ ChatMessage // Created message with receipts
 **Purpose**: Mark all messages in conversation as read
 
 **Response**:
+
 ```typescript
-{ success: true }
+{
+	success: true;
+}
 ```
 
 **Process**:
+
 1. Find all unread receipts for conversation
 2. Update conversationParticipant.lastReadAt
 3. Update all receipts (readAt and deliveredAt)
@@ -1057,7 +1137,8 @@ ChatMessage // Created message with receipts
 
 **File**: `app/api/messages/threads/[id]/read/route.ts`
 
-**Called By**: 
+**Called By**:
+
 - Automatically when fetching messages (GET messages endpoint)
 - When receiving message via real-time (`useRealtimeChat`)
 
@@ -1066,6 +1147,7 @@ ChatMessage // Created message with receipts
 **Purpose**: Retry sending a failed message
 
 **Body**:
+
 ```typescript
 {
   body: string,
@@ -1074,11 +1156,13 @@ ChatMessage // Created message with receipts
 ```
 
 **Response**:
+
 ```typescript
-ChatMessage // Existing or newly created message
+ChatMessage; // Existing or newly created message
 ```
 
 **Process**:
+
 1. Check if message with clientId already exists
 2. If exists: Return it (no duplicate)
 3. If not: Create new message (same as POST messages)
@@ -1090,11 +1174,15 @@ ChatMessage // Existing or newly created message
 **Purpose**: Pin or unpin a conversation
 
 **Body**:
+
 ```typescript
-{ pinned: boolean }
+{
+	pinned: boolean;
+}
 ```
 
 **Process**:
+
 - Updates `conversationParticipant.pinnedAt` (set or null)
 
 **File**: `app/api/messages/threads/[id]/pin/route.ts`
@@ -1104,11 +1192,15 @@ ChatMessage // Existing or newly created message
 **Purpose**: Mute or unmute a conversation
 
 **Body**:
+
 ```typescript
-{ durationMinutes: number } // 0 to unmute
+{
+	durationMinutes: number;
+} // 0 to unmute
 ```
 
 **Process**:
+
 - Updates `conversationParticipant.mutedUntil` (calculated timestamp or null)
 
 **File**: `app/api/messages/threads/[id]/mute/route.ts`
@@ -1118,11 +1210,15 @@ ChatMessage // Existing or newly created message
 **Purpose**: Archive or unarchive a conversation
 
 **Body**:
+
 ```typescript
-{ archived: boolean }
+{
+	archived: boolean;
+}
 ```
 
 **Process**:
+
 - Updates `conversationParticipant.archivedAt` (set or null)
 
 **File**: `app/api/messages/threads/[id]/archive/route.ts`
@@ -1132,6 +1228,7 @@ ChatMessage // Existing or newly created message
 **Purpose**: Soft delete a conversation (hide from list)
 
 **Process**:
+
 - Updates `conversationParticipant.deletedAt` (set to now)
 
 **File**: `app/api/messages/threads/[id]/delete/route.ts`
@@ -1145,28 +1242,30 @@ ChatMessage // Existing or newly created message
 **Answer**: The system uses Supabase Realtime, which provides WebSocket-based communication.
 
 1. **Server-side**: After database operations (create message, update receipt), the API uses `supabaseAdmin` to broadcast events to specific channels:
-   ```typescript
-   const channel = supabaseAdmin.channel(`messages:${conversationId}`);
-   await channel.send({
-     type: 'broadcast',
-     event: 'new_message',
-     payload: messageData
-   });
-   ```
+
+    ```typescript
+    const channel = supabaseAdmin.channel(`messages:${conversationId}`);
+    await channel.send({
+    	type: 'broadcast',
+    	event: 'new_message',
+    	payload: messageData,
+    });
+    ```
 
 2. **Client-side**: React hooks subscribe to channels and listen for broadcast events:
-   ```typescript
-   const channel = supabase.channel(`messages:${conversationId}`);
-   channel.on('broadcast', { event: 'new_message' }, (payload) => {
-     // Update React state
-   });
-   ```
+
+    ```typescript
+    const channel = supabase.channel(`messages:${conversationId}`);
+    channel.on('broadcast', { event: 'new_message' }, payload => {
+    	// Update React state
+    });
+    ```
 
 3. **Channels**: Different channels for different purposes:
-   - `messages:{conversationId}`: Conversation-specific updates
-   - `user:{userId}:messages`: User-specific updates (all conversations)
-   - `typing:{conversationId}`: Typing indicators
-   - `presence:messages`: Online status
+    - `messages:{conversationId}`: Conversation-specific updates
+    - `user:{userId}:messages`: User-specific updates (all conversations)
+    - `typing:{conversationId}`: Typing indicators
+    - `presence:messages`: Online status
 
 **Why WebSockets**: Low latency, bidirectional, real-time updates without polling.
 
@@ -1175,20 +1274,21 @@ ChatMessage // Existing or newly created message
 **Answer**: Read receipts track when a user actually views a conversation.
 
 1. **Trigger**: When user opens a conversation or receives a message while viewing it
-2. **Process**: 
-   - API finds all unread receipts for that conversation
-   - Updates `messageReceipt.readAt` timestamp
-   - Updates `conversationParticipant.lastReadAt`
-   - Broadcasts receipt updates to conversation channel
+2. **Process**:
+    - API finds all unread receipts for that conversation
+    - Updates `messageReceipt.readAt` timestamp
+    - Updates `conversationParticipant.lastReadAt`
+    - Broadcasts receipt updates to conversation channel
 3. **Visual**: Sender sees double blue tick (✓✓) when recipient reads
 4. **State**: Message state changes from "delivered" to "read"
 
 **Key Code**:
+
 ```typescript
 // POST /api/messages/threads/[id]/read
 await prisma.messageReceipt.updateMany({
-  where: { userId, message: { conversationId }, readAt: null },
-  data: { readAt: now, deliveredAt: now }
+	where: { userId, message: { conversationId }, readAt: null },
+	data: { readAt: now, deliveredAt: now },
 });
 ```
 
@@ -1198,18 +1298,19 @@ await prisma.messageReceipt.updateMany({
 
 1. **Trigger**: When user fetches messages (GET endpoint) or receives via real-time
 2. **Process**:
-   - API finds undelivered receipts for fetched messages
-   - Updates `messageReceipt.deliveredAt` timestamp
-   - Broadcasts receipt update to conversation channel
+    - API finds undelivered receipts for fetched messages
+    - Updates `messageReceipt.deliveredAt` timestamp
+    - Broadcasts receipt update to conversation channel
 3. **Visual**: Sender sees double grey tick (✓✓) when delivered
 4. **State**: Message state changes from "sent" to "delivered"
 
 **Key Code**:
+
 ```typescript
 // GET /api/messages/threads/[id]/messages
 await prisma.messageReceipt.updateMany({
-  where: { userId, messageId: { in: messageIds }, deliveredAt: null },
-  data: { deliveredAt: now }
+	where: { userId, messageId: { in: messageIds }, deliveredAt: null },
+	data: { deliveredAt: now },
 });
 ```
 
@@ -1226,17 +1327,19 @@ await prisma.messageReceipt.updateMany({
 5. **Database**: Unique constraint on `(sender_id, client_id)` prevents duplicates
 
 **Why**: Prevents duplicate messages from:
+
 - Network retries
 - User clicking send multiple times
 - Browser refresh during send
 
 **Key Code**:
+
 ```typescript
 if (clientId) {
-  const existing = await prisma.message.findFirst({
-    where: { senderId: userId, clientId }
-  });
-  if (existing) return existing; // No duplicate
+	const existing = await prisma.message.findFirst({
+		where: { senderId: userId, clientId },
+	});
+	if (existing) return existing; // No duplicate
 }
 ```
 
@@ -1253,20 +1356,17 @@ if (clientId) {
 **Benefits**: Instant feedback, no waiting for network round-trip.
 
 **Key Code**:
+
 ```typescript
 const optimistic: ChatMessage = {
-  id: `local-${clientId}`,
-  localStatus: 'sending',
-  // ... other fields
+	id: `local-${clientId}`,
+	localStatus: 'sending',
+	// ... other fields
 };
 setMessages(prev => [...prev, optimistic]);
 
 // After API response
-setMessages(prev => prev.map(msg => 
-  msg.clientId === clientId 
-    ? { ...saved, localStatus: undefined }
-    : msg
-));
+setMessages(prev => prev.map(msg => (msg.clientId === clientId ? { ...saved, localStatus: undefined } : msg)));
 ```
 
 ### How is online status tracked?
@@ -1282,19 +1382,18 @@ setMessages(prev => prev.map(msg =>
 **Why**: Built-in Supabase feature, no custom polling needed.
 
 **Key Code**:
+
 ```typescript
-channel.subscribe(async (status) => {
-  if (status === 'SUBSCRIBED') {
-    await channel.track({ userId }); // Announce online
-  }
+channel.subscribe(async status => {
+	if (status === 'SUBSCRIBED') {
+		await channel.track({ userId }); // Announce online
+	}
 });
 
 channel.on('presence', { event: 'sync' }, () => {
-  const state = channel.presenceState<{ userId: string }>();
-  const online = Object.values(state).flatMap(entries => 
-    entries.map(entry => entry.userId)
-  );
-  setOnlineUserIds([...new Set(online)]);
+	const state = channel.presenceState<{ userId: string }>();
+	const online = Object.values(state).flatMap(entries => entries.map(entry => entry.userId));
+	setOnlineUserIds([...new Set(online)]);
 });
 ```
 
@@ -1311,23 +1410,24 @@ channel.on('presence', { event: 'sync' }, () => {
 **Why**: Provides instant feedback, improves UX.
 
 **Key Code**:
+
 ```typescript
 // Send typing
 channel.send({
-  type: 'broadcast',
-  event: 'typing',
-  payload: { userId: currentUser.id }
+	type: 'broadcast',
+	event: 'typing',
+	payload: { userId: currentUser.id },
 });
 
 // Receive typing
-channel.on('broadcast', { event: 'typing' }, (payload) => {
-  const senderId = payload.payload?.userId;
-  setTypingUserIds(prev => [...prev, senderId]);
-  
-  // Auto-clear after 2.5s
-  setTimeout(() => {
-    setTypingUserIds(prev => prev.filter(id => id !== senderId));
-  }, 2500);
+channel.on('broadcast', { event: 'typing' }, payload => {
+	const senderId = payload.payload?.userId;
+	setTypingUserIds(prev => [...prev, senderId]);
+
+	// Auto-clear after 2.5s
+	setTimeout(() => {
+		setTypingUserIds(prev => prev.filter(id => id !== senderId));
+	}, 2500);
 });
 ```
 
@@ -1336,13 +1436,14 @@ channel.on('broadcast', { event: 'typing' }, (payload) => {
 **Answer**: Count messages created after user's `lastReadAt`.
 
 **Process**:
+
 ```typescript
 const unreadCount = await prisma.message.count({
-  where: {
-    conversationId: conversation.id,
-    senderId: { not: userId }, // Don't count own messages
-    createdAt: { gt: currentParticipant.lastReadAt } // After last read
-  }
+	where: {
+		conversationId: conversation.id,
+		senderId: { not: userId }, // Don't count own messages
+		createdAt: { gt: currentParticipant.lastReadAt }, // After last read
+	},
 });
 ```
 
@@ -1353,22 +1454,24 @@ const unreadCount = await prisma.message.count({
 **Answer**: Cursor-based pagination using message ID and createdAt.
 
 **Process**:
+
 1. **First load**: Fetch latest 30 messages (ordered by createdAt DESC)
 2. **Get cursor**: Last message ID becomes cursor
 3. **Load more**: Fetch messages where `createdAt < cursorMessage.createdAt`
 4. **Append**: Prepend older messages to list
 
 **Key Code**:
+
 ```typescript
 const whereClause = {
-  conversationId: id,
-  ...(cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {})
+	conversationId: id,
+	...(cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {}),
 };
 
 const messages = await prisma.message.findMany({
-  where: whereClause,
-  orderBy: { createdAt: 'desc' },
-  take: limit
+	where: whereClause,
+	orderBy: { createdAt: 'desc' },
+	take: limit,
 });
 
 const nextCursor = messages.length === limit ? messages[messages.length - 1]?.id : null;
@@ -1379,20 +1482,23 @@ const nextCursor = messages.length === limit ? messages[messages.length - 1]?.id
 **Answer**: Users can only chat if they share at least one circle.
 
 **Check** (`_utils.ts`):
+
 ```typescript
 async function canUsersChat(userId: string, otherUserId: string): Promise<boolean> {
-  const shared = await getSharedCircleIds(userId, otherUserId);
-  return shared.length > 0;
+	const shared = await getSharedCircleIds(userId, otherUserId);
+	return shared.length > 0;
 }
 ```
 
 **Process**:
+
 1. Find all circles both users are members of (where `leftAt` is null)
 2. Count circles with both users
 3. If count > 0: Can chat
 4. If count = 0: Cannot chat (chat disabled)
 
-**Enforced**: 
+**Enforced**:
+
 - When creating conversation (POST `/api/messages/threads`)
 - When sending message (POST `/api/messages/threads/[id]/messages`)
 - Displayed in UI (`canMessage` flag)

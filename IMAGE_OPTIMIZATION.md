@@ -5,6 +5,7 @@ This document explains how to use the optimized image components in ShareCircle 
 ## Overview
 
 ShareCircle uses Next.js Image component with custom optimization utilities to provide:
+
 - Automatic WebP/AVIF conversion
 - Lazy loading by default
 - Responsive images with proper srcset
@@ -20,16 +21,11 @@ The main image component for general use.
 ```tsx
 import { OptimizedImage } from '@/components/ui/optimized-image';
 
-<OptimizedImage
-  src="/path/to/image.jpg"
-  alt="Description"
-  width={400}
-  height={300}
-  className="rounded-lg"
-/>
+<OptimizedImage src="/path/to/image.jpg" alt="Description" width={400} height={300} className="rounded-lg" />;
 ```
 
 **Props:**
+
 - `src` - Image URL (local or remote)
 - `alt` - Alt text (required for accessibility)
 - `width` & `height` - Dimensions in pixels
@@ -45,15 +41,11 @@ Specialized component for profile pictures and user avatars.
 ```tsx
 import { AvatarImage } from '@/components/ui/optimized-image';
 
-<AvatarImage
-  src={user.image}
-  alt={user.name}
-  size={48}
-  fallback={<UserIcon />}
-/>
+<AvatarImage src={user.image} alt={user.name} size={48} fallback={<UserIcon />} />;
 ```
 
 **Props:**
+
 - `src` - Avatar URL (can be null/undefined)
 - `alt` - User name or description
 - `size` - Avatar size in pixels (default: 40)
@@ -61,6 +53,7 @@ import { AvatarImage } from '@/components/ui/optimized-image';
 - `priority` - Load immediately (default: false)
 
 **Features:**
+
 - Circular by default
 - Graceful fallback handling
 - Optimized for profile pictures (quality: 90)
@@ -72,16 +65,11 @@ Optimized for product/item listing images with consistent aspect ratios.
 ```tsx
 import { ItemImage } from '@/components/ui/optimized-image';
 
-<ItemImage
-  src={item.imageUrl}
-  alt={item.name}
-  aspectRatio="4/3"
-  width={400}
-  height={300}
-/>
+<ItemImage src={item.imageUrl} alt={item.name} aspectRatio="4/3" width={400} height={300} />;
 ```
 
 **Props:**
+
 - `src` - Item image URL (can be null/undefined)
 - `alt` - Item name or description
 - `width` & `height` - Dimensions (default: 400x300)
@@ -89,6 +77,7 @@ import { ItemImage } from '@/components/ui/optimized-image';
 - `priority` - Load immediately (default: false)
 
 **Features:**
+
 - Consistent aspect ratios across listings
 - Shows "No image" placeholder for missing images
 - Cover fit by default
@@ -123,6 +112,7 @@ images: {
 ### Remote Patterns
 
 Allowed remote image sources:
+
 - **Supabase Storage**: `https://*.supabase.co/storage/v1/object/**`
 - **Google OAuth**: `https://lh3.googleusercontent.com/**`
 
@@ -168,12 +158,12 @@ When using `fill` layout, always specify the `sizes` prop:
 
 ```tsx
 <div className="relative w-full h-64">
-  <OptimizedImage
-    src="/image.jpg"
-    alt="Responsive image"
-    fill
-    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-  />
+	<OptimizedImage
+		src="/image.jpg"
+		alt="Responsive image"
+		fill
+		sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+	/>
 </div>
 ```
 
@@ -185,13 +175,7 @@ When using `fill` layout, always specify the `sizes` prop:
 - **Background images**: 60-70
 
 ```tsx
-<OptimizedImage
-  src="/background.jpg"
-  alt="Background"
-  width={1920}
-  height={1080}
-  quality={70}
-/>
+<OptimizedImage src="/background.jpg" alt="Background" width={1920} height={1080} quality={70} />
 ```
 
 ### 5. Use Correct Component for Use Case
@@ -210,6 +194,7 @@ When using `fill` layout, always specify the `sizes` prop:
 ## Performance Metrics
 
 Expected improvements:
+
 - **Load time**: 40-60% faster with WebP/AVIF
 - **Bandwidth**: 30-50% reduction in image size
 - **LCP (Largest Contentful Paint)**: Improved with priority loading
@@ -218,25 +203,15 @@ Expected improvements:
 ## Migration from Standard img Tags
 
 ### Before:
+
 ```tsx
-<img
-  src={item.imageUrl}
-  alt={item.name}
-  className="w-full h-64 object-cover"
-  loading="lazy"
-/>
+<img src={item.imageUrl} alt={item.name} className="w-full h-64 object-cover" loading="lazy" />
 ```
 
 ### After:
+
 ```tsx
-<ItemImage
-  src={item.imageUrl}
-  alt={item.name}
-  width={400}
-  height={300}
-  aspectRatio="4/3"
-  className="rounded-lg"
-/>
+<ItemImage src={item.imageUrl} alt={item.name} width={400} height={300} aspectRatio="4/3" className="rounded-lg" />
 ```
 
 ## Troubleshooting

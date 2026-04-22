@@ -27,7 +27,7 @@ export function CirclesPage() {
 	const [showJoinModal, setShowJoinModal] = useState(false);
 	const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 	const { toast } = useToast();
-	
+
 	// Use RTK Query for circles data
 	const { data: circles = [], isLoading } = useGetCirclesQuery();
 

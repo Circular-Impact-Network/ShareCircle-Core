@@ -55,7 +55,7 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 	const [joinedCircle, setJoinedCircle] = useState<Circle | null>(null);
 	const [activeTab, setActiveTab] = useState<'code' | 'link'>('code');
 	const [code, setCode] = useState(initialCode || '');
-	
+
 	// Use RTK Query mutation
 	const [joinCircle, { isLoading }] = useJoinCircleMutation();
 
@@ -64,7 +64,7 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 		if (open && initialCode && initialCode !== code) {
 			setCode(initialCode);
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [open, initialCode]);
 
 	const extractCodeFromLink = (link: string): string | null => {
@@ -117,8 +117,9 @@ export function JoinCircleModal({ open, onOpenChange, onJoinSuccess, initialCode
 			});
 		} catch (err) {
 			console.error('Error joining circle:', err);
-			const errorMessage = (err as { data?: { error?: string }; message?: string })?.data?.error || 
-				(err as { message?: string })?.message || 
+			const errorMessage =
+				(err as { data?: { error?: string }; message?: string })?.data?.error ||
+				(err as { message?: string })?.message ||
 				'Failed to join circle. Please check the code and try again.';
 			setError(errorMessage);
 		}

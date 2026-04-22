@@ -82,7 +82,9 @@ export function ItemDetailsModal({ item, onOpenChange }: ItemDetailsModalProps) 
 					<div className="flex items-center gap-3">
 						<Avatar className="h-12 w-12">
 							<AvatarImage src={item.owner.image || undefined} />
-							<AvatarFallback className="text-sm">{item.owner.name?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+							<AvatarFallback className="text-sm">
+								{item.owner.name?.[0]?.toUpperCase() || '?'}
+							</AvatarFallback>
 						</Avatar>
 						<div className="space-y-0.5 flex-1">
 							<p className="text-sm font-semibold leading-tight">{item.owner.name || 'Unknown'}</p>
@@ -95,7 +97,11 @@ export function ItemDetailsModal({ item, onOpenChange }: ItemDetailsModalProps) 
 
 					{/* Action Buttons */}
 					<div className="flex gap-3 pt-2">
-						<Button variant="outline" className="flex-1 gap-2 bg-transparent" onClick={() => onOpenChange(false)}>
+						<Button
+							variant="outline"
+							className="flex-1 gap-2 bg-transparent"
+							onClick={() => onOpenChange(false)}
+						>
 							<MessageCircle className="h-4 w-4" />
 							Contact
 						</Button>

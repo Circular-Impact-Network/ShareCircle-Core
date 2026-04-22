@@ -30,6 +30,8 @@ export const userApi = createApi({
 		baseUrl: '/api',
 		credentials: 'include',
 	}),
+	keepUnusedDataFor: 300,
+	refetchOnReconnect: true,
 	tagTypes: ['User'],
 	endpoints: builder => ({
 		getUser: builder.query<User, void>({

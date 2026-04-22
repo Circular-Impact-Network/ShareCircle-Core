@@ -28,7 +28,15 @@ export interface ItemCardProps {
 	className?: string;
 }
 
-export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showActions = false, onDelete, onEdit, onClick, className }: ItemCardProps) {
+export const ItemCard = memo(function ItemCard({
+	item,
+	variant = 'grid',
+	showActions = false,
+	onDelete,
+	onEdit,
+	onClick,
+	className,
+}: ItemCardProps) {
 	// Determine if we should show carousel (always show if multiple images, or if detail variant)
 	const hasMultipleMedia = item.mediaUrls && item.mediaUrls.length > 1;
 	const shouldShowCarousel = hasMultipleMedia || variant === 'detail';
@@ -123,9 +131,7 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 					)}
 					{/* Badges and Actions */}
 					{item.isOwner && variant !== 'list' && (
-						<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm z-10">
-							Your Item
-						</Badge>
+						<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm z-10">Your Item</Badge>
 					)}
 					{showActions && variant !== 'list' && (
 						<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -165,9 +171,7 @@ export const ItemCard = memo(function ItemCard({ item, variant = 'grid', showAct
 					{renderMedia(mediaUrls[0], 0)}
 					{/* Badges and Actions for single image */}
 					{item.isOwner && variant !== 'list' && (
-						<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm z-10">
-							Your Item
-						</Badge>
+						<Badge className="absolute top-2 left-2 bg-primary/90 backdrop-blur-sm z-10">Your Item</Badge>
 					)}
 					{showActions && variant !== 'list' && (
 						<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">

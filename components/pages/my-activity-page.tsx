@@ -13,6 +13,7 @@ import {
 	History,
 	CheckCircle2,
 } from 'lucide-react';
+import { RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -98,7 +99,11 @@ function ActiveTransactionCard({
 							className="h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
 							onClick={() => router.push(`/items/${transaction.item.id}`)}
 						>
-							<img src={transaction.item.imageUrl} alt={transaction.item.name} className="h-full w-full object-cover" />
+							<img
+								src={transaction.item.imageUrl}
+								alt={transaction.item.name}
+								className="h-full w-full object-cover"
+							/>
 						</div>
 					)}
 					<div className="flex-1 min-w-0">
@@ -133,7 +138,11 @@ function ActiveTransactionCard({
 								onClick={() => onConfirmHandoff(transaction.borrowRequestId)}
 								disabled={isLoading}
 							>
-								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<CheckCircle2 className="h-4 w-4" />
+								)}
 								Confirm Item Handed Off
 							</Button>
 						)}
@@ -149,7 +158,11 @@ function ActiveTransactionCard({
 								onClick={() => onConfirmReturn(transaction.borrowRequestId)}
 								disabled={isLoading}
 							>
-								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<CheckCircle2 className="h-4 w-4" />
+								)}
 								Confirm Return
 							</Button>
 						)}
@@ -167,7 +180,11 @@ function ActiveTransactionCard({
 								onClick={() => onConfirmReceipt(transaction.borrowRequestId)}
 								disabled={isLoading}
 							>
-								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<CheckCircle2 className="h-4 w-4" />
+								)}
 								Confirm Item Received
 							</Button>
 						)}
@@ -179,7 +196,11 @@ function ActiveTransactionCard({
 								onClick={() => onMarkReturned(transaction.borrowRequestId)}
 								disabled={isLoading}
 							>
-								{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<RotateCcw className="h-4 w-4" />
+								)}
 								Mark as Returned
 							</Button>
 						)}
@@ -208,7 +229,11 @@ function PendingRequestCard({ request }: { request: BorrowRequest }) {
 							className="h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
 							onClick={() => router.push(`/items/${request.item.id}`)}
 						>
-							<img src={request.item.imageUrl} alt={request.item.name} className="h-full w-full object-cover" />
+							<img
+								src={request.item.imageUrl}
+								alt={request.item.name}
+								className="h-full w-full object-cover"
+							/>
 						</div>
 					)}
 					<div className="flex-1 min-w-0">
@@ -227,7 +252,8 @@ function PendingRequestCard({ request }: { request: BorrowRequest }) {
 							<span className="truncate">{request.owner?.name || 'Unknown'}</span>
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
-							Requested: {new Date(request.desiredFrom).toLocaleDateString()} - {new Date(request.desiredTo).toLocaleDateString()}
+							Requested: {new Date(request.desiredFrom).toLocaleDateString()} -{' '}
+							{new Date(request.desiredTo).toLocaleDateString()}
 						</p>
 					</div>
 				</div>
@@ -242,7 +268,11 @@ function QueueEntryCard({ entry }: { entry: BorrowQueueEntry }) {
 	const isReady = entry.status === 'READY';
 
 	return (
-		<Card className={isReady ? 'border-green-500/50 bg-green-500/5' : ''} data-testid="queue-entry-card" data-status={entry.status}>
+		<Card
+			className={isReady ? 'border-green-500/50 bg-green-500/5' : ''}
+			data-testid="queue-entry-card"
+			data-status={entry.status}
+		>
 			<CardContent className="p-4">
 				<div className="flex items-start gap-3">
 					{entry.item.imageUrl && (
@@ -250,7 +280,11 @@ function QueueEntryCard({ entry }: { entry: BorrowQueueEntry }) {
 							className="h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
 							onClick={() => router.push(`/items/${entry.item.id}`)}
 						>
-							<img src={entry.item.imageUrl} alt={entry.item.name} className="h-full w-full object-cover" />
+							<img
+								src={entry.item.imageUrl}
+								alt={entry.item.name}
+								className="h-full w-full object-cover"
+							/>
 						</div>
 					)}
 					<div className="flex-1 min-w-0">
@@ -295,7 +329,11 @@ function HistoryTransactionCard({ transaction, role }: { transaction: FullTransa
 							className="h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
 							onClick={() => router.push(`/items/${transaction.item.id}`)}
 						>
-							<img src={transaction.item.imageUrl} alt={transaction.item.name} className="h-full w-full object-cover" />
+							<img
+								src={transaction.item.imageUrl}
+								alt={transaction.item.name}
+								className="h-full w-full object-cover"
+							/>
 						</div>
 					)}
 					<div className="flex-1 min-w-0">
@@ -311,7 +349,8 @@ function HistoryTransactionCard({ transaction, role }: { transaction: FullTransa
 							<span className="truncate">{otherPerson?.name || 'Unknown'}</span>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							{transaction.returnedAt && `Returned ${new Date(transaction.returnedAt).toLocaleDateString()}`}
+							{transaction.returnedAt &&
+								`Returned ${new Date(transaction.returnedAt).toLocaleDateString()}`}
 						</p>
 					</div>
 				</div>
@@ -426,39 +465,41 @@ export function MyActivityPage() {
 				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
 					<PageHeader title="My Activity" description="Track your borrowing and lending activity" />
 					<PageTabsList>
-					<PageTabsTrigger value="active" className="gap-2" badge={activeCount > 0 ? activeCount : undefined}>
-						<HandshakeIcon className="h-4 w-4" />
-						Active
-					</PageTabsTrigger>
-					<PageTabsTrigger
-						value="pending"
-						className="gap-2"
-						badge={pendingRequests.length > 0 ? pendingRequests.length : undefined}
-					>
-						<Clock className="h-4 w-4" />
-						Pending
-					</PageTabsTrigger>
-					<PageTabsTrigger
-						value="queue"
-						className="gap-2"
-						badge={activeQueueEntries.length > 0 ? activeQueueEntries.length : undefined}
-					>
-						<Users className="h-4 w-4" />
-						Queue
-					</PageTabsTrigger>
-					<PageTabsTrigger value="history" className="gap-2">
-						<History className="h-4 w-4" />
-						History
-					</PageTabsTrigger>
-				</PageTabsList>
+						<PageTabsTrigger
+							value="active"
+							className="gap-2"
+							badge={activeCount > 0 ? activeCount : undefined}
+						>
+							<HandshakeIcon className="h-4 w-4" />
+							Active
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="pending"
+							className="gap-2"
+							badge={pendingRequests.length > 0 ? pendingRequests.length : undefined}
+						>
+							<Clock className="h-4 w-4" />
+							Pending
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="queue"
+							className="gap-2"
+							badge={activeQueueEntries.length > 0 ? activeQueueEntries.length : undefined}
+						>
+							<Users className="h-4 w-4" />
+							Queue
+						</PageTabsTrigger>
+						<PageTabsTrigger value="history" className="gap-2">
+							<History className="h-4 w-4" />
+							History
+						</PageTabsTrigger>
+					</PageTabsList>
 				</PageStickyHeader>
 
 				{/* Active Tab - Currently borrowed/lent items */}
 				<PageTabsContent value="active" className="space-y-4">
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : activeCount === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -483,17 +524,19 @@ export function MyActivityPage() {
 										Items I&apos;m Borrowing ({activeBorrowed.length})
 									</h3>
 									{activeBorrowed
-										.filter(tx => visibleActiveTransactions.visibleItems.some(item => item.id === tx.id))
+										.filter(tx =>
+											visibleActiveTransactions.visibleItems.some(item => item.id === tx.id),
+										)
 										.map(tx => (
-										<ActiveTransactionCard
-											key={tx.id}
-											transaction={tx}
-											role="borrower"
-											onMarkReturned={handleMarkReturned}
-											onConfirmReceipt={handleConfirmReceipt}
-											isLoading={processingId === tx.borrowRequestId}
-										/>
-									))}
+											<ActiveTransactionCard
+												key={tx.id}
+												transaction={tx}
+												role="borrower"
+												onMarkReturned={handleMarkReturned}
+												onConfirmReceipt={handleConfirmReceipt}
+												isLoading={processingId === tx.borrowRequestId}
+											/>
+										))}
 								</div>
 							)}
 
@@ -505,17 +548,19 @@ export function MyActivityPage() {
 										Items I&apos;ve Lent Out ({activeLent.length})
 									</h3>
 									{activeLent
-										.filter(tx => visibleActiveTransactions.visibleItems.some(item => item.id === tx.id))
+										.filter(tx =>
+											visibleActiveTransactions.visibleItems.some(item => item.id === tx.id),
+										)
 										.map(tx => (
-										<ActiveTransactionCard
-											key={tx.id}
-											transaction={tx}
-											role="owner"
-											onConfirmHandoff={handleConfirmHandoff}
-											onConfirmReturn={handleConfirmReturn}
-											isLoading={processingId === tx.borrowRequestId}
-										/>
-									))}
+											<ActiveTransactionCard
+												key={tx.id}
+												transaction={tx}
+												role="owner"
+												onConfirmHandoff={handleConfirmHandoff}
+												onConfirmReturn={handleConfirmReturn}
+												isLoading={processingId === tx.borrowRequestId}
+											/>
+										))}
 								</div>
 							)}
 							<InfiniteScrollSentinel
@@ -531,9 +576,7 @@ export function MyActivityPage() {
 				{/* Pending Tab - Requests awaiting approval */}
 				<PageTabsContent value="pending" className="space-y-3">
 					{requestsLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={3} />
 					) : pendingRequests.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -566,9 +609,7 @@ export function MyActivityPage() {
 				{/* Queue Tab */}
 				<PageTabsContent value="queue" className="space-y-3">
 					{queueLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={3} />
 					) : activeQueueEntries.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
@@ -601,9 +642,7 @@ export function MyActivityPage() {
 				{/* History Tab */}
 				<PageTabsContent value="history" className="space-y-4">
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</div>
+						<RequestCardListSkeleton count={4} />
 					) : borrowedHistory.length === 0 && lentHistory.length === 0 ? (
 						<Card className="border-dashed">
 							<CardContent className="flex flex-col items-center gap-4 text-center py-12">

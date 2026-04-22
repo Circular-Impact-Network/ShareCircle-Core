@@ -41,7 +41,9 @@ export async function sendOtpSms({ toE164, code, context }: SendOtpSmsInput): Pr
 	const client = getTwilioClient();
 	const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 	if (!client || !fromNumber) {
-		throw new Error('Twilio SMS is not configured. Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN or TWILIO_PHONE_NUMBER.');
+		throw new Error(
+			'Twilio SMS is not configured. Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN or TWILIO_PHONE_NUMBER.',
+		);
 	}
 
 	try {

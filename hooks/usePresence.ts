@@ -35,6 +35,7 @@ export function useTypingIndicator(conversationId: string | null, currentUser: C
 				}
 				typingTimeouts.current[senderId] = setTimeout(() => {
 					setTypingUserIds(prev => prev.filter(id => id !== senderId));
+					delete typingTimeouts.current[senderId];
 				}, 2500);
 			})
 			.subscribe();
