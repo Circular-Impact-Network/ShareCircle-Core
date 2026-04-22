@@ -48,6 +48,7 @@ import {
 	useExtendBorrowMutation,
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
+import { ItemDetailSkeleton } from '@/components/ui/skeletons';
 import { useToast } from '@/hooks/use-toast';
 
 interface ItemDetailPageProps {
@@ -245,14 +246,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 
 	// Loading state
 	if (isLoading) {
-		return (
-			<PageShell className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center">
-					<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-					<p className="text-muted-foreground">Loading item details...</p>
-				</div>
-			</PageShell>
-		);
+		return <ItemDetailSkeleton />;
 	}
 
 	// Access denied state (403)
