@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
 			password?: string;
 			phoneNumber?: string;
 			country?: string;
+			dateOfBirth?: string;
+			latitude?: number;
+			longitude?: number;
+			city?: string;
 		};
 		const normalizedEmail = body.email ? normalizeEmail(body.email) : '';
 		const normalizedName = body.name?.trim() || 'User';
@@ -105,6 +109,10 @@ export async function POST(req: NextRequest) {
 				country_code: dialCode,
 				...(emailVerified && { emailVerified }),
 				...(phoneVerified && { phoneVerified }),
+				...(body.dateOfBirth && { date_of_birth: new Date(body.dateOfBirth) }),
+				...(body.latitude !== undefined && { latitude: body.latitude }),
+				...(body.longitude !== undefined && { longitude: body.longitude }),
+				...(body.city && { city: body.city }),
 			},
 			select: {
 				id: true,
