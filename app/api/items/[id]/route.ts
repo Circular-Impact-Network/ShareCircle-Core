@@ -73,6 +73,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 						},
 					},
 				},
+				borrowTransactions: {
+					where: {
+						status: { in: ['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED', 'RETURN_PENDING'] },
+					},
+					orderBy: { createdAt: 'desc' },
+					take: 1,
+					select: { dueAt: true },
+				},
 			},
 		});
 
@@ -124,6 +132,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 					})),
 				isOwner: item.ownerId === userId,
 				isAvailable: item.isAvailable,
+				borrowedUntil: item.borrowTransactions[0]?.dueAt ?? null,
 			},
 			{ status: 200 },
 		);
