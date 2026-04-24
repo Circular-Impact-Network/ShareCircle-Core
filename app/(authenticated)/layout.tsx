@@ -47,7 +47,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 		return (
 			<div className="flex min-h-[100dvh] items-center justify-center bg-background">
 				{/* Local static asset; <img> avoids next/image in loading shell */}
-				<img src="/share-circle-logo-no-name.png" alt="ShareCircle" className="h-16 w-16 animate-pulse" />
+				<div className="rounded-full bg-white p-3 shadow-md animate-pulse">
+					<img src="/share-circle-icon-square.png" alt="ShareCircle" className="h-12 w-12 object-contain" />
+				</div>
 			</div>
 		);
 	}
@@ -67,7 +69,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 					>
 						<Menu className="h-4 w-4" />
 					</Button>
-					<img src="/share-circle-logo-1.png" alt="ShareCircle" className="h-7 w-auto object-contain" />
+					<div className="h-9 w-9 rounded-full bg-white shadow-sm overflow-hidden shrink-0">
+						<img src="/share-circle-icon-square.png" alt="ShareCircle" className="h-9 w-9 object-contain" />
+					</div>
 				</div>
 				{/* Spacer that reserves the top-bar height so <main> starts below it */}
 				<div className="h-14 shrink-0 lg:hidden" aria-hidden="true" />
