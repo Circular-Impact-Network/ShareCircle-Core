@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
 	ArrowLeft,
 	MessageCircle,
-	Calendar,
+	Calendar as CalendarIcon,
 	Tag,
 	FolderOpen,
 	Copy,
@@ -30,7 +30,6 @@ import { ItemCard } from '@/components/cards/item-card';
 import { EditItemModal } from '@/components/modals/edit-item-modal';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import {
 	Dialog,
 	DialogContent,
@@ -39,6 +38,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useGetItemQuery, Item } from '@/lib/redux/api/itemsApi';
 import {
 	useCreateBorrowRequestMutation,
@@ -63,10 +64,10 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [showBorrowModal, setShowBorrowModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [showExtendModal, setShowExtendModal] = useState(false);
-	const [newDueDate, setNewDueDate] = useState('');
+	const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
 	const [borrowMessage, setBorrowMessage] = useState('');
-	const [desiredFrom, setDesiredFrom] = useState('');
-	const [desiredTo, setDesiredTo] = useState('');
+	const [desiredFrom, setDesiredFrom] = useState<Date | undefined>(undefined);
+	const [desiredTo, setDesiredTo] = useState<Date | undefined>(undefined);
 
 	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
 
@@ -171,13 +172,14 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			return;
 		}
 		try {
-			await extendBorrow({ id: activeTransaction.borrowRequestId, newDueAt: newDueDate }).unwrap();
+			const newDueDateStr = format(newDueDate, 'yyyy-MM-dd');
+			await extendBorrow({ id: activeTransaction.borrowRequestId, newDueAt: newDueDateStr }).unwrap();
 			toast({
 				title: 'Borrow period extended!',
-				description: `New due date: ${new Date(newDueDate).toLocaleDateString()}`,
+				description: `New due date: ${newDueDate.toLocaleDateString()}`,
 			});
 			setShowExtendModal(false);
-			setNewDueDate('');
+			setNewDueDate(undefined);
 		} catch (error) {
 			const msg =
 				error && typeof error === 'object' && 'data' in error
@@ -192,20 +194,24 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			toast({ title: 'Please select dates', variant: 'destructive' });
 			return;
 		}
+		if (isBefore(startOfDay(desiredTo), startOfDay(desiredFrom))) {
+			toast({ title: '"To" date must be on or after "From" date', variant: 'destructive' });
+			return;
+		}
 		try {
 			const result = await createBorrowRequest({
 				itemId,
 				message: borrowMessage.trim() || undefined,
-				desiredFrom,
-				desiredTo,
+				desiredFrom: format(desiredFrom, 'yyyy-MM-dd'),
+				desiredTo: format(desiredTo, 'yyyy-MM-dd'),
 				joinQueue,
 			}).unwrap();
 
 			// Close modal and reset state immediately on success
 			setShowBorrowModal(false);
 			setBorrowMessage('');
-			setDesiredFrom('');
-			setDesiredTo('');
+			setDesiredFrom(undefined);
+			setDesiredTo(undefined);
 
 			if (result.type === 'queue') {
 				toast({
@@ -236,11 +242,9 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	// Set default dates when modal opens
 	useEffect(() => {
 		if (showBorrowModal) {
-			const today = new Date();
-			const nextWeek = new Date(today);
-			nextWeek.setDate(nextWeek.getDate() + 7);
-			setDesiredFrom(today.toISOString().split('T')[0]);
-			setDesiredTo(nextWeek.toISOString().split('T')[0]);
+			const today = startOfDay(new Date());
+			setDesiredFrom(today);
+			setDesiredTo(addDays(today, 7));
 		}
 	}, [showBorrowModal]);
 
@@ -385,7 +389,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<div className="space-y-0.5 flex-1">
 							<p className="text-sm font-semibold leading-tight">{item.owner.name || 'Unknown'}</p>
 							<div className="flex items-center gap-1 text-xs text-muted-foreground">
-								<Calendar className="h-3 w-3" />
+								<CalendarIcon className="h-3 w-3" />
 								<span>Added {formatDate(item.createdAt)}</span>
 							</div>
 						</div>
@@ -428,9 +432,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 											Currently Borrowed
 										</p>
 										<p className="text-xs text-muted-foreground">
-											{queueEntries.length > 0
-												? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
-												: 'You can join the queue'}
+											{itemWithAvailability?.borrowedUntil
+												? `Until ${new Date(itemWithAvailability.borrowedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+												: queueEntries.length > 0
+													? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
+													: 'You can join the queue'}
 										</p>
 									</div>
 								</>
@@ -532,23 +538,27 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					<div className="space-y-4 py-4">
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label htmlFor="from-date">From</Label>
-								<Input
-									id="from-date"
-									type="date"
+								<Label>From</Label>
+								<DatePicker
 									value={desiredFrom}
-									onChange={e => setDesiredFrom(e.target.value)}
-									min={new Date().toISOString().split('T')[0]}
+									onChange={date => {
+										if (!date) return;
+										setDesiredFrom(date);
+										if (!desiredTo || isBefore(desiredTo, date)) {
+											setDesiredTo(addDays(date, 1));
+										}
+									}}
+									disabled={{ before: startOfDay(new Date()) }}
+									placeholder="Pick a date"
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="to-date">To</Label>
-								<Input
-									id="to-date"
-									type="date"
+								<Label>To</Label>
+								<DatePicker
 									value={desiredTo}
-									onChange={e => setDesiredTo(e.target.value)}
-									min={desiredFrom || new Date().toISOString().split('T')[0]}
+									onChange={date => date && setDesiredTo(date)}
+									disabled={{ before: desiredFrom ? startOfDay(desiredFrom) : startOfDay(new Date()) }}
+									placeholder="Pick a date"
 								/>
 							</div>
 						</div>
@@ -589,17 +599,16 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
-							<Label htmlFor="new-due-date">New due date</Label>
-							<Input
-								id="new-due-date"
-								type="date"
+							<Label>New due date</Label>
+							<DatePicker
 								value={newDueDate}
-								onChange={e => setNewDueDate(e.target.value)}
-								min={
-									activeTransaction?.dueAt
-										? new Date(activeTransaction.dueAt).toISOString().split('T')[0]
-										: new Date().toISOString().split('T')[0]
-								}
+								onChange={date => date && setNewDueDate(date)}
+								disabled={{
+									before: activeTransaction?.dueAt
+										? startOfDay(new Date(activeTransaction.dueAt))
+										: startOfDay(new Date()),
+								}}
+								placeholder="Pick a date"
 							/>
 						</div>
 						{activeTransaction?.dueAt && (
