@@ -82,16 +82,19 @@ export function Sidebar() {
 	const sidebarContent = (
 		<div className="flex h-full flex-col overflow-hidden">
 			{/* Logo */}
-			<div className="flex items-center justify-center gap-3 border-b border-border">
-				<Link href="/home" className="flex-1 items-center justify-center" onClick={handleNavClick}>
-					<Image
-						src="/share-circle-logo-1.png"
-						alt="ShareCircle"
-						width={160}
-						height={48}
-						// className="h-auto w-36 object-contain"
-						priority
-					/>
+			<div className="flex items-center justify-center gap-3 border-b border-border px-3 py-3">
+				<Link href="/home" className="flex-1 flex items-center gap-2.5" onClick={handleNavClick}>
+					<div className="h-9 w-9 flex-shrink-0 rounded-full bg-white shadow-sm overflow-hidden">
+						<Image
+							src="/share-circle-icon-square.png"
+							alt="ShareCircle"
+							width={36}
+							height={36}
+							className="h-9 w-9 object-contain"
+							priority
+						/>
+					</div>
+					<span className="text-sm font-semibold text-foreground leading-tight">ShareCircle</span>
 				</Link>
 				<Button
 					variant="ghost"
