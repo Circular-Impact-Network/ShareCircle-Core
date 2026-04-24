@@ -55,7 +55,7 @@ export function ItemSummaryCard({
 			<CardContent className="flex flex-1 flex-col gap-3 p-4">
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
-						<h3 className="line-clamp-1 text-base font-semibold text-foreground">{item.name}</h3>
+						<h3 className="flex-1 min-w-0 line-clamp-1 text-base font-semibold text-foreground">{item.name}</h3>
 						{borrowStatus && (
 							<Badge variant="secondary" className="shrink-0 text-[10px]">
 								{borrowStatus}
