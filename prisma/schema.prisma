@@ -108,6 +108,10 @@ model User {
   zip_code          String?
   country           String?
   profile_media_url String?
+  date_of_birth     DateTime? @map("date_of_birth")
+  latitude          Decimal?  @db.Decimal(10, 8)
+  longitude         Decimal?  @db.Decimal(11, 8)
+  city              String?
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
 
