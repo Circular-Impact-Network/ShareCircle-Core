@@ -1,4 +1,4 @@
-import { Archive, BellOff, MoreVertical, Pin, Search, Trash2, X } from 'lucide-react';
+import { Archive, BellOff, MoreVertical, Pin, Plus, Search, Trash2, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
 	DropdownMenu,
@@ -25,6 +25,7 @@ type ChatHeaderProps = {
 	onDelete: () => void;
 	onToggleSearch: () => void;
 	onSearchChange: (value: string) => void;
+	onNewItem?: () => void;
 };
 
 export function ChatHeader({
@@ -42,6 +43,7 @@ export function ChatHeader({
 	onDelete,
 	onToggleSearch,
 	onSearchChange,
+	onNewItem,
 }: ChatHeaderProps) {
 	return (
 		<div className="border-b border-border/70 bg-card/90 px-4 py-3">
@@ -73,6 +75,18 @@ export function ChatHeader({
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
+					{onNewItem && (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="h-8 gap-1.5 rounded-full text-xs"
+							onClick={onNewItem}
+						>
+							<Plus className="h-3.5 w-3.5" />
+							Add Item
+						</Button>
+					)}
 					{isSearchOpen && (
 						<div className="relative">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
