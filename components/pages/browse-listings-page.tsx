@@ -554,7 +554,7 @@ export function BrowseListingsPage() {
 													Chat
 												</Button>
 												<Button size="sm" onClick={() => router.push(`/items/${item.id}`)}>
-													Borrow
+													{item.isAvailable === false ? 'Join Queue' : 'Borrow'}
 												</Button>
 											</>
 										) : (
