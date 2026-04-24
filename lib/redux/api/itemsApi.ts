@@ -29,6 +29,7 @@ export interface Item {
 	circles: ItemCircle[];
 	isOwner: boolean;
 	isAvailable?: boolean;
+	borrowedUntil?: string | null;
 	similarity?: number;
 }
 
