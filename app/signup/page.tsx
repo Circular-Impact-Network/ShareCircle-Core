@@ -9,10 +9,12 @@ import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Loader2, Mail, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, ArrowLeft, MapPin, LocateFixed } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import {
 	PHONE_COUNTRIES,
@@ -32,6 +34,11 @@ function SignupContent() {
 	const [phoneNumber, setPhoneNumber] = useState('');
 	const [country, setCountry] = useState<SupportedPhoneCountry>('IN');
 	const [signupMethod, setSignupMethod] = useState<'email' | 'phone'>('email');
+	const [dob, setDob] = useState<Date | undefined>(undefined);
+	const [city, setCity] = useState('');
+	const [latitude, setLatitude] = useState<number | null>(null);
+	const [longitude, setLongitude] = useState<number | null>(null);
+	const [isLocating, setIsLocating] = useState(false);
 	const [verificationMethod, setVerificationMethod] = useState<'email' | 'phone'>('email');
 	const [verificationPhone, setVerificationPhone] = useState('');
 	const [verificationCountry, setVerificationCountry] = useState<SupportedPhoneCountry>('IN');
@@ -133,13 +140,33 @@ function SignupContent() {
 					return;
 				}
 
+				if (!dob) {
+					setError('Please enter your date of birth');
+					setIsLoading(false);
+					return;
+				}
+
+				if (!isBefore(dob, subYears(new Date(), 13))) {
+					setError('You must be at least 13 years old to sign up');
+					setIsLoading(false);
+					return;
+				}
+
 				// Call signup API
 				const response = await fetch('/api/auth/signup', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ name, email, password }),
+					body: JSON.stringify({
+						name,
+						email,
+						password,
+						dateOfBirth: dob ? format(dob, 'yyyy-MM-dd') : undefined,
+						latitude: latitude ?? undefined,
+						longitude: longitude ?? undefined,
+						city: city.trim() || undefined,
+					}),
 				});
 
 				const data = await response.json();
@@ -181,6 +208,18 @@ function SignupContent() {
 					return;
 				}
 
+				if (!dob) {
+					setError('Please enter your date of birth');
+					setIsLoading(false);
+					return;
+				}
+
+				if (!isBefore(dob, subYears(new Date(), 13))) {
+					setError('You must be at least 13 years old to sign up');
+					setIsLoading(false);
+					return;
+				}
+
 				const response = await fetch('/api/auth/signup', {
 					method: 'POST',
 					headers: {
@@ -190,6 +229,10 @@ function SignupContent() {
 						name: name.trim() || 'User',
 						phoneNumber,
 						country,
+						dateOfBirth: dob ? format(dob, 'yyyy-MM-dd') : undefined,
+						latitude: latitude ?? undefined,
+						longitude: longitude ?? undefined,
+						city: city.trim() || undefined,
 					}),
 				});
 
@@ -224,6 +267,44 @@ function SignupContent() {
 		} catch {
 			setIsGoogleLoading(false);
 		}
+	};
+
+	const handleUseLocation = () => {
+		if (!navigator.geolocation) {
+			setError('Geolocation is not supported by your browser.');
+			return;
+		}
+		setIsLocating(true);
+		navigator.geolocation.getCurrentPosition(
+			async position => {
+				const { latitude: lat, longitude: lng } = position.coords;
+				setLatitude(lat);
+				setLongitude(lng);
+				try {
+					const res = await fetch(
+						`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+					);
+					if (res.ok) {
+						const data = await res.json();
+						const cityName =
+							data.address?.city ||
+							data.address?.town ||
+							data.address?.village ||
+							data.address?.county ||
+							'';
+						if (cityName) setCity(cityName);
+					}
+				} catch {
+					// Ignore reverse-geocode failures; coordinates are still captured
+				}
+				setIsLocating(false);
+			},
+			() => {
+				setError('Unable to retrieve your location. You can enter your city manually.');
+				setIsLocating(false);
+			},
+			{ timeout: 8000 },
+		);
 	};
 
 	const handleInputChange = (index: number, value: string) => {
@@ -618,6 +699,63 @@ function SignupContent() {
 								</div>
 							</div>
 						</TabsContent>
+
+						{/* DOB — shared for both signup methods */}
+						<div>
+							<label className="block text-sm font-medium mb-2">
+								Date of Birth <span className="text-destructive">*</span>
+							</label>
+							<DatePicker
+								value={dob}
+								onChange={setDob}
+								placeholder="Select your date of birth"
+								fromYear={1900}
+								toYear={subYears(new Date(), 13).getFullYear()}
+								disabled={{ after: subYears(new Date(), 13) }}
+							/>
+							<p className="text-xs text-muted-foreground mt-1">You must be at least 13 years old.</p>
+						</div>
+
+						{/* Location — optional, shared for both signup methods */}
+						<div>
+							<label className="block text-sm font-medium mb-2">
+								Location <span className="text-muted-foreground text-xs">(optional)</span>
+							</label>
+							<div className="flex gap-2">
+								<Input
+									type="text"
+									placeholder="Your city"
+									value={city}
+									onChange={e => setCity(e.target.value)}
+									className="flex-1"
+									disabled={isLoading}
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									size="icon"
+									onClick={handleUseLocation}
+									disabled={isLoading || isLocating}
+									title="Use my location"
+								>
+									{isLocating ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<LocateFixed className="h-4 w-4" />
+									)}
+								</Button>
+							</div>
+							{latitude && longitude && (
+								<p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+									<MapPin className="h-3 w-3" />
+									Location captured
+									{city ? ` · ${city}` : ''}
+								</p>
+							)}
+							<p className="text-xs text-muted-foreground mt-1">
+								Click the pin icon to auto-detect, or type your city manually.
+							</p>
+						</div>
 
 						<Button
 							type="submit"
