@@ -1,6 +1,6 @@
 // Renders message body, image attachments, and delivery receipts
-// Renders message body, image attachments, and delivery receipts
 import { memo } from 'react';
+import type React from 'react';
 import { AlertCircle, Check, CheckCheck, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from './types';
@@ -56,6 +56,37 @@ function highlightText(text: string, query: string) {
 	);
 }
 
+const URL_REGEX = /(\bhttps?:\/\/[^\s<>"{}|\\^`[\]]+|\bwww\.[^\s<>"{}|\\^`[\]]+)/gi;
+
+function parseMessageContent(text: string, highlight?: string, isOwn?: boolean): React.ReactNode[] {
+	const parts = text.split(URL_REGEX);
+	return parts.map((part, i) => {
+		if (URL_REGEX.test(part)) {
+			URL_REGEX.lastIndex = 0;
+			const href = part.startsWith('http') ? part : `https://${part}`;
+			return (
+				<a
+					key={i}
+					href={href}
+					target="_blank"
+					rel="noopener noreferrer"
+					className={cn(
+						'underline underline-offset-2 break-all',
+						isOwn ? 'text-blue-200' : 'text-blue-500',
+					)}
+					onClick={e => e.stopPropagation()}
+				>
+					{part}
+				</a>
+			);
+		}
+		if (highlight && highlight.trim()) {
+			return <span key={i}>{highlightText(part, highlight)}</span>;
+		}
+		return part;
+	});
+}
+
 export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRetry, highlight }: MessageBubbleProps) {
 	const state = getDeliveryState(message);
 	const showRetry = state === 'failed';
@@ -97,8 +128,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 					</div>
 				)}
 				{hasText && (
-					<p className={cn(hasAttachments ? 'mt-2' : '')}>
-						{highlight ? highlightText(message.body, highlight) : message.body}
+					<p className={cn('whitespace-pre-wrap break-words', hasAttachments ? 'mt-2' : '')}>
+						{parseMessageContent(message.body, highlight, isOwn)}
 					</p>
 				)}
 				<div className="mt-2 flex items-center justify-end gap-2 text-[11px] opacity-70">
