@@ -1,8 +1,7 @@
 // Composer with image attachments (upload to attachments bucket) and send
 import { Camera, ImagePlus, Send, Smile, X } from 'lucide-react';
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -31,9 +30,21 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 	const isOnline = useOnlineStatus();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const cameraInputRef = useRef<HTMLInputElement | null>(null);
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const [attachments, setAttachments] = useState<{ id: string; file: File; previewUrl: string }[]>([]);
 	const [isUploading, setIsUploading] = useState(false);
 	const [uploadProgressLabel, setUploadProgressLabel] = useState('');
+
+	const growTextarea = useCallback(() => {
+		const el = textareaRef.current;
+		if (!el) return;
+		el.style.height = 'auto';
+		el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+	}, []);
+
+	useEffect(() => {
+		growTextarea();
+	}, [value, growTextarea]);
 
 	useEffect(() => {
 		return () => {
@@ -270,9 +281,11 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 					className="hidden"
 					onChange={handlePickAttachment}
 				/>
-				<Input
+				<textarea
+					ref={textareaRef}
 					placeholder={disabled ? 'Chat disabled' : 'Type a message...'}
-					className="h-9 border-0 bg-transparent shadow-none focus-visible:ring-0"
+					className="flex-1 min-h-[36px] max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent py-2 text-sm leading-5 shadow-none outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+					rows={1}
 					value={value}
 					onChange={event => {
 						onChange(event.target.value);
