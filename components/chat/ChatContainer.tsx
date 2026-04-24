@@ -14,6 +14,7 @@ import { useTypingIndicator } from '@/hooks/usePresence';
 import { useGlobalPresence } from '@/hooks/useGlobalPresence';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUserMessages } from '@/hooks/useUserMessages';
+import { AddItemModal } from '@/components/modals/add-item-modal';
 import type { ChatMessage, ChatThread as ChatThreadType, ChatUser, MessageReceipt } from './types';
 
 type ChatContainerProps = {
@@ -58,6 +59,7 @@ export function ChatContainer({
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [canMessage, setCanMessage] = useState(true);
 	const [hasAppliedInitialDraft, setHasAppliedInitialDraft] = useState(false);
+	const [showAddItem, setShowAddItem] = useState(false);
 
 	const activeThread = threads.find(thread => thread.id === activeId) || null;
 	const activeUser = activeThread?.participants[0] || null;
@@ -369,6 +371,7 @@ export function ChatContainer({
 	const isTyping = activeUser ? typingUserIds.includes(activeUser.id) : false;
 
 	return (
+		<>
 		<PageShell className={cn('flex flex-col', fullBleed && 'h-full max-w-none overflow-hidden')}>
 			<div className="flex-shrink-0">
 				<PageHeader title="Messages" description="Chat with people in your circles" />
@@ -430,6 +433,7 @@ export function ChatContainer({
 									onDelete={() => activeThread && handleDelete(activeThread.id)}
 									onToggleSearch={handleToggleSearch}
 									onSearchChange={setMessageSearch}
+									onNewItem={() => setShowAddItem(true)}
 								/>
 								<ChatThread
 									messages={messages}
@@ -462,5 +466,7 @@ export function ChatContainer({
 				)}
 			</div>
 		</PageShell>
+		<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
+		</>
 	);
 }
