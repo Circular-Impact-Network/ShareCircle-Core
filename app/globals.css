@@ -222,4 +222,12 @@
 		width: 8px;
 		height: 8px;
 	}
+
+	.pb-safe-bottom {
+		padding-bottom: env(safe-area-inset-bottom);
+	}
+
+	.pb-bottom-nav {
+		padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+	}
 }
