@@ -172,3 +172,4 @@ vite.config.ts.timestamp-*
 .gitnexus
 graphify-out/*
 .mcp.json
+.playwright-mcp/*
