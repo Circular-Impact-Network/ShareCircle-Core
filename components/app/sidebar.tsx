@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, X, Bell, History } from 'lucide-react';
+import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, Bell, History } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,8 +8,7 @@ import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
-import { setMobileSidebarOpen } from '@/lib/redux/slices/uiSlice';
+import { useAppSelector } from '@/lib/redux/hooks';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
 import { useGetUnreadNotificationCountQuery } from '@/lib/redux/api/notificationsApi';
 import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
