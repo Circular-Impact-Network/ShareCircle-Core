@@ -28,25 +28,21 @@ const navItems = [
 
 export function Sidebar() {
 	const pathname = usePathname();
-	const dispatch = useAppDispatch();
-	const isMobileSidebarOpen = useAppSelector(state => state.ui.isMobileSidebarOpen);
 
-	// Redux selectors for user data
 	const userImage = useAppSelector(selectUserImage);
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
 
-	// Get unread notification count via lightweight endpoint
-	// Realtime updates are handled by NotificationsProvider which invalidates queries
 	const { data: notificationsData } = useGetUnreadNotificationCountQuery();
-
-	// Get unread message count
-	// Realtime updates are handled by NotificationsProvider which invalidates queries
 	const { data: messagesData } = useGetUnreadMessageCountQuery();
 
-	// Use total unread count from API
 	const totalNotificationUnread = notificationsData?.unreadCount || 0;
 	const totalMessageUnread = messagesData?.unreadCount || 0;
+
+	const isActive = (href: string) => {
+		if (href === '/home') return pathname === '/home' || pathname === '/';
+		return pathname.startsWith(href);
+	};
 
 	const handleLogout = async () => {
 		if (typeof navigator !== 'undefined' && navigator.serviceWorker.controller) {
