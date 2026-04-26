@@ -3,11 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Sidebar } from '@/components/app/sidebar';
-import { useAppDispatch } from '@/lib/redux/hooks';
-import { toggleMobileSidebar } from '@/lib/redux/slices/uiSlice';
+import { MobileHeader } from '@/components/app/mobile-header';
+import { BottomNav } from '@/components/app/bottom-nav';
 import { useUserSync } from '@/hooks/useUserSync';
 import { NotificationsProvider } from '@/components/providers/notifications-provider';
 
