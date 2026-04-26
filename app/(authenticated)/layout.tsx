@@ -55,29 +55,16 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 		<NotificationsProvider>
 			<div className="flex h-[100dvh] flex-col bg-background">
 				<Sidebar />
-				{/* Fixed mobile top bar — visual layer */}
-				<div className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 bg-background/95 backdrop-blur-sm px-3 lg:hidden">
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						onClick={() => dispatch(toggleMobileSidebar())}
-						className="h-9 w-9 shrink-0"
-					>
-						<Menu className="h-4 w-4" />
-					</Button>
-					<div className="h-9 w-9 rounded-full bg-white shadow-sm overflow-hidden shrink-0">
-						<img src="/share-circle-icon-square.png" alt="ShareCircle" className="h-9 w-9 object-contain" />
-					</div>
-				</div>
-				{/* Spacer that reserves the top-bar height so <main> starts below it */}
-				<div className="h-14 shrink-0 lg:hidden" aria-hidden="true" />
+				<MobileHeader />
+				{/* Spacer for slim mobile header */}
+				<div className="h-12 shrink-0 lg:hidden" aria-hidden="true" />
 				<main
 					data-scroll-root="authenticated-main"
-					className="app-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto lg:ml-60"
+					className="app-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto lg:ml-60 pb-bottom-nav lg:pb-0"
 				>
 					{children}
 				</main>
+				<BottomNav />
 			</div>
 		</NotificationsProvider>
 	);
