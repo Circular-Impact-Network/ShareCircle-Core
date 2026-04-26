@@ -14,7 +14,6 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 	const pathname = usePathname();
 	const { data: session, status } = useSession();
 	const [mounted, setMounted] = useState(false);
-	const dispatch = useAppDispatch();
 
 	// Sync user data from session to Redux
 	useUserSync();
