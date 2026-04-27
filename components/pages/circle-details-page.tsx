@@ -53,7 +53,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CircleSettingsDialog } from '@/components/dialogs/circle-settings-dialog';
 import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
 import {
 	useGetItemRequestsQuery,
@@ -112,7 +111,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
-	const [showSettings, setShowSettings] = useState(false);
 	const [showInviteSection, setShowInviteSection] = useState(false);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
