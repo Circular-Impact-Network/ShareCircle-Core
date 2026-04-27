@@ -295,7 +295,7 @@ export function CirclesPage() {
 			)}
 
 			{/* List View */}
-			{!isLoading && circles.length > 0 && viewMode === 'list' && (
+			{!isLoading && circles.length > 0 && effectiveViewMode === 'list' && (
 				<div className="space-y-3">
 					{circles.map(circle => (
 						<Card
