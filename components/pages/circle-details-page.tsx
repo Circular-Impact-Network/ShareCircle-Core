@@ -816,115 +816,95 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					})}
 				</div>
 
-				{/* Mobile: Vertical Stack */}
-				<div className="sm:hidden space-y-3">
-					{circle.members.map(member => {
+				{/* Mobile: Compact contact-style list */}
+				<div className="sm:hidden divide-y divide-border/40">
+					{circle.members.slice(0, 5).map(member => {
 						const isCurrentUser = member.userId === currentUserId;
 						const canManage = isAdmin && !isCurrentUser;
 						const isCreator = member.joinType === 'CREATED';
 
 						return (
-							<Card key={`mobile-${member.id}`} className="group border-border/70">
-								<CardContent className="flex items-center gap-3 p-3">
-									<Avatar className="h-10 w-10 flex-shrink-0">
-										<AvatarImage src={member.image || undefined} alt={member.name || 'Member'} />
-										<AvatarFallback className="text-sm">{getInitials(member.name)}</AvatarFallback>
-									</Avatar>
+							<div key={`mobile-${member.id}`} className="flex items-center gap-3 py-2.5">
+								<Avatar className="h-9 w-9 flex-shrink-0">
+									<AvatarImage src={member.image || undefined} alt={member.name || 'Member'} />
+									<AvatarFallback className="text-xs">{getInitials(member.name)}</AvatarFallback>
+								</Avatar>
 
-									<div className="min-w-0 flex-1">
-										<div className="flex items-center gap-1.5">
-											<h3 className="truncate text-sm font-semibold">
-												{member.name || 'Unknown'}
-												{isCurrentUser && (
-													<span className="font-normal text-muted-foreground"> (you)</span>
-												)}
-											</h3>
-											{member.role === 'ADMIN' && (
-												<Crown className="h-3 w-3 text-amber-500 flex-shrink-0" />
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center gap-1.5">
+										<p className="truncate text-sm font-medium">
+											{member.name || 'Unknown'}
+											{isCurrentUser && (
+												<span className="font-normal text-muted-foreground"> (you)</span>
 											)}
-										</div>
-										<p className="text-xs text-muted-foreground">{formatDate(member.joinedAt)}</p>
-										{!isCurrentUser && (
-											<Button
-												variant="outline"
-												size="sm"
-												className="mt-2 gap-2"
-												onClick={() => handleStartChat(member.userId)}
-												disabled={isStartingChatId === member.userId}
-											>
-												{isStartingChatId === member.userId ? (
-													<Loader2 className="h-4 w-4 animate-spin" />
-												) : (
-													<MessageCircle className="h-4 w-4" />
-												)}
-												Chat
-											</Button>
+										</p>
+										{member.role === 'ADMIN' && (
+											<Crown className="h-3 w-3 text-amber-500 flex-shrink-0" />
 										)}
 									</div>
+									<p className="text-xs text-muted-foreground">{formatDate(member.joinedAt)}</p>
+								</div>
 
+								<div className="flex items-center gap-0.5 flex-shrink-0">
+									{!isCurrentUser && (
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8"
+											onClick={() => handleStartChat(member.userId)}
+											disabled={isStartingChatId === member.userId}
+										>
+											{isStartingChatId === member.userId ? (
+												<Loader2 className="h-3.5 w-3.5 animate-spin" />
+											) : (
+												<MessageCircle className="h-3.5 w-3.5" />
+											)}
+											<span className="sr-only">Chat with {member.name}</span>
+										</Button>
+									)}
 									{(canManage || isCurrentUser) && (
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
-												<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-													<MoreVertical className="h-4 w-4" />
-													<span className="sr-only">Open menu</span>
+												<Button variant="ghost" size="icon" className="h-8 w-8">
+													<MoreVertical className="h-3.5 w-3.5" />
+													<span className="sr-only">Member options</span>
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												{canManage && (
 													<>
 														{member.role === 'MEMBER' && (
-															<DropdownMenuItem
-																onClick={() => {
-																	setSelectedMember(member);
-																	setMemberAction('promote');
-																}}
-															>
-																<UserPlus className="mr-2 h-4 w-4" />
-																Make Admin
+															<DropdownMenuItem onClick={() => { setSelectedMember(member); setMemberAction('promote'); }}>
+																<UserPlus className="mr-2 h-4 w-4" />Make Admin
 															</DropdownMenuItem>
 														)}
 														{member.role === 'ADMIN' && !isCreator && (
-															<DropdownMenuItem
-																onClick={() => {
-																	setSelectedMember(member);
-																	setMemberAction('demote');
-																}}
-															>
-																<UserMinus className="mr-2 h-4 w-4" />
-																Remove Admin
+															<DropdownMenuItem onClick={() => { setSelectedMember(member); setMemberAction('demote'); }}>
+																<UserMinus className="mr-2 h-4 w-4" />Remove Admin
 															</DropdownMenuItem>
 														)}
 														<DropdownMenuSeparator />
 														<DropdownMenuItem
 															className="text-destructive focus:text-destructive"
-															onClick={() => {
-																setSelectedMember(member);
-																setMemberAction('remove');
-															}}
+															onClick={() => { setSelectedMember(member); setMemberAction('remove'); }}
 														>
-															<UserMinus className="mr-2 h-4 w-4" />
-															Remove
+															<UserMinus className="mr-2 h-4 w-4" />Remove
 														</DropdownMenuItem>
 													</>
 												)}
 												{isCurrentUser && (
 													<DropdownMenuItem
 														className="text-destructive focus:text-destructive"
-														onClick={() => {
-															setSelectedMember(member);
-															setMemberAction('leave');
-														}}
+														onClick={() => { setSelectedMember(member); setMemberAction('leave'); }}
 													>
-														<LogOut className="mr-2 h-4 w-4" />
-														Leave Circle
+														<LogOut className="mr-2 h-4 w-4" />Leave Circle
 													</DropdownMenuItem>
 												)}
 											</DropdownMenuContent>
 										</DropdownMenu>
 									)}
-								</CardContent>
-							</Card>
+								</div>
+							</div>
 						);
 					})}
 				</div>
