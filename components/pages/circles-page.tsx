@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Link2, Users, Calendar, ArrowRight, LayoutGrid, List, Shield, Crown } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CreateCircleModal } from '@/components/modals/create-circle-modal';
@@ -28,6 +29,8 @@ export function CirclesPage() {
 	const [showJoinModal, setShowJoinModal] = useState(false);
 	const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 	const { toast } = useToast();
+	const isDesktop = useMediaQuery('(min-width: 640px)');
+	const effectiveViewMode = isDesktop ? viewMode : 'list';
 
 	// Use RTK Query for circles data
 	const { data: circles = [], isLoading } = useGetCirclesQuery();
