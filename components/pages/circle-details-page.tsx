@@ -652,13 +652,23 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						</Badge>
 					</div>
 
-					{/* Carousel Navigation - Hidden on Mobile */}
-					<div className="hidden sm:flex items-center gap-1">
-						<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('left')}>
-							<ChevronLeft className="h-4 w-4" />
-						</Button>
-						<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('right')}>
-							<ChevronRight className="h-4 w-4" />
+					<div className="flex items-center gap-1">
+						{/* Carousel Navigation - Desktop only */}
+						<div className="hidden sm:flex items-center gap-1">
+							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('left')}>
+								<ChevronLeft className="h-4 w-4" />
+							</Button>
+							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('right')}>
+								<ChevronRight className="h-4 w-4" />
+							</Button>
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+							onClick={() => router.push(`/circles/${circleId}/settings?tab=members`)}
+						>
+							View all
 						</Button>
 					</div>
 				</div>
@@ -668,7 +678,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					ref={membersScrollRef}
 					className="app-scrollbar app-scrollbar-thin hidden sm:flex gap-4 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory"
 				>
-					{circle.members.map(member => {
+					{circle.members.slice(0, 5).map(member => {
 						const isCurrentUser = member.userId === currentUserId;
 						const canManage = isAdmin && !isCurrentUser;
 						const isCreator = member.joinType === 'CREATED';
