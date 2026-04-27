@@ -473,47 +473,68 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	};
 
 	return (
-		<PageShell className="space-y-6 sm:space-y-8">
-			{/* Compact Circle Header */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				{/* Left: Avatar + Info */}
+		<PageShell className="space-y-5 sm:space-y-8">
+			{/* Mobile Header — compact single row */}
+			<div className="flex items-center gap-3 sm:hidden">
+				<div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+					{circle.avatarUrl ? (
+						<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
+					) : (
+						<Users className="h-5 w-5 text-primary" />
+					)}
+				</div>
+				<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-1.5">
+						<h1 className="text-lg font-semibold tracking-tight leading-tight truncate">{circle.name}</h1>
+						{isAdmin && <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
+					</div>
+					<p className="text-xs text-muted-foreground">
+						{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'} · {formatDate(circle.createdAt)}
+					</p>
+				</div>
+				<div className="flex items-center gap-0.5 flex-shrink-0">
+					{isAdmin && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-9 w-9"
+							onClick={() => router.push(`/circles/${circleId}/settings`)}
+						>
+							<Settings className="h-4 w-4" />
+							<span className="sr-only">Settings</span>
+						</Button>
+					)}
+					<Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleInviteToggle}>
+						<Share2 className="h-4 w-4" />
+						<span className="sr-only">Invite</span>
+					</Button>
+				</div>
+			</div>
+
+			{/* Desktop Header */}
+			<div className="hidden sm:flex sm:items-start sm:justify-between gap-4">
 				<div className="flex items-start gap-4">
-					{/* Circle Avatar */}
-					<div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 sm:h-20 sm:w-20">
+					<div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5">
 						{circle.avatarUrl ? (
 							<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
 						) : (
-							<Users className="h-8 w-8 text-primary sm:h-10 sm:w-10" />
+							<Users className="h-10 w-10 text-primary" />
 						)}
 					</div>
-
 					<div className="min-w-0 flex-1">
 						<div className="flex flex-wrap items-center gap-2">
-							<Button
-								onClick={() => router.push('/circles')}
-								variant="ghost"
-								size="icon"
-								className="shrink-0 -ml-2"
-							>
+							<Button onClick={() => router.push('/circles')} variant="ghost" size="icon" className="shrink-0 -ml-2">
 								<ArrowLeft className="h-4 w-4" />
 								<span className="sr-only">Back to Circles</span>
 							</Button>
 							<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
 							{isAdmin && (
-								<Badge
-									variant="secondary"
-									className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-								>
-									<Crown className="h-3 w-3" />
-									Admin
+								<Badge variant="secondary" className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+									<Crown className="h-3 w-3" />Admin
 								</Badge>
 							)}
 						</div>
-						<p className="mt-1 line-clamp-2 text-base text-muted-foreground">
-							{circle.description || 'No description'}
-						</p>
-
-						{/* Inline Stats */}
+						<p className="mt-1 line-clamp-2 text-base text-muted-foreground">{circle.description || 'No description'}</p>
 						<div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
 							<span className="inline-flex items-center gap-1.5">
 								<Users className="h-4 w-4" />
@@ -526,18 +547,16 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						</div>
 					</div>
 				</div>
-
-				{/* Right: Action Buttons */}
 				<div className="flex flex-shrink-0 gap-2">
 					{isAdmin && (
-						<Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSettings(true)}>
+						<Button variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/circles/${circleId}/settings`)}>
 							<Settings className="h-4 w-4" />
-							<span className="hidden sm:inline">Settings</span>
+							Settings
 						</Button>
 					)}
 					<Button variant="outline" size="sm" className="gap-2" onClick={handleInviteToggle}>
 						<Share2 className="h-4 w-4" />
-						<span className="hidden sm:inline">Invite</span>
+						Invite
 					</Button>
 				</div>
 			</div>
