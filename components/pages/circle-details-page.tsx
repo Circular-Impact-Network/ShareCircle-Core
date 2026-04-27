@@ -1217,56 +1217,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				onItemCreated={() => refetchItems()}
 			/>
 
-			{/* Settings Dialog - Admin Only */}
-			{isAdmin && (
-				<CircleSettingsDialog
-					open={showSettings}
-					onOpenChange={setShowSettings}
-					circle={circle}
-					currentUserId={currentUserId}
-					onCircleUpdated={updates => {
-						setCircle(prev => (prev ? { ...prev, ...updates } : null));
-					}}
-					onCircleDeleted={() => {
-						toast({
-							title: 'Circle deleted',
-							description: 'Redirecting to circles list...',
-						});
-						router.push('/circles');
-					}}
-					onMemberUpdated={member => {
-						setCircle(prev => {
-							if (!prev) return null;
-							return {
-								...prev,
-								members: prev.members.map(m =>
-									m.userId === member.userId ? { ...m, role: member.role } : m,
-								),
-							};
-						});
-					}}
-					onMemberRemoved={userId => {
-						setCircle(prev => {
-							if (!prev) return null;
-							return {
-								...prev,
-								members: prev.members.filter(m => m.userId !== userId),
-								membersCount: prev.membersCount - 1,
-							};
-						});
-					}}
-					onMemberAdded={member => {
-						setCircle(prev => {
-							if (!prev) return null;
-							return {
-								...prev,
-								members: [...prev.members, member],
-								membersCount: prev.membersCount + 1,
-							};
-						});
-					}}
-				/>
-			)}
 		</PageShell>
 	);
 }
