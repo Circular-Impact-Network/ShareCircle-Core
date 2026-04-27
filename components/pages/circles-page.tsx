@@ -126,54 +126,82 @@ export function CirclesPage() {
 
 	return (
 		<PageShell className="space-y-6 sm:space-y-8">
-			<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
-				<PageHeader
-					title="My Circles"
-					description="Join communities and share items with friends"
-					actions={
-						<div className="flex flex-wrap items-center gap-2">
-							<div className="flex gap-2">
-								<Button
-									onClick={() => setShowCreateModal(true)}
-									className="gap-2 shadow-md hover:shadow-lg transition-all duration-200"
-									size="sm"
-								>
-									<Plus className="w-4 h-4" />
-									<span className="hidden sm:inline">Create Circle</span>
-									<span className="sm:hidden">Create</span>
-								</Button>
-								<Button
-									onClick={() => setShowJoinModal(true)}
-									variant="outline"
-									size="sm"
-									className="gap-2 bg-transparent transition-all duration-200"
-								>
-									<Link2 className="w-4 h-4" />
-									<span className="hidden sm:inline">Join via Code</span>
-									<span className="sm:hidden">Join</span>
-								</Button>
+			<PageStickyHeader className="pt-2 sm:pt-6 lg:pt-7 pb-3 space-y-2 sm:space-y-4">
+				{/* Mobile: title + buttons on same row */}
+				<div className="flex items-center justify-between gap-2 sm:hidden">
+					<h1 className="text-xl font-semibold tracking-tight truncate">My Circles</h1>
+					<div className="flex shrink-0 items-center gap-1.5">
+						<Button
+							onClick={() => setShowCreateModal(true)}
+							className="gap-1.5 shadow-md"
+							size="sm"
+						>
+							<Plus className="w-4 h-4" />
+							Create
+						</Button>
+						<Button
+							onClick={() => setShowJoinModal(true)}
+							variant="outline"
+							size="sm"
+							className="gap-1.5 bg-transparent"
+						>
+							<Link2 className="w-4 h-4" />
+							Join
+						</Button>
+					</div>
+				</div>
+				<p className="text-sm text-muted-foreground sm:hidden">
+					Join communities and share items with friends
+				</p>
+
+				{/* Desktop: original full layout */}
+				<div className="hidden sm:block">
+					<PageHeader
+						title="My Circles"
+						description="Join communities and share items with friends"
+						actions={
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="flex gap-2">
+									<Button
+										onClick={() => setShowCreateModal(true)}
+										className="gap-2 shadow-md hover:shadow-lg transition-all duration-200"
+										size="sm"
+									>
+										<Plus className="w-4 h-4" />
+										Create Circle
+									</Button>
+									<Button
+										onClick={() => setShowJoinModal(true)}
+										variant="outline"
+										size="sm"
+										className="gap-2 bg-transparent transition-all duration-200"
+									>
+										<Link2 className="w-4 h-4" />
+										Join via Code
+									</Button>
+								</div>
+								<div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+									<Button
+										variant={effectiveViewMode === 'grid' ? 'default' : 'ghost'}
+										size="sm"
+										onClick={() => setViewMode('grid')}
+										className="h-8 px-3"
+									>
+										<LayoutGrid className="w-4 h-4" />
+									</Button>
+									<Button
+										variant={effectiveViewMode === 'list' ? 'default' : 'ghost'}
+										size="sm"
+										onClick={() => setViewMode('list')}
+										className="h-8 px-3"
+									>
+										<List className="w-4 h-4" />
+									</Button>
+								</div>
 							</div>
-							<div className="flex items-center gap-1 rounded-lg bg-muted p-1">
-								<Button
-									variant={viewMode === 'grid' ? 'default' : 'ghost'}
-									size="sm"
-									onClick={() => setViewMode('grid')}
-									className="h-8 px-3"
-								>
-									<LayoutGrid className="w-4 h-4" />
-								</Button>
-								<Button
-									variant={viewMode === 'list' ? 'default' : 'ghost'}
-									size="sm"
-									onClick={() => setViewMode('list')}
-									className="h-8 px-3"
-								>
-									<List className="w-4 h-4" />
-								</Button>
-							</div>
-						</div>
-					}
-				/>
+						}
+					/>
+				</div>
 			</PageStickyHeader>
 
 			{/* Loading State */}
