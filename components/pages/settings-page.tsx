@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck } from 'lucide-react';
+import { Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -33,6 +33,7 @@ import { useUpdateUserMutation, useUploadImageMutation } from '@/lib/redux/api/u
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { NotificationPreferencesPanel } from '@/components/settings/notification-preferences-panel';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 function getCountryFromDialCode(dialCode: string | null | undefined): SupportedPhoneCountry {
 	const match = PHONE_COUNTRIES.find(country => getDialCodeForCountry(country.iso2) === dialCode);
