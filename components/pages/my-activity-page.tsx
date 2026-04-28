@@ -462,35 +462,35 @@ export function MyActivityPage() {
 	return (
 		<PageShell>
 			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
-				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+				<PageStickyHeader className="pt-2 sm:pt-6 lg:pt-7 pb-3 space-y-3">
 					<PageHeader title="My Activity" description="Track your borrowing and lending activity" />
-					<PageTabsList>
+					<PageTabsList className="w-full">
 						<PageTabsTrigger
 							value="active"
-							className="gap-2"
+							className="gap-1.5"
 							badge={activeCount > 0 ? activeCount : undefined}
 						>
-							<HandshakeIcon className="h-4 w-4" />
+							<HandshakeIcon className="h-4 w-4 shrink-0" />
 							Active
 						</PageTabsTrigger>
 						<PageTabsTrigger
 							value="pending"
-							className="gap-2"
+							className="gap-1.5"
 							badge={pendingRequests.length > 0 ? pendingRequests.length : undefined}
 						>
-							<Clock className="h-4 w-4" />
+							<Clock className="h-4 w-4 shrink-0" />
 							Pending
 						</PageTabsTrigger>
 						<PageTabsTrigger
 							value="queue"
-							className="gap-2"
+							className="gap-1.5"
 							badge={activeQueueEntries.length > 0 ? activeQueueEntries.length : undefined}
 						>
-							<Users className="h-4 w-4" />
+							<Users className="h-4 w-4 shrink-0" />
 							Queue
 						</PageTabsTrigger>
-						<PageTabsTrigger value="history" className="gap-2">
-							<History className="h-4 w-4" />
+						<PageTabsTrigger value="history" className="gap-1.5">
+							<History className="h-4 w-4 shrink-0" />
 							History
 						</PageTabsTrigger>
 					</PageTabsList>
