@@ -24,7 +24,7 @@ export function ItemRequestFilter({ value, onChange, className }: ItemRequestFil
 					key={option.value}
 					onClick={() => onChange(option.value)}
 					className={cn(
-						'px-3 py-1 rounded-full text-sm font-medium transition-colors border',
+						'px-2 py-0.5 rounded-full text-xs font-medium transition-colors border sm:px-3 sm:py-1 sm:text-sm',
 						value === option.value
 							? 'bg-foreground text-background border-foreground'
 							: 'bg-transparent text-muted-foreground border-border hover:text-foreground hover:border-foreground/30',
