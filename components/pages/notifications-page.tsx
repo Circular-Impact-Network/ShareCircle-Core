@@ -532,11 +532,20 @@ export function NotificationsPage() {
 											</DialogFooter>
 										</DialogContent>
 									</Dialog>
-								</>
-							)}
-						</div>
-					</div>
-				</PageStickyHeader>
+							</div>
+						)}
+						{activeTab === 'alerts' && alerts.length > 0 && (
+							<div className="flex justify-end gap-2">
+								<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+									<CheckCheck className="h-4 w-4" />
+									<span className="ml-1 hidden sm:inline">Mark all read</span>
+								</Button>
+								<Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClearAll}>
+									<Trash2 className="h-4 w-4" />
+								</Button>
+							</div>
+						)}
+					</PageStickyHeader>
 
 				{/* Alerts Tab */}
 				<PageTabsContent value="alerts" className="space-y-3">
