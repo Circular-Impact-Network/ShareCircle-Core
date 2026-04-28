@@ -401,60 +401,53 @@ export function NotificationsPage() {
 	return (
 		<PageShell>
 			<PageTabs value={activeTab} onValueChange={v => setActiveTab(v as TabType)}>
-				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+				<PageStickyHeader className="pt-2 sm:pt-6 lg:pt-7 pb-3 space-y-3">
 					<PageHeader
 						title="Notifications"
 						description="Stay updated with your circles, borrow requests, and item requests"
 					/>
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-						<PageTabsList className="w-full sm:w-auto">
-							<PageTabsTrigger
-								value="alerts"
-								className="gap-2"
-								badge={unreadCount > 0 ? unreadCount : undefined}
-							>
-								<Bell className="h-4 w-4" />
-								Alerts
-							</PageTabsTrigger>
-							<PageTabsTrigger
-								value="borrow-requests"
-								className="gap-2"
-								badge={actionableRequests.length > 0 ? actionableRequests.length : undefined}
-							>
-								<HandshakeIcon className="h-4 w-4" />
-								Borrow Requests
-							</PageTabsTrigger>
-							<PageTabsTrigger
-								value="item-requests"
-								className="gap-2"
-								badge={openItemRequestCount > 0 ? openItemRequestCount : undefined}
-							>
-								<Package className="h-4 w-4" />
-								Requested Items
-							</PageTabsTrigger>
-						</PageTabsList>
 
-						<div className="flex gap-2 self-end sm:self-auto">
-							{activeTab === 'alerts' && alerts.length > 0 && (
-								<>
-									<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-										<CheckCheck className="h-4 w-4 mr-1" />
-										Mark all read
+					{/* Tabs row — full width */}
+					<PageTabsList className="w-full">
+						<PageTabsTrigger
+							value="alerts"
+							className="gap-1.5"
+							badge={unreadCount > 0 ? unreadCount : undefined}
+						>
+							<Bell className="h-4 w-4 shrink-0" />
+							Alerts
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="borrow-requests"
+							className="gap-1.5"
+							badge={actionableRequests.length > 0 ? actionableRequests.length : undefined}
+						>
+							<HandshakeIcon className="h-4 w-4 shrink-0" />
+							<span className="sm:hidden">Borrows</span>
+							<span className="hidden sm:inline">Borrow Requests</span>
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="item-requests"
+							className="gap-1.5"
+							badge={openItemRequestCount > 0 ? openItemRequestCount : undefined}
+						>
+							<Package className="h-4 w-4 shrink-0" />
+							<span className="sm:hidden">Items</span>
+							<span className="hidden sm:inline">Requested Items</span>
+						</PageTabsTrigger>
+					</PageTabsList>
+
+					{/* Contextual action row: filters + button OR alert actions */}
+					{activeTab === 'item-requests' && (
+						<div className="flex items-center justify-between gap-2">
+							<ItemRequestFilter value={itemFilter} onChange={setItemFilter} />
+							<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+								<DialogTrigger asChild>
+									<Button size="sm" className="shrink-0 gap-1">
+										<Plus className="h-4 w-4" />
+										<span className="hidden sm:inline">New </span>Request
 									</Button>
-									<Button variant="ghost" size="sm" onClick={handleClearAll}>
-										<Trash2 className="h-4 w-4" />
-									</Button>
-								</>
-							)}
-							{activeTab === 'item-requests' && (
-								<>
-									<Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-										<DialogTrigger asChild>
-											<Button size="sm" className="gap-1">
-												<Plus className="h-4 w-4" />
-												New Request
-											</Button>
-										</DialogTrigger>
+								</DialogTrigger>
 										<DialogContent>
 											<DialogHeader>
 												<DialogTitle>Request an Item</DialogTitle>
