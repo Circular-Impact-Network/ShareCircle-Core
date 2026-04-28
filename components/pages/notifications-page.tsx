@@ -645,7 +645,6 @@ export function NotificationsPage() {
 
 				{/* Item Requests Tab */}
 				<PageTabsContent value="item-requests" className="space-y-3">
-					<ItemRequestFilter value={itemFilter} onChange={setItemFilter} />
 					{itemRequestsLoading ? (
 						<RequestCardListSkeleton count={4} />
 					) : filteredItemRequests.length === 0 ? (
