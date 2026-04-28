@@ -43,6 +43,7 @@ function getCountryFromDialCode(dialCode: string | null | undefined): SupportedP
 export function SettingsPage() {
 	const { theme, toggleTheme } = useTheme();
 	const [activeTab, setActiveTab] = useState('profile');
+	const { installStatus, updateStatus, install, checkForUpdates, applyUpdate } = usePWAInstall();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Redux selectors
@@ -549,9 +550,9 @@ export function SettingsPage() {
 	return (
 		<PageShell className="max-w-5xl">
 			<PageTabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
-				<PageStickyHeader className="pt-5 sm:pt-6 lg:pt-7 pb-3 space-y-4">
+				<PageStickyHeader className="pt-2 sm:pt-6 lg:pt-7 pb-3 space-y-3">
 					<PageHeader title="Settings" description="Manage your account settings and preferences." />
-					<PageTabsList className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:gap-0">
+					<PageTabsList className="grid grid-cols-2 gap-0.5 sm:grid-cols-4 sm:gap-0">
 						<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
 						<PageTabsTrigger value="account">Account</PageTabsTrigger>
 						<PageTabsTrigger value="notifications">Notifications</PageTabsTrigger>
