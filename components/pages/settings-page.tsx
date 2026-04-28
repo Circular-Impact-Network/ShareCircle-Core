@@ -829,6 +829,95 @@ export function SettingsPage() {
 							</div>
 						</CardContent>
 					</Card>
+
+					{/* PWA Install & Update */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<Smartphone className="h-4 w-4" />
+								App Installation
+							</CardTitle>
+							<CardDescription>
+								Install ShareCircle as a native app for faster access and offline support.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-5">
+							{/* Install status row */}
+							<div className="flex items-center justify-between gap-4">
+								<div className="space-y-0.5">
+									<p className="text-sm font-medium">Install on this device</p>
+									<p className="text-xs text-muted-foreground">
+										{installStatus === 'installed'
+											? 'ShareCircle is installed as an app on this device.'
+											: installStatus === 'installable'
+												? 'Add to your home screen for a full-screen, native experience.'
+												: installStatus === 'checking'
+													? 'Checking availability…'
+													: 'Installation is not supported in this browser or the app is already installed.'}
+									</p>
+								</div>
+								{installStatus === 'installed' ? (
+									<div className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary">
+										<CheckCircle2 className="h-4 w-4" />
+										Installed
+									</div>
+								) : installStatus === 'installable' ? (
+									<Button size="sm" className="shrink-0 gap-1.5" onClick={install}>
+										<Download className="h-4 w-4" />
+										Install
+									</Button>
+								) : installStatus === 'checking' ? (
+									<Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+								) : null}
+							</div>
+
+							<div className="border-t border-border/60 pt-5">
+								{/* Update row */}
+								<div className="flex items-start justify-between gap-4">
+									<div className="space-y-0.5">
+										<p className="text-sm font-medium">App updates</p>
+										<p className="text-xs text-muted-foreground">
+											{updateStatus === 'ready'
+												? 'A new version is ready to install. Reload to apply it.'
+												: updateStatus === 'downloading'
+													? 'Downloading the latest version in the background…'
+													: updateStatus === 'checking'
+														? 'Checking for updates…'
+														: 'Check for a new version and apply it without reinstalling.'}
+										</p>
+									</div>
+									<div className="flex shrink-0 flex-col items-end gap-2">
+										{updateStatus === 'ready' ? (
+											<Button size="sm" className="gap-1.5" onClick={applyUpdate}>
+												<RefreshCw className="h-4 w-4" />
+												Reload &amp; Update
+											</Button>
+										) : updateStatus === 'downloading' ? (
+											<div className="flex items-center gap-2 text-xs text-muted-foreground">
+												<Loader2 className="h-3.5 w-3.5 animate-spin" />
+												Downloading…
+											</div>
+										) : (
+											<Button
+												size="sm"
+												variant="outline"
+												className="gap-1.5"
+												onClick={checkForUpdates}
+												disabled={updateStatus === 'checking'}
+											>
+												{updateStatus === 'checking' ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<RefreshCw className="h-4 w-4" />
+												)}
+												Check for updates
+											</Button>
+										)}
+									</div>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 				</PageTabsContent>
 			</PageTabs>
 		</PageShell>
