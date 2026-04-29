@@ -1,11 +1,8 @@
 'use client';
 
-// Thread-only view with initialThreadId, initialDraft, fullBleed
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 import { ChatContainer } from './ChatContainer';
 import { GlobalPresenceProvider } from '@/hooks/useGlobalPresence';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
