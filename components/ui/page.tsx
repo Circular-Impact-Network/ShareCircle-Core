@@ -45,10 +45,10 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, className, align = 'start' }: PageHeaderProps) {
 	return (
-		<div className={cn('flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4', className)}>
-			<div className={cn('space-y-2', align === 'center' && 'text-center sm:text-left')}>
-				<h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
-				{description ? <p className="text-sm text-muted-foreground sm:text-base">{description}</p> : null}
+		<div className={cn('flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4', className)}>
+			<div className={cn('space-y-0.5 sm:space-y-1.5', align === 'center' && 'text-center sm:text-left')}>
+				<h1 className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">{title}</h1>
+				{description ? <p className="text-xs text-muted-foreground sm:text-sm">{description}</p> : null}
 			</div>
 			{actions}
 		</div>
