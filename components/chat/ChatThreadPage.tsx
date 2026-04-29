@@ -25,27 +25,13 @@ export function ChatThreadPage({ threadId, initialDraft = null }: ChatThreadPage
 
 	return (
 		<GlobalPresenceProvider userId={session?.user?.id || null}>
-			<div className="relative">
-				{/* Only show back button on mobile - desktop shows the full chat list */}
-				{!isDesktop && (
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => router.push('/messages')}
-						className="absolute left-4 top-4 z-10 bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
-					>
-						<ArrowLeft className="h-4 w-4" />
-						<span className="sr-only">Back to Messages</span>
-					</Button>
-				)}
-				{/* On desktop, show chat list alongside the thread; on mobile, hide the list */}
-				<ChatContainer
-					initialThreadId={threadId}
-					initialMessageDraft={initialDraft}
-					hideList={!isDesktop}
-					fullBleed
-				/>
-			</div>
+			{/* On desktop: show chat list alongside thread. On mobile: thread-only with back button in ChatHeader. */}
+			<ChatContainer
+				initialThreadId={threadId}
+				initialMessageDraft={initialDraft}
+				hideList={!isDesktop}
+				fullBleed
+			/>
 		</GlobalPresenceProvider>
 	);
 }
