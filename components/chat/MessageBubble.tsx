@@ -135,17 +135,16 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 						{parseMessageContent(message.body, highlight, isOwn)}
 					</p>
 				)}
-				<div className="mt-2 flex items-center justify-end gap-2 text-[11px] opacity-70">
+				<div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] opacity-75">
 					<span>
 						{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 					</span>
 					{isOwn && (
-						<span className="flex items-center gap-1">
-							{state === 'sending' && <Check className="h-3 w-3" />}
-							{state === 'sent' && <Check className="h-3 w-3" />}
-							{state === 'delivered' && <CheckCheck className="h-3 w-3" />}
-							{state === 'read' && <CheckCheck className="h-3 w-3 text-blue-500" />}
-							{state === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
+						<span className="flex items-center">
+							{(state === 'sending' || state === 'sent') && <Check className="h-3 w-3" />}
+							{state === 'delivered' && <CheckCheck className="h-3 w-3 opacity-60" />}
+							{state === 'read' && <CheckCheck className="h-3 w-3 text-blue-400 opacity-100" />}
+							{state === 'failed' && <AlertCircle className="h-3 w-3 text-destructive opacity-100" />}
 						</span>
 					)}
 				</div>
