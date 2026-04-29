@@ -102,8 +102,11 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 					imageOnly
 						? 'rounded-xl p-0 shadow-none'
 						: cn(
-								'rounded-2xl px-4 py-3 shadow-sm ring-1 ring-black/5',
-								isOwn ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground',
+								'px-3.5 py-2.5 shadow-sm ring-1',
+								// WhatsApp-style tails: own messages have no bottom-right radius, others no bottom-left
+								isOwn
+									? 'rounded-t-2xl rounded-bl-2xl rounded-br-sm bg-primary text-primary-foreground ring-black/10'
+									: 'rounded-t-2xl rounded-br-2xl rounded-bl-sm bg-muted text-foreground ring-border/60',
 							),
 				)}
 			>
