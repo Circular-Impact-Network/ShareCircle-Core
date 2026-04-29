@@ -33,15 +33,15 @@ export function PageTabsTrigger({ className, children, badge, ...props }: PageTa
 	return (
 		<TabsTrigger
 			className={cn(
-				'min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium sm:px-4 [&>svg]:size-4',
+				'min-h-7 shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium sm:min-h-9 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-sm [&>svg]:size-3.5 sm:[&>svg]:size-4',
 				className,
 			)}
 			{...props}
 		>
-			<span className="inline-flex min-w-0 items-center gap-2">
+			<span className="inline-flex min-w-0 items-center gap-1.5">
 				{children}
 				{badge === undefined || badge === null ? null : (
-					<Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-[11px]">
+					<Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px] sm:h-5 sm:min-w-[20px] sm:px-1.5 sm:text-[11px]">
 						{badge}
 					</Badge>
 				)}
