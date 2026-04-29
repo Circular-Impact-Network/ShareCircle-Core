@@ -13,14 +13,14 @@ type PageTabsTriggerProps = ComponentProps<typeof TabsTrigger> & {
 };
 
 export function PageTabs({ className, ...props }: PageTabsProps) {
-	return <Tabs className={cn('w-full space-y-6', className)} {...props} />;
+	return <Tabs className={cn('w-full space-y-4 sm:space-y-6', className)} {...props} />;
 }
 
 export function PageTabsList({ className, ...props }: PageTabsListProps) {
 	return (
 		<TabsList
 			className={cn(
-				'flex h-auto w-full items-center justify-start gap-1 rounded-xl border border-border/70 bg-muted/40 p-1',
+				'flex h-auto w-full items-center justify-start gap-0.5 rounded-xl border border-border/70 bg-muted/40 p-0.5 sm:gap-1 sm:p-1',
 				'overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
 				className,
 			)}
