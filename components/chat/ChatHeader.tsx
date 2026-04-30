@@ -38,6 +38,7 @@ export function ChatHeader({
 	isArchived,
 	isSearchOpen,
 	searchValue,
+	onBack,
 	onTogglePin,
 	onToggleMute,
 	onToggleArchive,
@@ -47,53 +48,80 @@ export function ChatHeader({
 	onNewItem,
 }: ChatHeaderProps) {
 	return (
-		<div className="border-b border-border/70 bg-card/90 px-4 py-3">
-			<div className="flex items-center justify-between gap-3">
-				<div className="flex items-center gap-3">
-					<Avatar className="h-10 w-10">
+		<div className="flex-shrink-0 border-b border-border/70 bg-card/95 px-3 py-2.5">
+			<div className="flex items-center gap-2">
+				{/* Back button — only in mobile thread view */}
+				{onBack && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9 shrink-0 rounded-full"
+						onClick={onBack}
+						aria-label="Back to messages"
+					>
+						<ArrowLeft className="h-5 w-5" />
+					</Button>
+				)}
+
+				{/* User info */}
+				<div className="flex min-w-0 flex-1 items-center gap-2.5">
+					<Avatar className="h-9 w-9 shrink-0">
 						<AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
-						<AvatarFallback className="bg-primary text-primary-foreground">
+						<AvatarFallback className="bg-primary text-primary-foreground text-sm">
 							{user?.name?.[0]?.toUpperCase() || '?'}
 						</AvatarFallback>
 					</Avatar>
-					<div className="space-y-0.5">
-						<p className="font-semibold text-foreground">{user?.name || 'Unknown'}</p>
-						<div className="flex items-center gap-2 text-xs text-muted-foreground">
-							<span className="inline-flex items-center gap-1">
-								<span
-									className={`h-2 w-2 rounded-full ${
-										isTyping
-											? 'bg-amber-500'
-											: isOnline
-												? 'bg-emerald-500'
-												: 'bg-muted-foreground/50'
-									}`}
-								/>
-								{isTyping ? 'typing...' : isOnline ? 'online' : 'offline'}
-							</span>
-							{isArchived ? <span>Archived</span> : null}
+					<div className="min-w-0 flex-1">
+						<p className="truncate text-sm font-semibold leading-tight text-foreground">
+							{user?.name || 'Unknown'}
+						</p>
+						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+							<span
+								className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+									isTyping ? 'bg-amber-500' : isOnline ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+								}`}
+							/>
+							<span>{isTyping ? 'typing…' : isOnline ? 'online' : 'offline'}</span>
+							{isArchived && <span>· Archived</span>}
 						</div>
 					</div>
 				</div>
-				<div className="flex items-center gap-2">
-					{onNewItem && (
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="h-8 gap-1.5 rounded-full text-xs"
-							onClick={onNewItem}
-						>
-							<Plus className="h-3.5 w-3.5" />
-							Add Item
-						</Button>
+
+				{/* Actions */}
+				<div className="flex shrink-0 items-center gap-1">
+					{onNewItem && !isSearchOpen && (
+						<>
+							{/* Mobile: icon-only */}
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								className="h-9 w-9 shrink-0 rounded-full sm:hidden"
+								onClick={onNewItem}
+								aria-label="Add item"
+							>
+								<Plus className="h-4 w-4" />
+							</Button>
+							{/* Desktop: icon + label */}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="hidden h-8 gap-1.5 rounded-full text-xs sm:flex"
+								onClick={onNewItem}
+							>
+								<Plus className="h-3.5 w-3.5" />
+								Add Item
+							</Button>
+						</>
 					)}
 					{isSearchOpen && (
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<div className="relative flex items-center">
+							<Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
 							<Input
-								placeholder="Search in chat..."
-								className="h-9 w-44 rounded-xl border-border/70 bg-background pl-9 pr-3 sm:w-60"
+								placeholder="Search in chat…"
+								className="h-8 w-36 rounded-xl border-border/70 bg-background pl-9 pr-3 text-xs sm:w-52"
 								value={searchValue}
 								onChange={event => onSearchChange(event.target.value)}
 								autoFocus
