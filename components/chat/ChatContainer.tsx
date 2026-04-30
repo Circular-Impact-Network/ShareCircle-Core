@@ -478,73 +478,9 @@ export function ChatContainer({
 				)}
 
 				{showThreadPanel && (
-					<div
-						className={cn(
-							'flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70',
-							fullBleed ? 'bg-card' : 'bg-background/40',
-						)}
-					>
-						{activeUser ? (
-							<>
-								<ChatHeader
-									user={activeUser}
-									isOnline={isOnline}
-									isTyping={isTyping}
-									isPinned={Boolean(activeThread?.pinnedAt)}
-									isMuted={Boolean(
-										activeThread?.mutedUntil && new Date(activeThread.mutedUntil) > new Date(),
-									)}
-									isArchived={Boolean(activeThread?.archivedAt)}
-									isSearchOpen={isMessageSearchOpen}
-									searchValue={messageSearch}
-									onTogglePin={() =>
-										activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt)
-									}
-									onToggleMute={() =>
-										activeThread &&
-										handleMute(
-											activeThread.id,
-											!(
-												activeThread.mutedUntil &&
-												new Date(activeThread.mutedUntil) > new Date()
-											),
-										)
-									}
-									onToggleArchive={() =>
-										activeThread && handleArchive(activeThread.id, !activeThread.archivedAt)
-									}
-									onDelete={() => activeThread && handleDelete(activeThread.id)}
-									onToggleSearch={handleToggleSearch}
-									onSearchChange={setMessageSearch}
-									onNewItem={() => setShowAddItem(true)}
-								/>
-								<ChatThread
-									messages={messages}
-									currentUserId={currentUser?.id || ''}
-									onRetry={handleRetry}
-									searchValue={messageSearch}
-									onLoadMore={onLoadMore}
-									hasMore={Boolean(nextCursor)}
-									isLoading={isLoadingMessages}
-								/>
-								{!canMessage && (
-									<div className="flex-shrink-0 border-t border-border bg-card p-4 text-center text-xs text-muted-foreground">
-										Chat disabled. You no longer share a circle with this user.
-									</div>
-								)}
-								<MessageComposer
-									value={messageInput}
-									onChange={setMessageInput}
-									onSend={handleSend}
-									onTyping={sendTyping}
-									disabled={!canMessage}
-								/>
-							</>
-						) : (
-							<div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-								{isLoadingThreads ? 'Loading conversations...' : 'Select a chat to start'}
-							</div>
-						)}
+					<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
+						<ChatHeader {...chatHeaderProps} />
+						{threadContent}
 					</div>
 				)}
 			</div>
