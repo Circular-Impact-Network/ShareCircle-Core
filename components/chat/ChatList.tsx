@@ -16,26 +16,25 @@ type ChatListProps = {
 
 export const ChatList = memo(function ChatList({ threads, activeId, searchValue, onSearch, onSelect }: ChatListProps) {
 	return (
-		<div className="flex h-full w-full flex-shrink-0 flex-col overflow-hidden border-b border-border/70 bg-card/80 backdrop-blur md:w-[22rem] md:border-b-0 md:border-r">
-			<div className="border-b border-border/70 px-4 py-4">
-				<div className="mb-3">
-					<p className="text-sm font-semibold text-foreground">Inbox</p>
-					<p className="text-xs text-muted-foreground">Recent conversations across your circles</p>
-				</div>
-				<div className="relative">
+		<div className="flex h-full w-full shrink-0 flex-col overflow-hidden border-b border-border/70 bg-card/90 md:w-[22rem] md:border-b-0 md:border-r">
+			{/* Header — single row: title left, search right */}
+			<div className="flex items-center gap-3 border-b border-border/70 px-4 py-3">
+				<p className="shrink-0 text-base font-semibold text-foreground">Messages</p>
+				<div className="relative flex-1">
 					<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
-						placeholder="Search chats..."
-						className="h-10 rounded-xl border-border/70 bg-background pl-10"
+						placeholder="Search chats…"
+						className="h-9 rounded-xl border-border/70 bg-muted/60 pl-10 text-sm"
 						value={searchValue}
 						onChange={event => onSearch(event.target.value)}
 					/>
 				</div>
 			</div>
 
-			<div className="app-scrollbar flex-1 overflow-auto px-2 py-2">
+			{/* Thread list */}
+			<div className="app-scrollbar flex-1 overflow-auto bg-muted/20 pb-bottom-nav md:pb-0">
 				{threads.length === 0 ? (
-					<div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+					<div className="px-4 py-12 text-center text-sm text-muted-foreground">
 						No conversations yet.
 					</div>
 				) : (
