@@ -43,65 +43,61 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 						const isActive = thread.id === activeId;
 						const isPinned = Boolean(thread.pinnedAt);
 						const isMuted = thread.mutedUntil && new Date(thread.mutedUntil) > new Date();
+						const hasUnread = thread.unreadCount > 0;
+
 						return (
 							<button
 								key={thread.id}
 								onClick={() => onSelect(thread.id)}
 								className={cn(
-									'group relative mb-1 w-full rounded-2xl border border-transparent px-3 py-3 text-left transition-all hover:border-border/70 hover:bg-muted/60',
-									isActive && 'border-primary/30 bg-primary/5 shadow-sm',
+									'relative flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/50',
+									isActive && 'bg-primary/8',
 								)}
 							>
-								{isPinned && <Pin className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />}
-								<div className="flex items-start gap-3">
-									<Avatar className="h-10 w-10 flex-shrink-0">
-										<AvatarImage
-											src={otherUser?.image || undefined}
-											alt={otherUser?.name || 'User'}
-										/>
-										<AvatarFallback className="bg-primary text-primary-foreground text-sm">
+								{/* Unread indicator stripe */}
+								{hasUnread && !isActive && (
+									<span className="absolute left-0 top-1/2 h-8 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+								)}
+
+								{/* Avatar with online-like size */}
+								<div className="relative shrink-0">
+									<Avatar className="h-12 w-12">
+										<AvatarImage src={otherUser?.image || undefined} alt={otherUser?.name || 'User'} />
+										<AvatarFallback className="bg-primary text-primary-foreground font-medium">
 											{otherUser?.name?.[0]?.toUpperCase() || '?'}
 										</AvatarFallback>
 									</Avatar>
-									<div className="min-w-0 flex-1 space-y-1">
-										<div className="flex items-start justify-between gap-2">
-											<p className="truncate text-sm font-semibold text-foreground">
-												{otherUser?.name || 'Unknown'}
-											</p>
-											<div className="flex items-center gap-2">
-												{isMuted ? (
-													<BellOff className="h-3.5 w-3.5 text-muted-foreground" />
-												) : null}
-												{thread.lastMessageAt ? (
-													<span className="shrink-0 text-[11px] text-muted-foreground">
-														{formatDistanceToNow(new Date(thread.lastMessageAt), {
-															addSuffix: true,
-														})}
-													</span>
-												) : null}
-											</div>
-										</div>
-										<p
-											className={cn(
-												'truncate text-xs',
-												thread.unreadCount > 0
-													? 'font-medium text-foreground'
-													: 'text-muted-foreground',
-											)}
-										>
-											{thread.lastMessage?.body || 'Start a conversation'}
+									{isPinned && (
+										<span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card">
+											<Pin className="h-2.5 w-2.5 text-muted-foreground" />
+										</span>
+									)}
+								</div>
+
+								{/* Content */}
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center justify-between gap-2">
+										<p className={cn('truncate text-sm', hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90')}>
+											{otherUser?.name || 'Unknown'}
 										</p>
-										<div className="flex items-center gap-2">
-											{thread.unreadCount > 0 ? (
-												<Badge className="rounded-full px-2 py-0.5 text-[10px]">
-													{thread.unreadCount} new
-												</Badge>
-											) : (
-												<span className="text-[11px] text-muted-foreground">
-													No unread messages
+										<div className="flex shrink-0 items-center gap-1.5">
+											{isMuted && <BellOff className="h-3 w-3 text-muted-foreground/60" />}
+											{thread.lastMessageAt && (
+												<span className={cn('text-[11px]', hasUnread ? 'font-medium text-primary' : 'text-muted-foreground')}>
+													{formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: false })}
 												</span>
 											)}
 										</div>
+									</div>
+									<div className="mt-0.5 flex items-center justify-between gap-2">
+										<p className={cn('truncate text-xs', hasUnread ? 'font-medium text-foreground/80' : 'text-muted-foreground')}>
+											{thread.lastMessage?.body || 'Start a conversation'}
+										</p>
+										{hasUnread && (
+											<span className="ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+												{thread.unreadCount > 99 ? '99+' : thread.unreadCount}
+											</span>
+										)}
 									</div>
 								</div>
 							</button>
