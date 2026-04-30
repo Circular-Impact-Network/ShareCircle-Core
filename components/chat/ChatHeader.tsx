@@ -134,7 +134,7 @@ export function ChatHeader({
 						size="icon"
 						className="h-9 w-9 rounded-full"
 						onClick={onToggleSearch}
-						aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+						aria-label={isSearchOpen ? 'Close search' : 'Search in chat'}
 					>
 						{isSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
 					</Button>
