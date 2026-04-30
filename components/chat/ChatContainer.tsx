@@ -370,18 +370,101 @@ export function ChatContainer({
 	const isOnline = activeUser ? onlineUserIds.includes(activeUser.id) : false;
 	const isTyping = activeUser ? typingUserIds.includes(activeUser.id) : false;
 
+	// Shared thread panel content — used in both mobile and desktop layouts
+	const chatHeaderProps = {
+		user: activeUser,
+		isOnline,
+		isTyping,
+		isPinned: Boolean(activeThread?.pinnedAt),
+		isMuted: Boolean(activeThread?.mutedUntil && new Date(activeThread.mutedUntil) > new Date()),
+		isArchived: Boolean(activeThread?.archivedAt),
+		isSearchOpen: isMessageSearchOpen,
+		searchValue: messageSearch,
+		onTogglePin: () => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt),
+		onToggleMute: () =>
+			activeThread &&
+			handleMute(
+				activeThread.id,
+				!(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date()),
+			),
+		onToggleArchive: () => activeThread && handleArchive(activeThread.id, !activeThread.archivedAt),
+		onDelete: () => activeThread && handleDelete(activeThread.id),
+		onToggleSearch: handleToggleSearch,
+		onSearchChange: setMessageSearch,
+		onNewItem: () => setShowAddItem(true),
+	};
+
+	const threadContent = activeUser ? (
+		<>
+			<ChatThread
+				messages={messages}
+				currentUserId={currentUser?.id || ''}
+				onRetry={handleRetry}
+				searchValue={messageSearch}
+				onLoadMore={onLoadMore}
+				hasMore={Boolean(nextCursor)}
+				isLoading={isLoadingMessages}
+			/>
+			{!canMessage && (
+				<div className="flex-shrink-0 border-t border-border bg-card p-4 text-center text-xs text-muted-foreground">
+					Chat disabled. You no longer share a circle with this user.
+				</div>
+			)}
+			<MessageComposer
+				value={messageInput}
+				onChange={setMessageInput}
+				onSend={handleSend}
+				onTyping={sendTyping}
+				disabled={!canMessage}
+			/>
+		</>
+	) : (
+		<div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+			{isLoadingThreads ? 'Loading conversations…' : 'Select a chat to start'}
+		</div>
+	);
+
+	// Mobile-native layout: full-screen, no PageShell, no decorative borders
+	// pb-bottom-nav ensures MessageComposer / list end above the fixed bottom nav
+	if (!isDesktop && fullBleed) {
+		return (
+			<>
+				{/* Fixed container: top-12 = mobile header height; independent of main's scroll/padding */}
+				<div className="fixed inset-x-0 bottom-0 top-12 z-20 flex flex-col overflow-hidden">
+					{showListOnly ? (
+						<ChatList
+							threads={threads}
+							activeId={activeId}
+							searchValue={threadSearch}
+							onSearch={setThreadSearch}
+							onSelect={handleSelectThread}
+						/>
+					) : (
+						<div className="flex flex-1 flex-col overflow-hidden bg-card pb-bottom-nav">
+							<ChatHeader
+								{...chatHeaderProps}
+								onBack={hideList ? () => router.push('/messages') : undefined}
+							/>
+							{threadContent}
+						</div>
+					)}
+				</div>
+				<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
+			</>
+		);
+	}
+
+	// Desktop layout: PageShell + PageHeader + split-pane
 	return (
 		<>
-		<PageShell className={cn('flex flex-col', fullBleed && 'h-full max-w-none overflow-hidden')}>
+		<PageShell className="flex h-full max-w-none flex-col overflow-hidden">
 			<div className="flex-shrink-0">
 				<PageHeader title="Messages" description="Chat with people in your circles" />
 			</div>
 			<div
 				className={cn(
 					'flex flex-1 flex-col overflow-hidden md:flex-row',
-					fullBleed
-						? 'border-0'
-						: 'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
+					'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
 				)}
 			>
 				{!hideList && (
