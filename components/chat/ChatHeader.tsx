@@ -1,4 +1,4 @@
-import { Archive, BellOff, MoreVertical, Pin, Plus, Search, Trash2, X } from 'lucide-react';
+import { Archive, ArrowLeft, BellOff, MoreVertical, Pin, Plus, Search, Trash2, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
 	DropdownMenu,
@@ -19,6 +19,7 @@ type ChatHeaderProps = {
 	isArchived: boolean;
 	isSearchOpen: boolean;
 	searchValue: string;
+	onBack?: () => void;
 	onTogglePin: () => void;
 	onToggleMute: () => void;
 	onToggleArchive: () => void;
