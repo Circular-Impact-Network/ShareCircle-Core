@@ -194,6 +194,9 @@ export async function GET(req: NextRequest) {
 						})),
 					isOwner: item.ownerId === userId,
 					isAvailable: item.isAvailable,
+					estimatedWeightKg: item.estimatedWeightKg,
+					estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+					isValueVisible: item.isValueVisible,
 				};
 			}),
 		);
@@ -223,7 +226,7 @@ export async function POST(req: NextRequest) {
 
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths } = body;
+		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, estimatedWeightKg, estimatedNewPriceUsd } = body;
 
 		// Validate required fields
 		if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -307,6 +310,8 @@ export async function POST(req: NextRequest) {
 					tags: tags || [],
 					mediaPaths: mediaPaths || [],
 					ownerId: userId,
+					estimatedWeightKg: estimatedWeightKg ?? null,
+					estimatedNewPriceUsd: estimatedNewPriceUsd ?? null,
 				},
 				include: {
 					owner: {
@@ -368,6 +373,9 @@ export async function POST(req: NextRequest) {
 				circles: validCircleIds,
 				isOwner: true,
 				isAvailable: item.isAvailable,
+				estimatedWeightKg: item.estimatedWeightKg,
+				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+				isValueVisible: item.isValueVisible,
 			},
 			{ status: 201 },
 		);

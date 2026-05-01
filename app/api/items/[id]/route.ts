@@ -143,6 +143,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				isOwner: item.ownerId === userId,
 				isAvailable: item.isAvailable,
 				borrowedUntil: item.borrowTransactions[0]?.dueAt ?? null,
+				estimatedWeightKg: item.estimatedWeightKg,
+				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+				isValueVisible: item.isValueVisible,
 			},
 			{ status: 200 },
 		);
@@ -164,7 +167,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const { id } = await params;
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, archived } = body;
+		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, archived, estimatedWeightKg, estimatedNewPriceUsd, isValueVisible } = body;
 
 		// Verify ownership
 		const item = await prisma.item.findUnique({
@@ -281,6 +284,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					...(tags !== undefined && { tags }),
 					...(mediaPaths !== undefined && { mediaPaths }),
 					...(archived !== undefined && { archivedAt: archived ? new Date() : null }),
+					...(estimatedWeightKg !== undefined && { estimatedWeightKg }),
+					...(estimatedNewPriceUsd !== undefined && { estimatedNewPriceUsd }),
+					...(isValueVisible !== undefined && { isValueVisible }),
 				},
 				include: {
 					owner: {
@@ -391,6 +397,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				})),
 				isOwner: true,
 				isAvailable: updatedItem.isAvailable,
+				estimatedWeightKg: updatedItem.estimatedWeightKg,
+				estimatedNewPriceUsd: updatedItem.estimatedNewPriceUsd,
+				isValueVisible: updatedItem.isValueVisible,
 			},
 			{ status: 200 },
 		);
