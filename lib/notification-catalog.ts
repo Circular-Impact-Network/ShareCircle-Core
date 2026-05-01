@@ -35,6 +35,7 @@ export const NOTIFICATION_TYPE_TO_CATEGORY: Record<NotificationType, Notificatio
 	ITEM_RECEIVED_CONFIRMED: 'RETURNS',
 	RETURN_REQUESTED: 'RETURNS',
 	RETURN_CONFIRMED: 'RETURNS',
+	ITEM_REMOVED_FROM_CIRCLE: 'ITEM_REQUESTS',
 };
 
 export const NOTIFICATION_CATALOG: NotificationCategoryDefinition[] = [
@@ -64,6 +65,11 @@ export const NOTIFICATION_CATALOG: NotificationCategoryDefinition[] = [
 				type: 'ITEM_REQUEST_FULFILLED',
 				title: 'Request fulfilled',
 				description: 'An item request you care about was marked fulfilled.',
+			},
+			{
+				type: 'ITEM_REMOVED_FROM_CIRCLE',
+				title: 'Item removed from circle',
+				description: 'A circle admin removed one of your items from their circle.',
 			},
 		],
 	},

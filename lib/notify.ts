@@ -35,6 +35,7 @@ const NOTIFICATION_PATHS: Record<NotificationType, (m: Record<string, unknown>) 
 	ITEM_RECEIVED_CONFIRMED: () => '/activity',
 	RETURN_REQUESTED: () => '/activity',
 	RETURN_CONFIRMED: () => '/activity',
+	ITEM_REMOVED_FROM_CIRCLE: m => (m.itemId ? `/items/${m.itemId}` : '/'),
 };
 
 function resolvePath(type: NotificationType, metadata?: Record<string, unknown>): string {
