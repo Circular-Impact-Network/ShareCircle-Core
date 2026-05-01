@@ -27,6 +27,7 @@ import {
 	Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { AddItemModal } from '@/components/modals/add-item-modal';
@@ -53,7 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useGetCircleItemsQuery, useDeleteItemMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import { useGetCircleItemsQuery, useDeleteItemMutation, useRemoveItemFromCircleMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
 import {
 	useGetItemRequestsQuery,
 	useIgnoreItemRequestMutation,
@@ -111,6 +112,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
+	const [itemToRemoveFromCircle, setItemToRemoveFromCircle] = useState<ItemType | null>(null);
+	const [removeReason, setRemoveReason] = useState('');
 	const [showInviteSection, setShowInviteSection] = useState(false);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -125,6 +128,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	// Items query and mutation
 	const { data: items = [], isLoading: isLoadingItems, refetch: refetchItems } = useGetCircleItemsQuery(circleId);
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
+	const [removeItemFromCircle, { isLoading: isRemovingFromCircle }] = useRemoveItemFromCircleMutation();
 	const {
 		visibleItems: visibleItems,
 		hasMore: hasMoreItems,
@@ -1023,6 +1027,19 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 															<Trash2 className="h-4 w-4" />
 															Delete
 														</Button>
+													) : circle?.userRole === 'ADMIN' ? (
+														<Button
+															variant="outline"
+															size="sm"
+															className="gap-2 text-destructive"
+															onClick={() => {
+																setItemToRemoveFromCircle(item);
+																setRemoveReason('');
+															}}
+														>
+															<Trash2 className="h-4 w-4" />
+															Remove
+														</Button>
 													) : null}
 												</div>
 											}
@@ -1150,6 +1167,67 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 								</>
 							) : (
 								'Delete'
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Remove Item from Circle Dialog (admin only) */}
+			<Dialog
+				open={!!itemToRemoveFromCircle}
+				onOpenChange={open => {
+					if (!open) setItemToRemoveFromCircle(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Remove from circle</DialogTitle>
+						<DialogDescription>
+							&quot;{itemToRemoveFromCircle?.name}&quot; will be removed from this circle. The item will still
+							exist for its owner.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-2 py-1">
+						<p className="text-sm font-medium">Reason <span className="font-normal text-muted-foreground">(optional)</span></p>
+						<Textarea
+							placeholder="Let the owner know why…"
+							value={removeReason}
+							onChange={e => setRemoveReason(e.target.value)}
+							rows={3}
+							maxLength={500}
+							className="resize-none"
+						/>
+					</div>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button variant="outline" onClick={() => setItemToRemoveFromCircle(null)} disabled={isRemovingFromCircle}>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							disabled={isRemovingFromCircle}
+							onClick={async () => {
+								if (!itemToRemoveFromCircle) return;
+								try {
+									await removeItemFromCircle({
+										circleId,
+										itemId: itemToRemoveFromCircle.id,
+										reason: removeReason.trim() || undefined,
+									}).unwrap();
+									toast({ title: 'Item removed from circle' });
+									setItemToRemoveFromCircle(null);
+								} catch {
+									toast({ title: 'Failed to remove item', variant: 'destructive' });
+								}
+							}}
+						>
+							{isRemovingFromCircle ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Removing...
+								</>
+							) : (
+								'Remove'
 							)}
 						</Button>
 					</DialogFooter>
