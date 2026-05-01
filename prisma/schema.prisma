@@ -86,6 +86,8 @@ enum NotificationType {
   RETURN_CONFIRMED
   // Message notifications
   NEW_MESSAGE
+  // Circle admin actions
+  ITEM_REMOVED_FROM_CIRCLE
 }
 
 enum NotificationStatus {
@@ -144,6 +146,7 @@ model User {
   pushSendAttempts        PushSendAttempt[]
   notificationPreference  UserNotificationPreference?
   itemRequestActions      ItemRequestAction[]
+  feedbacks               Feedback[]
 
   @@map("users")
 }
@@ -242,8 +245,11 @@ model Item {
   categories   String[] @default([])
   tags         String[] @default([])
   mediaPaths   String[] @default([]) @map("media_paths")
-  isAvailable  Boolean  @default(true) @map("is_available")
-  archivedAt   DateTime? @map("archived_at")
+  isAvailable          Boolean   @default(true) @map("is_available")
+  archivedAt           DateTime? @map("archived_at")
+  estimatedWeightKg    Float?    @map("estimated_weight_kg")
+  estimatedNewPriceUsd Float?    @map("estimated_new_price_usd")
+  isValueVisible       Boolean   @default(false) @map("is_value_visible")
   // Vector embeddings stored via raw SQL (pgvector)
   embedding    Unsupported("vector(1024)")?
   createdAt    DateTime @default(now()) @map("created_at")
@@ -568,4 +574,25 @@ model UserNotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notification_preferences")
+}
+
+model Feedback {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  rating          Int
+  category        String
+  message         String?  @db.Text
+  currentPage     String?  @map("current_page")
+  deviceType      String?  @map("device_type")
+  appVersion      String?  @map("app_version")
+  followUpConsent Boolean? @map("follow_up_consent")
+  taskContext     String?  @map("task_context")
+  attachmentPath  String?  @map("attachment_path")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("feedbacks")
 }
