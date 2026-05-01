@@ -12,6 +12,18 @@ const itemAnalysisSchema = z.object({
 		.array(z.string())
 		.describe('2-4 broad categories this item belongs to (e.g., "Tools", "Outdoor", "Kitchen")'),
 	tags: z.array(z.string()).describe('5-10 specific searchable tags for the item'),
+	estimatedWeightKg: z
+		.number()
+		.nullable()
+		.describe(
+			'Physical weight in kg for a typical unit of this item (e.g. 0.3 for a paperback book, 2.5 for a power drill). Return null if you genuinely cannot estimate.',
+		),
+	estimatedNewPriceUsd: z
+		.number()
+		.nullable()
+		.describe(
+			'Current retail price in USD to buy this item new today. Use brand/model visible in the image if available. Return null if you genuinely cannot estimate.',
+		),
 });
 
 export type ItemAnalysis = z.infer<typeof itemAnalysisSchema>;
@@ -234,6 +246,8 @@ Extract:
 - A helpful description mentioning condition and key features (2-3 sentences)
 - Relevant broad categories (e.g., "Clothing", "Apparel", "Tools", "Outdoor", "Kitchen", "Sports", "Electronics", etc.)
 - Specific searchable tags that would help others find this item
+- estimatedWeightKg: typical physical weight in kg for one unit of this item (e.g. 0.3 for a paperback, 0.8 for a DSLR camera body, 2.5 for a power drill, 5.0 for a tent). Return null only if truly unknowable.
+- estimatedNewPriceUsd: current retail price in USD to buy this item new today. Use any visible brand/model to refine the estimate. Return null only if truly unknowable.
 
 Be practical and focus on what makes this item useful for borrowing/sharing.`;
 
@@ -246,6 +260,8 @@ This is the item the user wants to share. Extract details ONLY for this specific
 - A helpful description mentioning condition and key features (2-3 sentences)
 - Relevant broad categories
 - Specific searchable tags
+- estimatedWeightKg: typical physical weight in kg for one unit of this item. Return null only if truly unknowable.
+- estimatedNewPriceUsd: current retail price in USD to buy this item new today. Return null only if truly unknowable.
 
 Ignore other items in the image and focus entirely on "${options.selectedItem}".`;
 	}
@@ -259,6 +275,8 @@ Use this description to help identify and analyze the correct item. Extract:
 - A helpful description mentioning condition and key features (2-3 sentences)
 - Relevant broad categories
 - Specific searchable tags
+- estimatedWeightKg: typical physical weight in kg for one unit of this item. Return null only if truly unknowable.
+- estimatedNewPriceUsd: current retail price in USD to buy this item new today. Return null only if truly unknowable.
 
 Focus on items that match "${options.userHint}" and prioritize accuracy based on the user's description.`;
 	}
