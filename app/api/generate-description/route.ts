@@ -1,4 +1,5 @@
 import { generateText } from 'ai';
+import { google } from '@ai-sdk/google';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
@@ -30,11 +31,10 @@ export async function POST(request: Request) {
 		}
 
 		const { text } = await generateText({
-			model: 'openai/gpt-4o-mini',
-			prompt: `Generate a compelling, brief product description (2-3 sentences) for a sharing/lending app for an item called "${itemTitle}". 
-      Include practical information about the item that would help someone decide to borrow it. 
+			model: google('gemini-2.5-flash'),
+			prompt: `Generate a compelling, brief product description (2-3 sentences) for a sharing/lending app for an item called "${itemTitle}".
+      Include practical information about the item that would help someone decide to borrow it.
       Keep it concise and friendly. Do not include price information.`,
-			temperature: 0.7,
 		});
 
 		return Response.json({ description: text });
