@@ -31,6 +31,9 @@ export interface Item {
 	isAvailable?: boolean;
 	borrowedUntil?: string | null;
 	similarity?: number;
+	estimatedWeightKg?: number | null;
+	estimatedNewPriceUsd?: number | null;
+	isValueVisible?: boolean;
 }
 
 export interface ItemAnalysis {
@@ -38,6 +41,8 @@ export interface ItemAnalysis {
 	description: string;
 	categories: string[];
 	tags: string[];
+	estimatedWeightKg: number | null;
+	estimatedNewPriceUsd: number | null;
 }
 
 export interface DetectedItem {
@@ -76,6 +81,8 @@ export interface CreateItemRequest {
 	categories: string[];
 	tags: string[];
 	circleIds: string[];
+	estimatedWeightKg?: number | null;
+	estimatedNewPriceUsd?: number | null;
 }
 
 export interface UpdateItemRequest {
@@ -89,6 +96,9 @@ export interface UpdateItemRequest {
 	tags?: string[];
 	circleIds?: string[];
 	archived?: boolean;
+	estimatedWeightKg?: number | null;
+	estimatedNewPriceUsd?: number | null;
+	isValueVisible?: boolean;
 }
 
 export interface GetItemsFilters {
@@ -309,6 +319,18 @@ export const itemsApi = createApi({
 			query: () => '/items/categories',
 			providesTags: ['Items'],
 		}),
+
+		// Circle admin: remove an item from a circle (does not delete the item)
+		removeItemFromCircle: builder.mutation<{ success: boolean }, { circleId: string; itemId: string; reason?: string }>(
+			{
+				query: ({ circleId, itemId, reason }) => ({
+					url: `/circles/${circleId}/items/${itemId}`,
+					method: 'DELETE',
+					body: { reason },
+				}),
+				invalidatesTags: (_result, _error, { circleId }) => [{ type: 'CircleItems', id: circleId }],
+			},
+		),
 	}),
 });
 
@@ -327,4 +349,5 @@ export const {
 	useCleanupImageMutation,
 	useGetItemsPaginatedQuery,
 	useGetItemCategoriesQuery,
+	useRemoveItemFromCircleMutation,
 } = itemsApi;
