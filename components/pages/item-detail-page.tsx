@@ -20,7 +20,13 @@ import {
 	AlertCircle,
 	Pencil,
 	CalendarPlus,
+	Scale,
+	DollarSign,
+	Archive,
+	ArchiveRestore,
+	Trash2,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
-import { useGetItemQuery, Item } from '@/lib/redux/api/itemsApi';
+import { useGetItemQuery, useUpdateItemMutation, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import {
 	useCreateBorrowRequestMutation,
 	useGetBorrowRequestsQuery,
@@ -64,12 +70,16 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [showBorrowModal, setShowBorrowModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [showExtendModal, setShowExtendModal] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [isArchiving, setIsArchiving] = useState(false);
 	const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
 	const [borrowMessage, setBorrowMessage] = useState('');
 	const [desiredFrom, setDesiredFrom] = useState<Date | undefined>(undefined);
 	const [desiredTo, setDesiredTo] = useState<Date | undefined>(undefined);
 
 	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
+	const [updateItem, { isLoading: isUpdatingItem }] = useUpdateItemMutation();
+	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 
 	// Get existing borrow requests and queue for this item
 	const { data: existingRequests = [] } = useGetBorrowRequestsQuery({ itemId, type: 'outgoing' }, { skip: !itemId });
@@ -128,11 +138,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	};
 
 	const handleBack = () => {
-		if (item?.isOwner) {
-			router.push('/listings');
-		} else {
-			router.push('/browse');
-		}
+		router.back();
 	};
 
 	const handleStartChat = async () => {
@@ -236,6 +242,59 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 				variant: 'destructive',
 			});
 			// Don't close modal on error so user can retry
+		}
+	};
+
+	const handleArchiveToggle = async () => {
+		if (!item) return;
+		const archived = !item.archivedAt;
+		setIsArchiving(true);
+		try {
+			await updateItem({ id: item.id, archived }).unwrap();
+			toast({
+				title: archived ? 'Item archived' : 'Item restored',
+				description: archived ? `${item.name} moved to archived.` : `${item.name} is active again.`,
+			});
+			refetchItem();
+		} catch {
+			toast({ title: 'Unable to update listing', description: 'Please try again.', variant: 'destructive' });
+		} finally {
+			setIsArchiving(false);
+		}
+	};
+
+	const handleDelete = async () => {
+		if (!item) return;
+		try {
+			await deleteItem(item.id).unwrap();
+			toast({ title: 'Item deleted', description: `${item.name} has been permanently deleted.` });
+			router.push('/listings');
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error
+					: undefined;
+			toast({
+				title: 'Cannot delete item',
+				description: msg ?? 'Please try again.',
+				variant: 'destructive',
+			});
+		} finally {
+			setShowDeleteDialog(false);
+		}
+	};
+
+	const handleToggleValueVisibility = async () => {
+		if (!item) return;
+		const next = !item.isValueVisible;
+		try {
+			await updateItem({ id: item.id, isValueVisible: next }).unwrap();
+			toast({
+				title: next ? 'Price visible to borrowers' : 'Price hidden from borrowers',
+			});
+			refetchItem();
+		} catch {
+			toast({ title: 'Unable to update visibility', description: 'Please try again.', variant: 'destructive' });
 		}
 	};
 
@@ -369,6 +428,23 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 					)}
 
+					{/* Weight — always visible */}
+					{item.estimatedWeightKg != null && (
+						<div className="flex items-center gap-2 text-sm text-muted-foreground">
+							<Scale className="h-4 w-4 flex-shrink-0" />
+							<span>~{item.estimatedWeightKg} kg</span>
+						</div>
+					)}
+
+					{/* Price — owner always sees it; others only if isValueVisible */}
+					{item.estimatedNewPriceUsd != null &&
+						(item.isOwner || item.isValueVisible) && (
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<DollarSign className="h-4 w-4 flex-shrink-0" />
+								<span>Est. retail value: ${item.estimatedNewPriceUsd?.toLocaleString()}</span>
+							</div>
+						)}
+
 					{/* Shared in Circles */}
 					{item.circles && item.circles.length > 0 && (
 						<div className="text-sm text-muted-foreground">
@@ -466,17 +542,64 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 					)}
 
+					{/* Owner: price visibility toggle */}
+					{item.isOwner && item.estimatedNewPriceUsd != null && (
+						<div className="flex items-center gap-2">
+							{isUpdatingItem ? (
+								<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+							) : (
+								<Switch
+									id="value-visibility"
+									checked={item.isValueVisible}
+									onCheckedChange={handleToggleValueVisibility}
+									disabled={isUpdatingItem}
+								/>
+							)}
+							<label htmlFor="value-visibility" className="text-sm text-muted-foreground cursor-pointer select-none">
+								{item.isValueVisible ? 'Price & weight visible to borrowers' : 'Price & weight hidden from borrowers'}
+							</label>
+						</div>
+					)}
+
 					{/* Action Buttons */}
 					<div className="flex flex-wrap gap-3 pt-2">
 						{item.isOwner ? (
-							<Button
-								variant="outline"
-								className="gap-2 bg-transparent"
-								onClick={() => setShowEditModal(true)}
-							>
-								<Pencil className="h-4 w-4" />
-								Edit listing
-							</Button>
+							<>
+								<Button
+									variant="outline"
+									size="sm"
+									className="gap-2 bg-transparent"
+									onClick={() => setShowEditModal(true)}
+								>
+									<Pencil className="h-4 w-4" />
+									Edit listing
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									className="gap-2 bg-transparent"
+									onClick={handleArchiveToggle}
+									disabled={isArchiving}
+								>
+									{isArchiving ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : item.archivedAt ? (
+										<ArchiveRestore className="h-4 w-4" />
+									) : (
+										<Archive className="h-4 w-4" />
+									)}
+									{item.archivedAt ? 'Unarchive' : 'Archive'}
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									className="gap-2 bg-transparent text-destructive hover:text-destructive"
+									onClick={() => setShowDeleteDialog(true)}
+								>
+									<Trash2 className="h-4 w-4" />
+									Delete
+								</Button>
+							</>
 						) : (
 							<Button
 								variant="outline"
@@ -521,6 +644,33 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					</div>
 				</div>
 			</div>
+
+			{/* Delete Confirmation Dialog */}
+			<Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Delete Item</DialogTitle>
+						<DialogDescription>
+							Delete &ldquo;{item.name}&rdquo; permanently? This cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeletingItem}>
+							Cancel
+						</Button>
+						<Button variant="destructive" onClick={handleDelete} disabled={isDeletingItem}>
+							{isDeletingItem ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								'Delete permanently'
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			{/* Borrow Request Modal */}
 			<Dialog open={showBorrowModal} onOpenChange={setShowBorrowModal}>
