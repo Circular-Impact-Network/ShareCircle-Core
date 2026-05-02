@@ -78,7 +78,7 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center justify-between gap-2">
 										<p className={cn('truncate text-sm', hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90')}>
-											{otherUser?.name || 'Unknown'}
+											{otherUser?.name ?? <span className="inline-block h-4 w-24 animate-pulse rounded bg-muted" />}
 										</p>
 										<div className="flex shrink-0 items-center gap-1.5">
 											{isMuted && <BellOff className="h-3 w-3 text-muted-foreground/60" />}
