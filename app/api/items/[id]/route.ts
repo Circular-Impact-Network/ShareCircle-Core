@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, BorrowTransactionStatus } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 
@@ -100,12 +100,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		}
 
 		// Generate signed URL for main image
-		const imageUrl = await getSignedUrl(item.imagePath, 'items');
+		let imageUrl = '';
+		try {
+			imageUrl = await getSignedUrl(item.imagePath, 'items');
+		} catch (err) {
+			console.error(`Failed to get signed URL for item ${item.id}:`, err);
+		}
 
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			imageUrl, // Main image is first
-			...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+			...(item.mediaPaths || []).map(path =>
+				getSignedUrl(path, 'media').catch(err => {
+					console.error(`Failed to get signed URL for media of item ${item.id}:`, err);
+					return '';
+				}),
+			),
 		]);
 
 		return NextResponse.json(
@@ -334,12 +344,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		}
 
 		// Generate signed URL
-		const signedImageUrl = await getSignedUrl(updatedItem.imagePath, 'items');
+		let signedImageUrl = '';
+		try {
+			signedImageUrl = await getSignedUrl(updatedItem.imagePath, 'items');
+		} catch (err) {
+			console.error(`Failed to get signed URL for updated item ${updatedItem.id}:`, err);
+		}
 
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			signedImageUrl, // Main image is first
-			...(updatedItem.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+			...(updatedItem.mediaPaths || []).map(path =>
+				getSignedUrl(path, 'media').catch(err => {
+					console.error(`Failed to get signed URL for media of updated item ${updatedItem.id}:`, err);
+					return '';
+				}),
+			),
 		]);
 		const updatedCircleRecords = await prisma.itemCircle.findMany({
 			where: { itemId: updatedItem.id },
@@ -406,7 +426,23 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 			return NextResponse.json({ error: 'You can only delete your own items' }, { status: 403 });
 		}
 
-		// Delete item (cascade will handle circle associations)
+		// Block deletion if any borrow transaction is still in progress
+		const activeTransaction = await prisma.borrowTransaction.findFirst({
+			where: {
+				itemId: id,
+				status: { notIn: [BorrowTransactionStatus.COMPLETED, BorrowTransactionStatus.CANCELLED] },
+			},
+			select: { id: true },
+		});
+
+		if (activeTransaction) {
+			return NextResponse.json(
+				{ error: 'Cannot delete this item — it has active borrow transactions. Complete or cancel all borrows first.' },
+				{ status: 409 },
+			);
+		}
+
+		// Delete item (cascade will handle circle associations, requests, queue entries)
 		await prisma.item.delete({
 			where: { id },
 		});
