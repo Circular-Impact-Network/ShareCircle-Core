@@ -84,13 +84,21 @@ export async function GET(req: NextRequest) {
 
 		// Add signed URLs
 		const transactionsWithUrls = await Promise.all(
-			transactions.map(async transaction => ({
-				...transaction,
-				item: {
-					...transaction.item,
-					imageUrl: await getSignedUrl(transaction.item.imagePath, 'items'),
-				},
-			})),
+			transactions.map(async transaction => {
+				let imageUrl = '';
+				try {
+					imageUrl = await getSignedUrl(transaction.item.imagePath, 'items');
+				} catch (err) {
+					console.error(`Failed to get signed URL for transaction ${transaction.id}:`, err);
+				}
+				return {
+					...transaction,
+					item: {
+						...transaction.item,
+						imageUrl,
+					},
+				};
+			}),
 		);
 
 		return NextResponse.json(transactionsWithUrls, { status: 200 });
