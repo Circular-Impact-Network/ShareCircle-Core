@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dropzone } from '@/components/ui/dropzone';
-import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus } from 'lucide-react';
+import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -73,6 +73,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [tags, setTags] = useState<string[]>([]);
 	const [tagInput, setTagInput] = useState('');
 	const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
+	const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | null>(null);
+	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
 
 	// Circles state
 	const [circles, setCircles] = useState<Circle[]>([]);
@@ -186,6 +188,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setDetectedItems([]);
 		setSelectedItemName(null);
 		setManualItemName('');
+		setEstimatedWeightKg(null);
+		setEstimatedNewPriceUsd(null);
 	}, [clearSupportingMedia, currentCircleId]);
 
 	useEffect(() => {
@@ -285,6 +289,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 					setDescription(analysis.description);
 					setCategories(analysis.categories);
 					setTags(analysis.tags);
+					setEstimatedWeightKg(analysis.estimatedWeightKg);
+					setEstimatedNewPriceUsd(analysis.estimatedNewPriceUsd);
 					setState('editing');
 				} catch (analysisError: unknown) {
 					console.error('AI analysis failed:', analysisError);
@@ -383,6 +389,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			setDescription(analysis.description);
 			setCategories(analysis.categories);
 			setTags(analysis.tags);
+			setEstimatedWeightKg(analysis.estimatedWeightKg);
+			setEstimatedNewPriceUsd(analysis.estimatedNewPriceUsd);
 			setState('editing');
 		} catch (error: unknown) {
 			console.error('AI analysis failed:', error);
@@ -440,6 +448,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			setDescription(analysis.description);
 			setCategories(analysis.categories);
 			setTags(analysis.tags);
+			setEstimatedWeightKg(analysis.estimatedWeightKg);
+			setEstimatedNewPriceUsd(analysis.estimatedNewPriceUsd);
 			setState('editing');
 		} catch (error) {
 			console.error('AI analysis failed:', error);
@@ -629,6 +639,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				categories,
 				tags,
 				circleIds: selectedCircleIds,
+				estimatedWeightKg,
+				estimatedNewPriceUsd,
 			}).unwrap();
 
 			if (savePhaseTimeoutRef.current) {
@@ -1101,6 +1113,66 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 									</Button>
 								</div>
 							</div>
+
+							{/* AI Estimates */}
+							{(estimatedWeightKg !== null || estimatedNewPriceUsd !== null) && (
+								<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+									<div className="flex items-center gap-1.5">
+										<Sparkles className="h-3.5 w-3.5 text-primary" />
+										<Label className="text-xs uppercase tracking-wide text-muted-foreground">
+											AI Estimates
+										</Label>
+									</div>
+									<div className="grid grid-cols-2 gap-3">
+										<div className="space-y-1.5">
+											<Label htmlFor="weight" className="text-xs text-muted-foreground">
+												Weight (kg)
+											</Label>
+											<Input
+												id="weight"
+												type="number"
+												min="0"
+												step="0.1"
+												value={estimatedWeightKg ?? ''}
+												onChange={e =>
+													setEstimatedWeightKg(
+														e.target.value === '' ? null : parseFloat(e.target.value),
+													)
+												}
+												placeholder="e.g. 1.2"
+												className="h-9"
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<Label htmlFor="price" className="text-xs text-muted-foreground">
+												Est. retail price (USD)
+											</Label>
+											<Input
+												id="price"
+												type="number"
+												min="0"
+												step="1"
+												value={estimatedNewPriceUsd ?? ''}
+												onChange={e =>
+													setEstimatedNewPriceUsd(
+														e.target.value === '' ? null : parseFloat(e.target.value),
+													)
+												}
+												placeholder="e.g. 120"
+												className="h-9"
+											/>
+										</div>
+									</div>
+									<div className="flex items-start gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30 px-2.5 py-2 text-xs text-blue-700 dark:text-blue-400">
+										<Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+										<span>
+											AI suggested — edit if needed. Price &amp; weight are{' '}
+											<strong>private to you</strong> by default. Make them visible to borrowers
+											from the item page.
+										</span>
+									</div>
+								</div>
+							)}
 
 							{/* Circle Selection */}
 							<div className="space-y-3">

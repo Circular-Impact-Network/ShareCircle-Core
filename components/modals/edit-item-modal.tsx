@@ -8,6 +8,7 @@ import {
 	useUpdateItemMutation,
 	useUploadItemImageMutation,
 	useUploadMediaMutation,
+	type Item,
 } from '@/lib/redux/api/itemsApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,8 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 	const [imagePath, setImagePath] = useState('');
 	const [imageUrl, setImageUrl] = useState('');
 	const [media, setMedia] = useState<MediaEntry[]>([]);
+	const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | null>(null);
+	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
 	const savePhaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [savePhase, setSavePhase] = useState<'idle' | 'validating' | 'saving'>('idle');
 
@@ -81,6 +84,8 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 		setSelectedCircleIds(item.circles.map(circle => circle.id));
 		setImagePath(item.imagePath);
 		setImageUrl(item.imageUrl);
+		setEstimatedWeightKg((item as Item).estimatedWeightKg ?? null);
+		setEstimatedNewPriceUsd((item as Item).estimatedNewPriceUsd ?? null);
 
 		const existingMediaPaths = item.mediaPaths || [];
 		const existingMediaUrls = (item.mediaUrls || []).slice(1);
@@ -328,6 +333,8 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				categories,
 				tags,
 				circleIds: selectedCircleIds,
+				estimatedWeightKg,
+				estimatedNewPriceUsd,
 			}).unwrap();
 
 			if (savePhaseTimeoutRef.current) {
@@ -434,6 +441,37 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 								onChange={event => setTagsText(event.target.value)}
 								placeholder="cordless, compact, beginner"
 							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-3">
+							<div className="space-y-2">
+								<Label htmlFor="edit-weight">Weight (kg)</Label>
+								<Input
+									id="edit-weight"
+									type="number"
+									min="0"
+									step="0.1"
+									value={estimatedWeightKg ?? ''}
+									onChange={e =>
+										setEstimatedWeightKg(e.target.value === '' ? null : parseFloat(e.target.value))
+									}
+									placeholder="e.g. 1.2"
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="edit-price">Est. retail price (USD)</Label>
+								<Input
+									id="edit-price"
+									type="number"
+									min="0"
+									step="1"
+									value={estimatedNewPriceUsd ?? ''}
+									onChange={e =>
+										setEstimatedNewPriceUsd(e.target.value === '' ? null : parseFloat(e.target.value))
+									}
+									placeholder="e.g. 120"
+								/>
+							</div>
 						</div>
 
 						<div className="space-y-2">
