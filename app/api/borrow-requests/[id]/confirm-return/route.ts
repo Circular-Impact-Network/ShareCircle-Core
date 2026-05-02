@@ -57,15 +57,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No transaction found' }, { status: 400 });
 		}
 
-		// Transaction must be return_pending or in an active borrowing state
-		const confirmableStatuses: BorrowTransactionStatus[] = [
-			BorrowTransactionStatus.RETURN_PENDING,
-			BorrowTransactionStatus.ACTIVE,
-			BorrowTransactionStatus.LENDER_CONFIRMED,
-			BorrowTransactionStatus.BORROWER_CONFIRMED,
-		];
-		if (!confirmableStatuses.includes(borrowRequest.transaction.status)) {
-			return NextResponse.json({ error: 'Transaction cannot be completed at this stage' }, { status: 400 });
+		// Only RETURN_PENDING is valid — borrower must mark the item as returned first
+		if (borrowRequest.transaction.status !== BorrowTransactionStatus.RETURN_PENDING) {
+			return NextResponse.json(
+				{ error: 'The borrower must first mark the item as returned before you can confirm.' },
+				{ status: 400 },
+			);
 		}
 
 		// Use transaction to complete everything atomically
