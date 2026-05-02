@@ -1,6 +1,7 @@
 'use client';
 
-import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, Bell, History } from 'lucide-react';
+import { useState } from 'react';
+import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, Bell, History, MessageSquarePlus } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,6 +15,7 @@ import { useGetUnreadNotificationCountQuery } from '@/lib/redux/api/notification
 import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { FeedbackModal } from '@/components/modals/feedback-modal';
 
 const navItems = [
 	{ id: 'home', label: 'Home', icon: Home, href: '/home' },
@@ -28,6 +30,7 @@ const navItems = [
 
 export function Sidebar() {
 	const pathname = usePathname();
+	const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
 	const userImage = useAppSelector(selectUserImage);
 	const userName = useAppSelector(selectUserName);
@@ -62,6 +65,7 @@ export function Sidebar() {
 	};
 
 	return (
+		<>
 		<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
 			<div className="flex h-full flex-col overflow-hidden">
 				{/* Logo */}
@@ -117,6 +121,18 @@ export function Sidebar() {
 					</nav>
 				</ScrollArea>
 
+				{/* Feedback */}
+				<div className="px-3 pb-2">
+					<button
+						type="button"
+						onClick={() => setShowFeedbackModal(true)}
+						className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+					>
+						<MessageSquarePlus className="h-4 w-4" />
+						<span>Share feedback</span>
+					</button>
+				</div>
+
 				{/* User Profile Section */}
 				{(userName || userEmail) && (
 					<div className="border-t border-border px-4 py-2.5">
@@ -139,5 +155,8 @@ export function Sidebar() {
 				)}
 			</div>
 		</aside>
+
+		<FeedbackModal open={showFeedbackModal} onOpenChange={setShowFeedbackModal} />
+		</>
 	);
 }

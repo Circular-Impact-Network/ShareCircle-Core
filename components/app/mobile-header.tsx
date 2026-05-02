@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogOut, Settings, List, History } from 'lucide-react';
+import { LogOut, Settings, List, History, MessageSquarePlus } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppSelector } from '@/lib/redux/hooks';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
+import { FeedbackModal } from '@/components/modals/feedback-modal';
 
 function getInitials(name: string) {
 	if (!name) return 'U';
@@ -30,6 +32,7 @@ export function MobileHeader() {
 	const userName = useAppSelector(selectUserName);
 	const userEmail = useAppSelector(selectUserEmail);
 	const displayName = userName || userEmail?.split('@')[0] || 'User';
+	const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
 	const handleLogout = async () => {
 		if (typeof navigator !== 'undefined' && navigator.serviceWorker.controller) {
@@ -39,6 +42,7 @@ export function MobileHeader() {
 	};
 
 	return (
+		<>
 		<header className="fixed left-0 right-0 top-0 z-30 flex h-12 items-center justify-between border-b border-border/50 bg-background/95 backdrop-blur-sm px-3 lg:hidden">
 			<Link href="/home" className="flex items-center gap-2">
 				<div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
@@ -88,6 +92,13 @@ export function MobileHeader() {
 							Settings
 						</Link>
 					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => setShowFeedbackModal(true)}
+						className="flex items-center gap-2"
+					>
+						<MessageSquarePlus className="h-4 w-4" />
+						Share feedback
+					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						onClick={handleLogout}
@@ -99,5 +110,8 @@ export function MobileHeader() {
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</header>
+
+		<FeedbackModal open={showFeedbackModal} onOpenChange={setShowFeedbackModal} />
+		</>
 	);
 }
