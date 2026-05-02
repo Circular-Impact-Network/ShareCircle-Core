@@ -67,11 +67,20 @@ export function MyListingsPage() {
 			setItemToDelete(null);
 		} catch (error) {
 			console.error('Failed to delete item:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to delete item. Please try again.',
-				variant: 'destructive',
-			});
+			const status = (error as { status?: number })?.status;
+			if (status === 409) {
+				toast({
+					title: 'Cannot delete item',
+					description: 'This item has active borrows. Complete or cancel all borrows first.',
+					variant: 'destructive',
+				});
+			} else {
+				toast({
+					title: 'Error',
+					description: 'Failed to delete item. Please try again.',
+					variant: 'destructive',
+				});
+			}
 		}
 	};
 
