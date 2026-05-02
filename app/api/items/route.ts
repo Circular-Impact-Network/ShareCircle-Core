@@ -155,11 +155,21 @@ export async function GET(req: NextRequest) {
 		// Generate signed URLs for item images and media
 		const itemsWithUrls = await Promise.all(
 			paginatedItems.map(async item => {
-				const imageUrl = await getSignedUrl(item.imagePath, 'items');
+				let imageUrl = '';
+				try {
+					imageUrl = await getSignedUrl(item.imagePath, 'items');
+				} catch (err) {
+					console.error(`Failed to get signed URL for item ${item.id}:`, err);
+				}
 				// Generate signed URLs for all media files (main image + supporting media)
 				const mediaUrls = await Promise.all([
 					imageUrl, // Main image is first
-					...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+					...(item.mediaPaths || []).map(path =>
+						getSignedUrl(path, 'media').catch(err => {
+							console.error(`Failed to get signed URL for media of item ${item.id}:`, err);
+							return '';
+						}),
+					),
 				]);
 				return {
 					id: item.id,
