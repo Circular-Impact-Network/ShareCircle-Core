@@ -88,6 +88,7 @@ export class TestAPI {
 		circleIds: string[];
 		categories?: string[];
 		tags?: string[];
+		imagePath?: string;
 	}): Promise<Item> {
 		const response = await this.request.post('/api/items', {
 			data: {
@@ -96,11 +97,24 @@ export class TestAPI {
 				circleIds: data.circleIds,
 				categories: data.categories || [],
 				tags: data.tags || [],
+				// Use a fake path so item creation succeeds without a real upload.
+				// No imageUrl = AI listing validation is skipped.
+				imagePath: data.imagePath || `e2e-test/${Date.now()}.jpg`,
 			},
 		});
 
 		if (!response.ok()) {
-			throw new Error(`Failed to create item: ${response.status()}`);
+			throw new Error(`Failed to create item: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async updateItem(id: string, data: Record<string, unknown>): Promise<Item> {
+		const response = await this.request.patch(`/api/items/${id}`, { data });
+
+		if (!response.ok()) {
+			throw new Error(`Failed to update item: ${response.status()} ${await response.text()}`);
 		}
 
 		return response.json();
@@ -165,13 +179,79 @@ export class TestAPI {
 		desiredFrom: string;
 		desiredTo: string;
 		message?: string;
-	}): Promise<unknown> {
+	}): Promise<{ id: string }> {
 		const response = await this.request.post('/api/borrow-requests', {
 			data,
 		});
 
 		if (!response.ok()) {
 			throw new Error(`Failed to create borrow request: ${response.status()}`);
+		}
+
+		return response.json();
+	}
+
+	async approveBorrowRequest(id: string): Promise<unknown> {
+		const response = await this.request.patch(`/api/borrow-requests/${id}`, {
+			data: { action: 'approve' },
+		});
+
+		if (!response.ok()) {
+			throw new Error(`Failed to approve borrow request: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async cancelBorrowRequest(id: string): Promise<unknown> {
+		const response = await this.request.patch(`/api/borrow-requests/${id}`, {
+			data: { action: 'cancel' },
+		});
+
+		if (!response.ok()) {
+			throw new Error(`Failed to cancel borrow request: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async confirmHandoff(borrowRequestId: string): Promise<unknown> {
+		const response = await this.request.post(`/api/borrow-requests/${borrowRequestId}/handoff`);
+
+		if (!response.ok()) {
+			throw new Error(`Failed to confirm handoff: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async confirmReceipt(borrowRequestId: string): Promise<unknown> {
+		const response = await this.request.post(`/api/borrow-requests/${borrowRequestId}/receive`);
+
+		if (!response.ok()) {
+			throw new Error(`Failed to confirm receipt: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async markReturn(borrowRequestId: string, returnNote?: string): Promise<unknown> {
+		const response = await this.request.post(`/api/borrow-requests/${borrowRequestId}/return`, {
+			data: { returnNote: returnNote ?? null },
+		});
+
+		if (!response.ok()) {
+			throw new Error(`Failed to mark return: ${response.status()} ${await response.text()}`);
+		}
+
+		return response.json();
+	}
+
+	async confirmReturn(borrowRequestId: string): Promise<unknown> {
+		const response = await this.request.post(`/api/borrow-requests/${borrowRequestId}/confirm-return`);
+
+		if (!response.ok()) {
+			throw new Error(`Failed to confirm return: ${response.status()} ${await response.text()}`);
 		}
 
 		return response.json();
