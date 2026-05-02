@@ -389,8 +389,12 @@ export function MyActivityPage() {
 		try {
 			await confirmReturn(requestId).unwrap();
 			toast({ title: 'Return confirmed!', description: 'Transaction completed.' });
-		} catch {
-			toast({ title: 'Failed to confirm return', variant: 'destructive' });
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to confirm return'
+					: 'Failed to confirm return';
+			toast({ title: msg, variant: 'destructive' });
 		} finally {
 			setProcessingId(null);
 		}
@@ -401,8 +405,12 @@ export function MyActivityPage() {
 		try {
 			await markAsReturned({ id: requestId }).unwrap();
 			toast({ title: 'Marked as returned', description: 'Waiting for owner confirmation.' });
-		} catch {
-			toast({ title: 'Failed to mark as returned', variant: 'destructive' });
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to mark as returned'
+					: 'Failed to mark as returned';
+			toast({ title: msg, variant: 'destructive' });
 		} finally {
 			setProcessingId(null);
 		}
@@ -413,8 +421,12 @@ export function MyActivityPage() {
 		try {
 			await confirmHandoff(requestId).unwrap();
 			toast({ title: 'Handoff confirmed!', description: 'Borrower has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm handoff', variant: 'destructive' });
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to confirm handoff'
+					: 'Failed to confirm handoff';
+			toast({ title: msg, variant: 'destructive' });
 		} finally {
 			setProcessingId(null);
 		}
@@ -425,8 +437,12 @@ export function MyActivityPage() {
 		try {
 			await confirmReceipt(requestId).unwrap();
 			toast({ title: 'Receipt confirmed!', description: 'Lender has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm receipt', variant: 'destructive' });
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || 'Failed to confirm receipt'
+					: 'Failed to confirm receipt';
+			toast({ title: msg, variant: 'destructive' });
 		} finally {
 			setProcessingId(null);
 		}
