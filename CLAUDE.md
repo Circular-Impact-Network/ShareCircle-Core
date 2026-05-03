@@ -29,11 +29,11 @@ ItemRequest:    OPEN → FULFILLED | CANCELLED
 - **Circles**: Private groups with roles (ADMIN | MEMBER); invite codes expire 7 days
 - **Items**: Multi-circle sharing via `ItemCircle` join table; semantic search via pgvector
 - **Messages**: DIRECT | GROUP; `clientId` for dedup; delivery tracked via `MessageReceipt`
-- **Notifications**: 11 types, dual-channel (in-app + push), user preferences with per-type overrides
+- **Notifications**: 13 types, dual-channel (in-app + push), user preferences with per-type overrides
 
-### NotificationType Enum (11 types)
+### NotificationType Enum (13 types)
 
-`NEW_MESSAGE` · `BORROW_REQUEST_RECEIVED` · `BORROW_REQUEST_APPROVED` · `BORROW_REQUEST_DECLINED` · `BORROW_QUEUE_READY` · `RETURN_PENDING` · `RETURN_CONFIRMED` · `ITEM_REQUEST_FULFILLED` · `CIRCLE_INVITE` · `NEW_MEMBER_JOINED` · `ITEM_AVAILABLE_SOON`
+`NEW_MESSAGE` · `ITEM_REQUEST_CREATED` · `ITEM_REQUEST_FULFILLED` · `ITEM_REMOVED_FROM_CIRCLE` · `BORROW_REQUEST_RECEIVED` · `BORROW_REQUEST_APPROVED` · `BORROW_REQUEST_DECLINED` · `QUEUE_POSITION_UPDATED` · `QUEUE_ITEM_READY` · `ITEM_HANDOFF_CONFIRMED` · `ITEM_RECEIVED_CONFIRMED` · `RETURN_REQUESTED` · `RETURN_CONFIRMED`
 
 ## Architecture Patterns
 
