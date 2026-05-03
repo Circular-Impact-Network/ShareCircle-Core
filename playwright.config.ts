@@ -30,7 +30,6 @@ export default defineConfig({
 		// Without this, the webServer only gets the explicit keys and DB queries fail.
 		env: {
 			...(process.env as Record<string, string>),
-			E2E_AUTO_VERIFY: process.env.E2E_AUTO_VERIFY ?? 'true',
 			SKIP_SMS: process.env.SKIP_SMS ?? 'true',
 			SKIP_EMAIL: process.env.SKIP_EMAIL ?? 'true',
 		},
@@ -39,6 +38,14 @@ export default defineConfig({
 		{
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] },
+		},
+		{
+			name: 'firefox',
+			use: { ...devices['Desktop Firefox'] },
+		},
+		{
+			name: 'mobile-chrome',
+			use: { ...devices['Pixel 5'] },
 		},
 	],
 });
