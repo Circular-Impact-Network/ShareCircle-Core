@@ -10,10 +10,9 @@ export const prisma =
 		log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 	});
 
-// Always cache Prisma Client in global to prevent multiple instances in serverless environments
-// This is critical for Vercel and other serverless platforms where each function invocation
-// could create a new Prisma Client instance, exhausting the database connection pool
-if (!globalForPrisma.prisma) {
+// Only cache in global during development to prevent HMR from creating new instances.
+// In production (serverless), each invocation has an isolated module scope anyway.
+if (process.env.NODE_ENV !== 'production') {
 	globalForPrisma.prisma = prisma;
 }
 
