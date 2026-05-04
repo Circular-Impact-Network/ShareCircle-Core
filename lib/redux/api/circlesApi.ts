@@ -62,6 +62,11 @@ export interface JoinCircleInput {
 	joinType?: 'CODE' | 'LINK';
 }
 
+export interface AddMemberInput {
+	circleId: string;
+	email: string;
+}
+
 export interface UpdateMemberRoleInput {
 	circleId: string;
 	userId: string;
@@ -165,11 +170,26 @@ export const circlesApi = createApi({
 			],
 		}),
 
+		// Add member by email (admin only)
+		addMember: builder.mutation<CircleMember & { message: string }, AddMemberInput>({
+			query: ({ circleId, email }) => ({
+				url: `/circles/${circleId}/members`,
+				method: 'POST',
+				body: { email },
+			}),
+			invalidatesTags: (_result, _error, { circleId }) => [
+				{ type: 'Circles', id: circleId },
+				{ type: 'Circles', id: 'LIST' },
+				{ type: 'CircleDetails', id: circleId },
+				{ type: 'CircleMembers', id: circleId },
+			],
+		}),
+
 		// Update member role (admin only)
 		updateMemberRole: builder.mutation<{ message: string }, UpdateMemberRoleInput>({
 			query: ({ circleId, userId, role }) => ({
 				url: `/circles/${circleId}/members/${userId}`,
-				method: 'PATCH',
+				method: 'PUT',
 				body: { role },
 			}),
 			invalidatesTags: (_result, _error, { circleId }) => [
@@ -196,6 +216,19 @@ export const circlesApi = createApi({
 		leaveCircle: builder.mutation<{ message: string }, string>({
 			query: circleId => ({
 				url: `/circles/${circleId}/members`,
+				method: 'DELETE',
+			}),
+			invalidatesTags: (_result, _error, circleId) => [
+				{ type: 'Circles', id: circleId },
+				{ type: 'Circles', id: 'LIST' },
+				{ type: 'CircleDetails', id: circleId },
+			],
+		}),
+
+		// Remove circle avatar (admin only)
+		removeCircleAvatar: builder.mutation<{ message: string }, string>({
+			query: circleId => ({
+				url: `/circles/${circleId}/avatar`,
 				method: 'DELETE',
 			}),
 			invalidatesTags: (_result, _error, circleId) => [
@@ -233,8 +266,10 @@ export const {
 	useDeleteCircleMutation,
 	useJoinCircleMutation,
 	useRegenerateInviteCodeMutation,
+	useAddMemberMutation,
 	useUpdateMemberRoleMutation,
 	useRemoveMemberMutation,
 	useLeaveCircleMutation,
+	useRemoveCircleAvatarMutation,
 	useUploadCircleAvatarMutation,
 } = circlesApi;
