@@ -249,15 +249,16 @@ export const itemsApi = createApi({
 		}),
 
 		// Delete an item
-		deleteItem: builder.mutation<{ message: string }, string>({
-			query: id => ({
+		deleteItem: builder.mutation<{ message: string }, { id: string; circleIds: string[] }>({
+			query: ({ id }) => ({
 				url: `/items/${id}`,
 				method: 'DELETE',
 			}),
-			// Invalidate the specific item and all lists
-			// Note: We can't know which circle IDs to invalidate without the item data,
-			// so we invalidate all CircleItems. This is acceptable for delete operations.
-			invalidatesTags: (_result, _error, id) => [{ type: 'Items', id }, 'Items', 'CircleItems'],
+			invalidatesTags: (_result, _error, { id, circleIds }) => [
+				{ type: 'Items', id },
+				'Items',
+				...circleIds.map(cid => ({ type: 'CircleItems' as const, id: cid })),
+			],
 		}),
 
 		// Search items with vector similarity
@@ -328,7 +329,7 @@ export const itemsApi = createApi({
 					method: 'DELETE',
 					body: { reason },
 				}),
-				invalidatesTags: (_result, _error, { circleId }) => [{ type: 'CircleItems', id: circleId }],
+				invalidatesTags: (_result, _error, { circleId }) => [{ type: 'CircleItems', id: circleId }, 'Items'],
 			},
 		),
 	}),
