@@ -65,10 +65,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const expected = hashOtp(body.code, phoneE164, purpose);
-		const matches =
-			verificationToken.token.length <= 8
-				? verificationToken.token === body.code
-				: timingSafeEqualHex(verificationToken.token, expected);
+		const matches = timingSafeEqualHex(verificationToken.token, expected);
 		if (!matches) {
 			return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
 		}
