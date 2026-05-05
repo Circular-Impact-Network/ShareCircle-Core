@@ -114,7 +114,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		});
 
 		if (!userToAdd) {
-			return NextResponse.json({ error: 'No user found with this email address' }, { status: 404 });
+			return NextResponse.json(
+				{ message: 'If this email belongs to a ShareCircle user, they have been added to the circle.' },
+				{ status: 200 },
+			);
 		}
 
 		// Check if user is already a member
