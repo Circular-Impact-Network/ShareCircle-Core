@@ -204,6 +204,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 			// Use transaction to update request, create transaction, and mark item unavailable
 			const result = await prisma.$transaction(async tx => {
+				// Re-check availability inside transaction to prevent TOCTOU race
+				const freshItem = await tx.item.findUnique({
+					where: { id: borrowRequest.itemId },
+					select: { isAvailable: true },
+				});
+				if (!freshItem?.isAvailable) {
+					throw new Error('ITEM_UNAVAILABLE');
+				}
+
 				// Update borrow request status
 				const updatedRequest = await tx.borrowRequest.update({
 					where: { id },
@@ -272,6 +281,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 	} catch (error) {
+		if (error instanceof Error && error.message === 'ITEM_UNAVAILABLE') {
+			return NextResponse.json({ error: 'Item is no longer available' }, { status: 409 });
+		}
 		console.error('Update borrow request error:', error);
 		return NextResponse.json({ error: 'Failed to update borrow request' }, { status: 500 });
 	}
