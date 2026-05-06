@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserCircleIds } from '@/app/api/_utils';
 import { ItemRequestStatus, NotificationType } from '@prisma/client';
 import { queueCircleNotification, queueBroadcast } from '@/lib/notify';
 
@@ -21,18 +22,7 @@ export async function GET(req: NextRequest) {
 		const myRequests = req.nextUrl.searchParams.get('myRequests') === 'true';
 		const includeIgnored = req.nextUrl.searchParams.get('includeIgnored') === 'true';
 
-		// Get circles the user is a member of
-		const userCircles = await prisma.circleMember.findMany({
-			where: {
-				userId,
-				leftAt: null,
-			},
-			select: {
-				circleId: true,
-			},
-		});
-
-		const userCircleIds = userCircles.map(m => m.circleId);
+		const userCircleIds = await getUserCircleIds(userId);
 
 		// If circleId is specified, verify user is a member
 		if (circleId && !userCircleIds.includes(circleId)) {
