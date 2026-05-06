@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { detectItems } from '@/lib/ai';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
+export const maxDuration = 60;
+
 // POST /api/items/detect - Detect all items in an image (Option 2 flow)
 export async function POST(req: NextRequest) {
 	try {
@@ -25,6 +27,16 @@ export async function POST(req: NextRequest) {
 
 		if (!imageUrl || typeof imageUrl !== 'string') {
 			return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
+		}
+
+		// Validate imageUrl is from our Supabase storage to prevent SSRF
+		try {
+			const parsed = new URL(imageUrl);
+			if (!parsed.hostname.endsWith('.supabase.co')) {
+				return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+			}
+		} catch {
+			return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
 		}
 
 		// Detect all items in the image using Gemini Vision
