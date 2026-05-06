@@ -1,10 +1,14 @@
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma, BorrowTransactionStatus } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
+
+export const maxDuration = 60;
 
 // GET/PATCH/DELETE with multi-circle and media paths
 
@@ -20,28 +24,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 		const { id } = await params;
 		const userId = session.user.id;
 
-		// First check if the item exists at all
-		const itemExists = await prisma.item.findUnique({
-			where: { id },
-			select: { id: true },
-		});
+		// Check existence and user circles in parallel
+		const [itemExists, userCircleIds] = await Promise.all([
+			prisma.item.findUnique({ where: { id }, select: { id: true } }),
+			getUserCircleIds(userId),
+		]);
 
 		if (!itemExists) {
 			return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 		}
-
-		// Get user's circles
-		const userCircles = await prisma.circleMember.findMany({
-			where: {
-				userId,
-				leftAt: null,
-			},
-			select: {
-				circleId: true,
-			},
-		});
-
-		const userCircleIds = userCircles.map(m => m.circleId);
 
 		// Get the item if it's in any of user's circles
 		const item = await prisma.item.findFirst({
@@ -169,6 +160,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const body = await req.json();
 		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, archived, estimatedWeightKg, estimatedNewPriceUsd, isValueVisible } = body;
 
+		// Validate user-provided imageUrl is from our Supabase storage (SSRF prevention)
+		if (imageUrl && typeof imageUrl === 'string') {
+			try {
+				const parsed = new URL(imageUrl);
+				if (!parsed.hostname.endsWith('.supabase.co')) {
+					return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+				}
+			} catch {
+				return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+			}
+		}
+
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
@@ -185,6 +188,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		// If circleIds are provided, verify user is a member of all
 		let validCircleIds: string[] | undefined;
+		let validCircles: { id: string; name: string }[] | undefined;
 		if (circleIds && Array.isArray(circleIds)) {
 			const userCircles = await prisma.circleMember.findMany({
 				where: {
@@ -194,10 +198,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				},
 				select: {
 					circleId: true,
+					circle: { select: { id: true, name: true } },
 				},
 			});
 
 			validCircleIds = userCircles.map(m => m.circleId);
+			validCircles = userCircles.map(m => ({ id: m.circle.id, name: m.circle.name }));
 			const invalidCircles = circleIds.filter((cid: string) => !validCircleIds!.includes(cid));
 
 			if (invalidCircles.length > 0) {
@@ -256,20 +262,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			);
 		}
 
-		// Regenerate embedding if image or any text metadata changed
-		// Embedding combines image + text metadata (name, description, categories, tags)
-		let embedding: number[] | null = null;
 		const imageChanged = imagePath && imagePath !== item.imagePath;
 		const metadataChanged =
 			name !== undefined || description !== undefined || categories !== undefined || tags !== undefined;
-		if (imageChanged || metadataChanged) {
-			const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
-			try {
-				embedding = await generateDocumentEmbedding(embeddingImageUrl, combinedText);
-			} catch (embeddingError) {
-				console.error('Failed to generate embedding:', embeddingError);
-			}
-		}
 
 		// Update item in transaction
 		const updatedItem = await prisma.$transaction(async tx => {
@@ -318,14 +313,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return updated;
 		});
 
-		// Update embedding if we have a new one
-		if (embedding) {
-			// Format embedding as PostgreSQL vector literal using Prisma.raw
-			const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
-			await prisma.$executeRaw`
-				UPDATE items SET embedding = ${embeddingVector}
-				WHERE id = ${id}
-			`;
+		// Regenerate embedding after response — after() guarantees execution on Vercel serverless
+		if (imageChanged || metadataChanged) {
+			const capturedId = id;
+			const capturedImagePath = item.imagePath;
+			after(async () => {
+				try {
+					const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(capturedImagePath, 'items');
+					const embedding = await generateDocumentEmbedding(embeddingImageUrl, combinedText);
+					const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
+					await prisma.$executeRaw`UPDATE items SET embedding = ${embeddingVector} WHERE id = ${capturedId}`;
+				} catch (err) {
+					console.error('Background embedding update failed:', err);
+				}
+			});
 		}
 
 		// Delete old image if it changed
@@ -367,14 +368,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				}),
 			),
 		]);
-		const updatedCircleRecords = await prisma.itemCircle.findMany({
-			where: { itemId: updatedItem.id },
-			include: {
-				circle: {
-					select: { id: true, name: true },
-				},
-			},
-		});
+		// Use already-fetched circle data if circles were updated; otherwise re-query
+		let responseCircles: { id: string; name: string }[];
+		if (validCircles !== undefined) {
+			responseCircles = validCircles;
+		} else {
+			const updatedCircleRecords = await prisma.itemCircle.findMany({
+				where: { itemId: updatedItem.id },
+				include: { circle: { select: { id: true, name: true } } },
+			});
+			responseCircles = updatedCircleRecords.map(c => ({ id: c.circle.id, name: c.circle.name }));
+		}
 
 		return NextResponse.json(
 			{
@@ -391,10 +395,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				updatedAt: updatedItem.updatedAt,
 				archivedAt: updatedItem.archivedAt,
 				owner: updatedItem.owner,
-				circles: updatedCircleRecords.map(c => ({
-					id: c.circle.id,
-					name: c.circle.name,
-				})),
+				circles: responseCircles,
 				isOwner: true,
 				isAvailable: updatedItem.isAvailable,
 				estimatedWeightKg: updatedItem.estimatedWeightKg,
