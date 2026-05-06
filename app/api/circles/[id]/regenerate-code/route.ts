@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -11,7 +12,7 @@ function generateInviteCode(): string {
 	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 	let code = '';
 	for (let i = 0; i < 8; i++) {
-		code += chars.charAt(Math.floor(Math.random() * chars.length));
+		code += chars[randomInt(0, chars.length)];
 	}
 	return code;
 }
