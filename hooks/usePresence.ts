@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
+import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
 import type { ChatUser } from '@/components/chat/types';
 
 type TypingState = {
@@ -41,7 +41,7 @@ export function useTypingIndicator(conversationId: string | null, currentUser: C
 			.subscribe();
 
 		return () => {
-			channel.unsubscribe();
+			supabase.removeChannel(channel);
 			Object.values(typingTimeouts.current).forEach(timeout => clearTimeout(timeout));
 			typingTimeouts.current = {};
 		};

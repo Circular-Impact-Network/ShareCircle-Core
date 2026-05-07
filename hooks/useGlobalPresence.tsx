@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, createContext, useContext, ReactNode, useMemo } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
+import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
 
 type GlobalPresenceContextType = {
 	onlineUserIds: string[];
@@ -55,7 +55,7 @@ export function GlobalPresenceProvider({ userId, children }: GlobalPresenceProvi
 			});
 
 		return () => {
-			channel.unsubscribe();
+			supabase.removeChannel(channel);
 			setIsConnected(false);
 		};
 	}, [userId, userKey]);
