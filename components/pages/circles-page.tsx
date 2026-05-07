@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { CircleGridSkeleton } from '@/components/ui/skeletons';
 import { useGetCirclesQuery, type Circle } from '@/lib/redux/api/circlesApi';

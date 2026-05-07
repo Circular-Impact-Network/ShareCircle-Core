@@ -56,7 +56,7 @@ import {
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
 import { ItemDetailSkeleton } from '@/components/ui/skeletons';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 interface ItemDetailPageProps {
 	itemId: string;
@@ -266,7 +266,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const handleDelete = async () => {
 		if (!item) return;
 		try {
-			await deleteItem(item.id).unwrap();
+			await deleteItem({ id: item.id, circleIds: item.circles.map(c => c.id) }).unwrap();
 			toast({ title: 'Item deleted', description: `${item.name} has been permanently deleted.` });
 			router.push('/listings');
 		} catch (error) {

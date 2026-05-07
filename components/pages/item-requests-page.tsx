@@ -30,10 +30,10 @@ import {
 } from '@/lib/redux/api/borrowApi';
 
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 type TabType = 'all' | 'mine';
 

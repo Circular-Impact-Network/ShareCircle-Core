@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dropzone } from '@/components/ui/dropzone';
 import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus, Info } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
@@ -22,6 +22,7 @@ import {
 	useCleanupImageMutation,
 	type DetectedItem,
 } from '@/lib/redux/api/itemsApi';
+import { type Circle } from '@/lib/redux/api/circlesApi';
 import {
 	MAX_MEDIA_ATTACHMENTS,
 	MAX_UPLOAD_SIZE_BYTES,
@@ -30,12 +31,6 @@ import {
 } from '@/lib/media';
 
 type ModalState = 'capture' | 'uploading' | 'detecting' | 'selecting' | 'analyzing' | 'editing' | 'saving';
-
-interface Circle {
-	id: string;
-	name: string;
-	avatarUrl?: string | null;
-}
 
 interface AddItemModalProps {
 	open: boolean;

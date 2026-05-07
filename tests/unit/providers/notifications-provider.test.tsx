@@ -20,7 +20,7 @@ vi.mock('next-auth/react', () => ({
 	}),
 }));
 
-vi.mock('@/hooks/use-toast', () => ({
+vi.mock('@/hooks/useToast', () => ({
 	useToast: () => ({ toast: toastSpy }),
 }));
 
@@ -28,7 +28,7 @@ vi.mock('@/lib/redux/hooks', () => ({
 	useAppDispatch: () => dispatchSpy,
 }));
 
-vi.mock('@/lib/supabaseClient', () => ({
+vi.mock('@/lib/supabaseBrowser', () => ({
 	createBrowserSupabaseClient: () => ({
 		channel: (name: string) => {
 			const handlers: Record<string, (payload: { payload: unknown }) => void> = {};

@@ -52,8 +52,8 @@ import {
 	useRespondToItemRequestMutation,
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import { useToast } from '@/hooks/use-toast';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useToast } from '@/hooks/useToast';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { AlertCard } from '@/components/cards/alert-card';
 import { BorrowRequestCard } from '@/components/cards/borrow-request-card';

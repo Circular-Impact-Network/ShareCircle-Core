@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 describe('useProgressivePagination', () => {
 	const items = Array.from({ length: 30 }, (_, i) => ({ id: String(i) }));

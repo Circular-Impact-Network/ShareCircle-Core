@@ -19,10 +19,10 @@ import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useGetAllItemsQuery, useDeleteItemMutation, useUpdateItemMutation, Item } from '@/lib/redux/api/itemsApi';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 type ListingTab = 'active' | 'archived';
 
@@ -59,7 +59,7 @@ export function MyListingsPage() {
 		if (!itemToDelete) return;
 
 		try {
-			await deleteItem(itemToDelete.id).unwrap();
+			await deleteItem({ id: itemToDelete.id, circleIds: itemToDelete.circles.map(c => c.id) }).unwrap();
 			toast({
 				title: 'Item deleted',
 				description: `${itemToDelete.name} has been deleted permanently.`,

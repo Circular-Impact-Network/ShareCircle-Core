@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
 	Copy,
@@ -50,11 +51,20 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useGetCircleItemsQuery, useDeleteItemMutation, useRemoveItemFromCircleMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import { useGetItemsPaginatedQuery, useDeleteItemMutation, useRemoveItemFromCircleMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import {
+	useGetCircleQuery,
+	useRegenerateInviteCodeMutation,
+	useUpdateMemberRoleMutation,
+	useRemoveMemberMutation,
+	useLeaveCircleMutation,
+	type CircleMember,
+} from '@/lib/redux/api/circlesApi';
+import { useCreateThreadMutation } from '@/lib/redux/api/messagesApi';
 import {
 	useGetItemRequestsQuery,
 	useIgnoreItemRequestMutation,
@@ -65,7 +75,7 @@ import { PageShell } from '@/components/ui/page';
 import { CircleDetailSkeleton, ItemGridSkeleton, RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { PackageOpen } from 'lucide-react';
 import { ItemRequestFilter, type ItemRequestFilterValue } from '@/components/app/item-request-filter';
@@ -74,41 +84,9 @@ interface CircleDetailsPageProps {
 	circleId: string;
 }
 
-interface Member {
-	id: string;
-	userId: string;
-	name: string | null;
-	email: string | null;
-	image: string | null;
-	role: 'ADMIN' | 'MEMBER';
-	joinType: 'CREATED' | 'CODE' | 'LINK';
-	joinedAt: string;
-}
-
-interface Circle {
-	id: string;
-	name: string;
-	description: string | null;
-	inviteCode: string;
-	inviteExpiresAt: string;
-	avatarUrl: string | null;
-	createdAt: string;
-	updatedAt: string;
-	createdBy: {
-		id: string;
-		name: string | null;
-		image: string | null;
-		email: string | null;
-	};
-	membersCount: number;
-	userRole: 'ADMIN' | 'MEMBER';
-	members: Member[];
-}
-
 export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const router = useRouter();
 	const { data: session } = useSession();
-	const [circle, setCircle] = useState<Circle | null>(null);
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
@@ -116,24 +94,34 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [removeReason, setRemoveReason] = useState('');
 	const [showInviteSection, setShowInviteSection] = useState(false);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isRegeneratingCode, setIsRegeneratingCode] = useState(false);
 	const [isStartingChatId, setIsStartingChatId] = useState<string | null>(null);
-	const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+	const [selectedMember, setSelectedMember] = useState<CircleMember | null>(null);
 	const [memberAction, setMemberAction] = useState<'promote' | 'demote' | 'remove' | 'leave' | null>(null);
 	const [isProcessingMember, setIsProcessingMember] = useState(false);
 	const membersScrollRef = useRef<HTMLDivElement>(null);
 	const { toast } = useToast();
 
-	// Items query and mutation
-	const { data: items = [], isLoading: isLoadingItems, refetch: refetchItems } = useGetCircleItemsQuery(circleId);
+	const { data: circle, isLoading } = useGetCircleQuery(circleId);
+	const [regenerateInviteCode, { isLoading: isRegeneratingCode }] = useRegenerateInviteCodeMutation();
+	const [updateMemberRole] = useUpdateMemberRoleMutation();
+	const [removeMember] = useRemoveMemberMutation();
+	const [leaveCircle] = useLeaveCircleMutation();
+	const [createThread] = useCreateThreadMutation();
+
+	// Items query and mutation (server-side paginated, 24 per page)
+	const [itemCursor, setItemCursor] = useState<string | undefined>(undefined);
+	const { data: itemsPage, isLoading: isLoadingItems, refetch: refetchItems } = useGetItemsPaginatedQuery({
+		circleId,
+		limit: 24,
+		...(itemCursor ? { cursor: itemCursor } : {}),
+	});
+	const visibleItems = itemsPage?.items ?? [];
+	const hasMoreItems = itemsPage?.hasMore ?? false;
+	const loadMoreItems = useCallback(() => {
+		if (itemsPage?.nextCursor) setItemCursor(itemsPage.nextCursor);
+	}, [itemsPage?.nextCursor]);
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 	const [removeItemFromCircle, { isLoading: isRemovingFromCircle }] = useRemoveItemFromCircleMutation();
-	const {
-		visibleItems: visibleItems,
-		hasMore: hasMoreItems,
-		loadMore: loadMoreItems,
-	} = useProgressivePagination({ items, pageSize: 9 });
 
 	// Item requests for this circle
 	const [itemsTab, setItemsTab] = useState<'shared' | 'requested'>('shared');
@@ -164,13 +152,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		setRespondingRequestId(requestId);
 		try {
 			await respondToItemRequest(requestId).unwrap();
-			const threadResponse = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId: requesterId }),
-			});
-			if (!threadResponse.ok) throw new Error('Failed to start conversation');
-			const thread = await threadResponse.json();
+			const thread = await createThread({ otherUserId: requesterId }).unwrap();
 			const draft = `I have this item and can help with your request: "${requestTitle}".`;
 			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
 		} catch (error) {
@@ -199,39 +181,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		}
 	};
 
-	const fetchCircle = useCallback(async () => {
-		try {
-			setIsLoading(true);
-			const response = await fetch(`/api/circles/${circleId}`);
-			if (!response.ok) {
-				if (response.status === 403) {
-					toast({
-						title: 'Access Denied',
-						description: 'You are not a member of this circle.',
-						variant: 'destructive',
-					});
-					router.push('/circles');
-					return;
-				}
-				throw new Error('Failed to fetch circle');
-			}
-			const data = await response.json();
-			setCircle(data);
-		} catch (error) {
-			console.error('Error fetching circle:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to load circle details.',
-				variant: 'destructive',
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	}, [circleId, toast, router]);
-
-	useEffect(() => {
-		fetchCircle();
-	}, [fetchCircle]);
 
 	const handleCopy = async (text: string, type: 'code' | 'link') => {
 		try {
@@ -249,46 +198,17 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 	const handleRegenerateCode = async (): Promise<boolean> => {
 		if (!circle || circle.userRole !== 'ADMIN') return false;
-
 		try {
-			setIsRegeneratingCode(true);
-			const response = await fetch(`/api/circles/${circleId}/regenerate-code`, {
-				method: 'POST',
-			});
-
-			if (!response.ok) {
-				const errorPayload = await response.json().catch(() => null);
-				const message =
-					(errorPayload && typeof errorPayload.error === 'string' && errorPayload.error) ||
-					'Failed to regenerate invite code';
-				throw new Error(message);
-			}
-
-			const data = await response.json();
-			setCircle(prev =>
-				prev
-					? {
-							...prev,
-							inviteCode: data.inviteCode,
-							inviteExpiresAt: data.inviteExpiresAt ?? prev.inviteExpiresAt,
-						}
-					: null,
-			);
-			toast({
-				title: 'Code regenerated',
-				description: 'A new invite code has been generated.',
-			});
+			await regenerateInviteCode(circleId).unwrap();
+			toast({ title: 'Code regenerated', description: 'A new invite code has been generated.' });
 			return true;
 		} catch (error) {
-			console.error('Error regenerating code:', error);
 			toast({
 				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to regenerate invite code.',
+				description: (error as { data?: { error?: string } })?.data?.error || 'Failed to regenerate invite code.',
 				variant: 'destructive',
 			});
 			return false;
-		} finally {
-			setIsRegeneratingCode(false);
 		}
 	};
 
@@ -296,22 +216,12 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		if (!otherUserId) return;
 		setIsStartingChatId(otherUserId);
 		try {
-			const response = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId }),
-			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to start chat');
-			}
-			const data = await response.json();
+			const data = await createThread({ otherUserId }).unwrap();
 			router.push(`/messages/${data.id}`);
 		} catch (error) {
-			console.error('Start chat error:', error);
 			toast({
 				title: 'Unable to start chat',
-				description: error instanceof Error ? error.message : 'Please try again.',
+				description: (error as { data?: { error?: string } })?.data?.error || 'Please try again.',
 				variant: 'destructive',
 			});
 		} finally {
@@ -326,71 +236,24 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		try {
 			if (memberAction === 'promote' || memberAction === 'demote') {
 				const newRole = memberAction === 'promote' ? 'ADMIN' : 'MEMBER';
-				const response = await fetch(`/api/circles/${circleId}/members/${selectedMember.userId}`, {
-					method: 'PUT',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ role: newRole }),
-				});
-
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.error || 'Failed to update role');
-				}
-
-				setCircle(prev => {
-					if (!prev) return null;
-					return {
-						...prev,
-						members: prev.members.map(m =>
-							m.userId === selectedMember.userId ? { ...m, role: newRole } : m,
-						),
-					};
-				});
-
+				await updateMemberRole({ circleId, userId: selectedMember.userId, role: newRole }).unwrap();
 				toast({
 					title: 'Role updated',
-					description: `${selectedMember.name || 'Member'} is now ${
-						newRole === 'ADMIN' ? 'an admin' : 'a member'
-					}.`,
+					description: `${selectedMember.name || 'Member'} is now ${newRole === 'ADMIN' ? 'an admin' : 'a member'}.`,
 				});
-			} else if (memberAction === 'remove' || memberAction === 'leave') {
-				const response = await fetch(`/api/circles/${circleId}/members/${selectedMember.userId}`, {
-					method: 'DELETE',
-				});
-
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.error || 'Failed to remove member');
-				}
-
-				if (memberAction === 'leave') {
-					toast({
-						title: 'Left circle',
-						description: 'You have left this circle.',
-					});
-					router.push('/circles');
-					return;
-				}
-
-				setCircle(prev => {
-					if (!prev) return null;
-					return {
-						...prev,
-						members: prev.members.filter(m => m.userId !== selectedMember.userId),
-						membersCount: prev.membersCount - 1,
-					};
-				});
-
-				toast({
-					title: 'Member removed',
-					description: `${selectedMember.name || 'Member'} has been removed from the circle.`,
-				});
+			} else if (memberAction === 'leave') {
+				await leaveCircle(circleId).unwrap();
+				toast({ title: 'Left circle', description: 'You have left this circle.' });
+				router.push('/circles');
+				return;
+			} else if (memberAction === 'remove') {
+				await removeMember({ circleId, userId: selectedMember.userId }).unwrap();
+				toast({ title: 'Member removed', description: `${selectedMember.name || 'Member'} has been removed from the circle.` });
 			}
 		} catch (error) {
-			console.error('Error processing member action:', error);
 			toast({
 				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to process action.',
+				description: (error as { data?: { error?: string } })?.data?.error || 'Failed to process action.',
 				variant: 'destructive',
 			});
 		} finally {
@@ -482,7 +345,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 			<div className="flex items-center gap-3 sm:hidden">
 				<div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
 					{circle.avatarUrl ? (
-						<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
+						<Image src={circle.avatarUrl} alt={circle.name} width={44} height={44} className="h-full w-full object-cover" unoptimized />
 					) : (
 						<Users className="h-5 w-5 text-primary" />
 					)}
@@ -520,7 +383,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				<div className="flex items-start gap-4">
 					<div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5">
 						{circle.avatarUrl ? (
-							<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
+							<Image src={circle.avatarUrl} alt={circle.name} width={44} height={44} className="h-full w-full object-cover" unoptimized />
 						) : (
 							<Users className="h-10 w-10 text-primary" />
 						)}
@@ -943,7 +806,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							<PageTabsTrigger
 								value="shared"
 								className="gap-2"
-								badge={items.length > 0 ? items.length : undefined}
+								badge={visibleItems.length > 0 ? visibleItems.length : undefined}
 							>
 								<Package className="h-4 w-4" />
 								Shared Items
@@ -975,7 +838,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					<PageTabsContent value="shared" className="space-y-4">
 						{isLoadingItems ? (
 							<ItemGridSkeleton count={3} />
-						) : items.length === 0 ? (
+						) : visibleItems.length === 0 ? (
 							<Card className="border-dashed border-border/70 bg-card">
 								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
 									<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -1134,7 +997,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							onClick={async () => {
 								if (!itemToDelete) return;
 								try {
-									await deleteItem(itemToDelete.id).unwrap();
+									await deleteItem({ id: itemToDelete.id, circleIds: itemToDelete.circles.map(c => c.id) }).unwrap();
 									toast({
 										title: 'Item deleted',
 										description: `${itemToDelete.name} has been deleted.`,
