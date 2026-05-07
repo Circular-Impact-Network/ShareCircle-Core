@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+const isSupabaseUrl = (url: string) => {
+	try {
+		const hostname = new URL(url).hostname;
+		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+		const supabaseHost = supabaseUrl ? new URL(supabaseUrl).hostname : '';
+		return hostname.endsWith('.supabase.co') || hostname === supabaseHost;
+	} catch {
+		return false;
+	}
+};
+
+const updateUserSchema = z.object({
+	name: z.string().trim().min(1).max(100).optional(),
+	image: z.string().refine(isSupabaseUrl, 'Invalid image URL').nullish(),
+});
 
 export async function PATCH(req: NextRequest) {
 	try {
@@ -11,15 +28,18 @@ export async function PATCH(req: NextRequest) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const body = await req.json();
-		const { name, image, phoneNumber, countryCode } = body;
-
-		if (phoneNumber !== undefined || countryCode !== undefined) {
+		const rawBody = await req.json();
+		if (rawBody.phoneNumber !== undefined || rawBody.countryCode !== undefined) {
 			return NextResponse.json(
 				{ error: 'Phone number updates must be verified via OTP before saving.' },
 				{ status: 400 },
 			);
 		}
+		const parsed = updateUserSchema.safeParse(rawBody);
+		if (!parsed.success) {
+			return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
+		}
+		const { name, image } = parsed.data;
 
 		// Update user profile
 		const updatedUser = await prisma.user.update({
