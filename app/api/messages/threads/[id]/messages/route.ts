@@ -5,6 +5,25 @@ import { runAfterNewChatMessagePersisted } from '@/lib/chat-message-side-effects
 import { supabaseAdmin } from '@/lib/supabase';
 import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
+import { z } from 'zod';
+
+const sendMessageSchema = z.object({
+	body: z.string().trim().max(5000, 'Message body must be 5000 characters or fewer').optional().default(''),
+	clientId: z.string().optional().nullable(),
+	attachments: z
+		.array(
+			z.object({
+				type: z.literal('IMAGE'),
+				url: z.string().min(1),
+				path: z.string().optional(),
+			}),
+		)
+		.max(10, 'Maximum 10 attachments per message')
+		.optional()
+		.default([]),
+}).refine(data => (data.body?.trim().length ?? 0) > 0 || data.attachments.length > 0, {
+	message: 'Message body or attachment is required',
+});
 
 // List/send messages with attachments (IMAGE) and delivery receipts
 const MAX_PAGE_SIZE = 50;
@@ -115,23 +134,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				},
 			});
 
-			// Broadcast delivery receipts to sender
+			// Broadcast delivery receipts to sender (single batched send)
 			if (undeliveredReceipts.length > 0) {
 				try {
 					const channel = supabaseAdmin.channel(`messages:${id}`);
-					for (const receipt of undeliveredReceipts) {
-						await channel.send({
-							type: 'broadcast',
-							event: 'receipt_update',
-							payload: {
+					await channel.send({
+						type: 'broadcast',
+						event: 'receipt_update',
+						payload: {
+							receipts: undeliveredReceipts.map(receipt => ({
 								id: receipt.id,
 								messageId: receipt.messageId,
 								userId: receipt.userId,
 								deliveredAt: now.toISOString(),
 								readAt: receipt.readAt?.toISOString() || null,
-							},
-						});
-					}
+							})),
+						},
+					});
 					await supabaseAdmin.removeChannel(channel);
 				} catch (broadcastError) {
 					console.error('Failed to broadcast delivery receipts:', broadcastError);
@@ -168,28 +187,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		if (!userId) return response!;
 
 		const { id } = await params;
-		const body = await req.json();
-		const messageBody = typeof body?.body === 'string' ? body.body.trim() : '';
-		const clientId = typeof body?.clientId === 'string' ? body.clientId : null;
-		const attachments = Array.isArray(body?.attachments)
-			? body.attachments
-					.filter((attachment: unknown) => {
-						if (!attachment || typeof attachment !== 'object') return false;
-						const candidate = attachment as { type?: unknown; url?: unknown };
-						return (
-							candidate.type === 'IMAGE' && typeof candidate.url === 'string' && candidate.url.length > 0
-						);
-					})
-					.map((attachment: { type: 'IMAGE'; url: string; path?: string }) => ({
-						type: attachment.type,
-						url: attachment.url,
-						path: attachment.path,
-					}))
-			: [];
-
-		if (!messageBody && attachments.length === 0) {
-			return NextResponse.json({ error: 'Message body or attachment is required' }, { status: 400 });
+		const parsedBody = sendMessageSchema.safeParse(await req.json());
+		if (!parsedBody.success) {
+			return NextResponse.json({ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
 		}
+		const { body: rawBody, clientId, attachments } = parsedBody.data;
+		const messageBody = rawBody.trim();
 
 		const conversation = await prisma.conversation.findUnique({
 			where: { id },
