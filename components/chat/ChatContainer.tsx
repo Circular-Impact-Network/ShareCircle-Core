@@ -320,18 +320,19 @@ export function ChatContainer({
 		[activeId, fetchThreads],
 	);
 
-	const handleRealtimeReceipt = useCallback((receipt: MessageReceipt) => {
+	const handleRealtimeReceipts = useCallback((incoming: MessageReceipt[]) => {
 		setMessages(prev =>
-			prev.map(message =>
-				message.id === receipt.messageId
-					? {
-							...message,
-							receipts: message.receipts.some(r => r.id === receipt.id)
-								? message.receipts.map(r => (r.id === receipt.id ? receipt : r))
-								: [...message.receipts, receipt],
-						}
-					: message,
-			),
+			prev.map(message => {
+				const updated = incoming.filter(r => r.messageId === message.id);
+				if (updated.length === 0) return message;
+				const merged = [...message.receipts];
+				for (const receipt of updated) {
+					const idx = merged.findIndex(r => r.id === receipt.id);
+					if (idx >= 0) merged[idx] = receipt;
+					else merged.push(receipt);
+				}
+				return { ...message, receipts: merged };
+			}),
 		);
 	}, []);
 
@@ -339,7 +340,7 @@ export function ChatContainer({
 		conversationId: activeId,
 		currentUserId: currentUser?.id || null,
 		onMessage: handleRealtimeMessage,
-		onReceipt: handleRealtimeReceipt,
+		onReceipts: handleRealtimeReceipts,
 	});
 
 	// Listen for new messages across ALL conversations (even when not viewing a specific chat)
