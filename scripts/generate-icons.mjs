@@ -1,3 +1,4 @@
+/* global console */
 // Run once: node scripts/generate-icons.mjs
 import sharp from 'sharp';
 import { fileURLToPath } from 'url';

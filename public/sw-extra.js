@@ -78,6 +78,28 @@ self.addEventListener('push', event => {
 	);
 });
 
+self.addEventListener('pushsubscriptionchange', event => {
+	event.waitUntil(
+		(async () => {
+			const newSubscription = await self.registration.pushManager.subscribe(
+				event.oldSubscription?.options ?? { userVisibleOnly: true },
+			);
+			await fetch('/api/push/subscriptions', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					endpoint: newSubscription.endpoint,
+					expirationTime: newSubscription.expirationTime,
+					keys: {
+						p256dh: btoa(String.fromCharCode(...new Uint8Array(newSubscription.getKey('p256dh')))),
+						auth: btoa(String.fromCharCode(...new Uint8Array(newSubscription.getKey('auth')))),
+					},
+				}),
+			});
+		})(),
+	);
+});
+
 self.addEventListener('notificationclick', event => {
 	const rawUrl = event.notification.data?.url || '/notifications';
 	const absoluteUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : new URL(rawUrl, self.registration.scope).href;
