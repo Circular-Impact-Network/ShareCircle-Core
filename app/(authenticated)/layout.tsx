@@ -13,17 +13,14 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 	const router = useRouter();
 	const pathname = usePathname();
 	const { data: session, status } = useSession();
-	const [mounted, setMounted] = useState(false);
+	const [mounted, setMounted] = useState(() => typeof window !== 'undefined');
 
 	// Sync user data from session to Redux
 	useUserSync();
 
 	useEffect(() => {
-		// Use setTimeout to avoid calling setState synchronously in effect
-		const timer = setTimeout(() => {
-			setMounted(true);
-		}, 0);
-		return () => clearTimeout(timer);
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		setMounted(true);
 	}, []);
 
 	useEffect(() => {
