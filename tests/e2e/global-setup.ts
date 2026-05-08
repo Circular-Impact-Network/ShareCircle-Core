@@ -11,6 +11,24 @@ type CreatedUser = {
 	password: string;
 };
 
+async function getTestOtp(baseURL: string, email: string): Promise<string> {
+	const secret = process.env.TEST_CLEANUP_SECRET;
+	if (!secret) throw new Error('TEST_CLEANUP_SECRET is required for OTP retrieval');
+
+	// Poll for up to 10s since the OTP is written async during signup
+	for (let i = 0; i < 10; i++) {
+		const res = await fetch(`${baseURL}/api/test/get-otp?email=${encodeURIComponent(email)}`, {
+			headers: { 'x-test-secret': secret },
+		});
+		if (res.ok) {
+			const data = (await res.json()) as { otp: string };
+			return data.otp;
+		}
+		await new Promise(r => setTimeout(r, 1000));
+	}
+	throw new Error(`Failed to retrieve OTP for ${email} after 10s`);
+}
+
 export default async function globalSetup(config: FullConfig) {
 	// Mirror Next.js env loading so this process sees DATABASE_URL when only .env.local defines it.
 	dotenv.config({ path: path.join(process.cwd(), '.env') });
@@ -68,6 +86,16 @@ export default async function globalSetup(config: FullConfig) {
 		}
 
 		const data = (await response.json()) as { user: { id: string } };
+
+		// Retrieve OTP from the test endpoint and verify the email
+		const otp = await getTestOtp(baseURL, user.email);
+		const verifyResponse = await api.post('/api/auth/verify-otp', {
+			data: { email: user.email, code: otp, purpose: 'email_verification' },
+		});
+		if (!verifyResponse.ok()) {
+			throw new Error(`Failed to verify OTP for ${user.email}: ${verifyResponse.status()}`);
+		}
+
 		createdUsers.push({ ...user, id: data.user.id });
 	}
 
