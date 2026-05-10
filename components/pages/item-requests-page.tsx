@@ -74,9 +74,7 @@ function RequestCard({
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2 mb-1">
 							<p className="text-sm font-medium">{request.title}</p>
-							{!isOpen && (
-								<Badge variant={isFulfilled ? 'secondary' : 'outline'}>{request.status}</Badge>
-							)}
+							{!isOpen && <Badge variant={isFulfilled ? 'secondary' : 'outline'}>{request.status}</Badge>}
 						</div>
 						{request.description && (
 							<p className="text-sm text-muted-foreground line-clamp-2 mb-2">{request.description}</p>

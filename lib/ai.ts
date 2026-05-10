@@ -204,7 +204,10 @@ export async function validateListingAgainstImages(
 			failures.push({
 				imageIndex: -1,
 				imageLabel: 'Unknown',
-				reason: err instanceof Error ? err.message : 'Could not validate this media (may be video or unsupported format).',
+				reason:
+					err instanceof Error
+						? err.message
+						: 'Could not validate this media (may be video or unsupported format).',
 			});
 		} else {
 			const { i, label, validation } = result.value;

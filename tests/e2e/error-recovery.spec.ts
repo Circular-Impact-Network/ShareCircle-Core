@@ -71,9 +71,7 @@ test.describe('error recovery', () => {
 			await page.waitForLoadState('networkidle');
 
 			// Try to trigger circle creation dialog
-			const createButton = page
-				.getByRole('button', { name: /new circle|create circle|add circle/i })
-				.first();
+			const createButton = page.getByRole('button', { name: /new circle|create circle|add circle/i }).first();
 			const hasCreate = await createButton.isVisible({ timeout: 3000 }).catch(() => false);
 
 			if (hasCreate) {
@@ -125,8 +123,7 @@ test.describe('error recovery', () => {
 			await expect(page).toHaveURL(/\/login/);
 			// callbackUrl parameter should be preserved or accessible
 			const url = new URL(page.url());
-			const hasCallback =
-				url.searchParams.has('callbackUrl') || url.searchParams.has('callbackurl');
+			const hasCallback = url.searchParams.has('callbackUrl') || url.searchParams.has('callbackurl');
 			expect(hasCallback || page.url().includes('callbackUrl')).toBeTruthy();
 		});
 	});

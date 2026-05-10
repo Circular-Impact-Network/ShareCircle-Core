@@ -7,23 +7,25 @@ import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 import { z } from 'zod';
 
-const sendMessageSchema = z.object({
-	body: z.string().trim().max(5000, 'Message body must be 5000 characters or fewer').optional().default(''),
-	clientId: z.string().optional().nullable(),
-	attachments: z
-		.array(
-			z.object({
-				type: z.literal('IMAGE'),
-				url: z.string().min(1),
-				path: z.string().optional(),
-			}),
-		)
-		.max(10, 'Maximum 10 attachments per message')
-		.optional()
-		.default([]),
-}).refine(data => (data.body?.trim().length ?? 0) > 0 || data.attachments.length > 0, {
-	message: 'Message body or attachment is required',
-});
+const sendMessageSchema = z
+	.object({
+		body: z.string().trim().max(5000, 'Message body must be 5000 characters or fewer').optional().default(''),
+		clientId: z.string().optional().nullable(),
+		attachments: z
+			.array(
+				z.object({
+					type: z.literal('IMAGE'),
+					url: z.string().min(1),
+					path: z.string().optional(),
+				}),
+			)
+			.max(10, 'Maximum 10 attachments per message')
+			.optional()
+			.default([]),
+	})
+	.refine(data => (data.body?.trim().length ?? 0) > 0 || data.attachments.length > 0, {
+		message: 'Message body or attachment is required',
+	});
 
 // List/send messages with attachments (IMAGE) and delivery receipts
 const MAX_PAGE_SIZE = 50;
@@ -189,7 +191,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		const { id } = await params;
 		const parsedBody = sendMessageSchema.safeParse(await req.json());
 		if (!parsedBody.success) {
-			return NextResponse.json({ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
+			return NextResponse.json(
+				{ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
 		const { body: rawBody, clientId, attachments } = parsedBody.data;
 		const messageBody = rawBody.trim();

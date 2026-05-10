@@ -37,7 +37,10 @@ export async function PATCH(req: NextRequest) {
 		}
 		const parsed = updateUserSchema.safeParse(rawBody);
 		if (!parsed.success) {
-			return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
+			return NextResponse.json(
+				{ error: parsed.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
 		const { name, image } = parsed.data;
 

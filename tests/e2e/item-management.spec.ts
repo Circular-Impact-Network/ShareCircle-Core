@@ -192,7 +192,10 @@ test.describe('item management', () => {
 		test('cannot delete item with an active borrow transaction — returns 409', async ({ request, browser }) => {
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Active Borrow Delete Circle ${Date.now()}` });
-			const item = await user1Api.createItem({ name: `Active Borrow Delete Item ${Date.now()}`, circleIds: [circle.id] });
+			const item = await user1Api.createItem({
+				name: `Active Borrow Delete Item ${Date.now()}`,
+				circleIds: [circle.id],
+			});
 
 			const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 			const user2Api = new TestAPI(user2Context.request);
@@ -224,7 +227,10 @@ test.describe('item management', () => {
 		test('can delete item after borrow transaction is completed', async ({ request, browser }) => {
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Post-Borrow Delete Circle ${Date.now()}` });
-			const item = await user1Api.createItem({ name: `Post-Borrow Delete Item ${Date.now()}`, circleIds: [circle.id] });
+			const item = await user1Api.createItem({
+				name: `Post-Borrow Delete Item ${Date.now()}`,
+				circleIds: [circle.id],
+			});
 
 			const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 			const user2Api = new TestAPI(user2Context.request);

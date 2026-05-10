@@ -7,10 +7,7 @@ import { queueNotification } from '@/lib/notify';
 
 // DELETE /api/circles/[id]/items/[itemId]
 // Circle admin removes an item listing from their circle (does not delete the item).
-export async function DELETE(
-	req: NextRequest,
-	{ params }: { params: Promise<{ id: string; itemId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
 	try {
 		const session = await getServerSession(authOptions);
 		if (!session?.user?.id) {

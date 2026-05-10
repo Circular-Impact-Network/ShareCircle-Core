@@ -55,7 +55,12 @@ import { useToast } from '@/hooks/useToast';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useGetItemsPaginatedQuery, useDeleteItemMutation, useRemoveItemFromCircleMutation, Item as ItemType } from '@/lib/redux/api/itemsApi';
+import {
+	useGetItemsPaginatedQuery,
+	useDeleteItemMutation,
+	useRemoveItemFromCircleMutation,
+	Item as ItemType,
+} from '@/lib/redux/api/itemsApi';
 import {
 	useGetCircleQuery,
 	useRegenerateInviteCodeMutation,
@@ -110,7 +115,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 	// Items query and mutation (server-side paginated, 24 per page)
 	const [itemCursor, setItemCursor] = useState<string | undefined>(undefined);
-	const { data: itemsPage, isLoading: isLoadingItems, refetch: refetchItems } = useGetItemsPaginatedQuery({
+	const {
+		data: itemsPage,
+		isLoading: isLoadingItems,
+		refetch: refetchItems,
+	} = useGetItemsPaginatedQuery({
 		circleId,
 		limit: 24,
 		...(itemCursor ? { cursor: itemCursor } : {}),
@@ -181,7 +190,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		}
 	};
 
-
 	const handleCopy = async (text: string, type: 'code' | 'link') => {
 		try {
 			await navigator.clipboard.writeText(text);
@@ -205,7 +213,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		} catch (error) {
 			toast({
 				title: 'Error',
-				description: (error as { data?: { error?: string } })?.data?.error || 'Failed to regenerate invite code.',
+				description:
+					(error as { data?: { error?: string } })?.data?.error || 'Failed to regenerate invite code.',
 				variant: 'destructive',
 			});
 			return false;
@@ -248,7 +257,10 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				return;
 			} else if (memberAction === 'remove') {
 				await removeMember({ circleId, userId: selectedMember.userId }).unwrap();
-				toast({ title: 'Member removed', description: `${selectedMember.name || 'Member'} has been removed from the circle.` });
+				toast({
+					title: 'Member removed',
+					description: `${selectedMember.name || 'Member'} has been removed from the circle.`,
+				});
 			}
 		} catch (error) {
 			toast({
@@ -345,7 +357,14 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 			<div className="flex items-center gap-3 sm:hidden">
 				<div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
 					{circle.avatarUrl ? (
-						<Image src={circle.avatarUrl} alt={circle.name} width={44} height={44} className="h-full w-full object-cover" unoptimized />
+						<Image
+							src={circle.avatarUrl}
+							alt={circle.name}
+							width={44}
+							height={44}
+							className="h-full w-full object-cover"
+							unoptimized
+						/>
 					) : (
 						<Users className="h-5 w-5 text-primary" />
 					)}
@@ -356,7 +375,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						{isAdmin && <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
 					</div>
 					<p className="text-xs text-muted-foreground">
-						{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'} · {formatDate(circle.createdAt)}
+						{circle.membersCount} {circle.membersCount === 1 ? 'member' : 'members'} ·{' '}
+						{formatDate(circle.createdAt)}
 					</p>
 				</div>
 				<div className="flex items-center gap-0.5 flex-shrink-0">
@@ -383,25 +403,43 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				<div className="flex items-start gap-4">
 					<div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-primary/20 to-primary/5">
 						{circle.avatarUrl ? (
-							<Image src={circle.avatarUrl} alt={circle.name} width={44} height={44} className="h-full w-full object-cover" unoptimized />
+							<Image
+								src={circle.avatarUrl}
+								alt={circle.name}
+								width={44}
+								height={44}
+								className="h-full w-full object-cover"
+								unoptimized
+							/>
 						) : (
 							<Users className="h-10 w-10 text-primary" />
 						)}
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="flex flex-wrap items-center gap-2">
-							<Button onClick={() => router.push('/circles')} variant="ghost" size="icon" className="shrink-0 -ml-2">
+							<Button
+								onClick={() => router.push('/circles')}
+								variant="ghost"
+								size="icon"
+								className="shrink-0 -ml-2"
+							>
 								<ArrowLeft className="h-4 w-4" />
 								<span className="sr-only">Back to Circles</span>
 							</Button>
 							<h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{circle.name}</h1>
 							{isAdmin && (
-								<Badge variant="secondary" className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-									<Crown className="h-3 w-3" />Admin
+								<Badge
+									variant="secondary"
+									className="gap-1 shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+								>
+									<Crown className="h-3 w-3" />
+									Admin
 								</Badge>
 							)}
 						</div>
-						<p className="mt-1 line-clamp-2 text-base text-muted-foreground">{circle.description || 'No description'}</p>
+						<p className="mt-1 line-clamp-2 text-base text-muted-foreground">
+							{circle.description || 'No description'}
+						</p>
 						<div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
 							<span className="inline-flex items-center gap-1.5">
 								<Users className="h-4 w-4" />
@@ -416,7 +454,12 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				</div>
 				<div className="flex flex-shrink-0 gap-2">
 					{isAdmin && (
-						<Button variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/circles/${circleId}/settings`)}>
+						<Button
+							variant="outline"
+							size="sm"
+							className="gap-2"
+							onClick={() => router.push(`/circles/${circleId}/settings`)}
+						>
 							<Settings className="h-4 w-4" />
 							Settings
 						</Button>
@@ -522,10 +565,20 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					<div className="flex items-center gap-1">
 						{/* Carousel Navigation - Desktop only */}
 						<div className="hidden sm:flex items-center gap-1">
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('left')}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={() => scrollMembers('left')}
+							>
 								<ChevronLeft className="h-4 w-4" />
 							</Button>
-							<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => scrollMembers('right')}>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8"
+								onClick={() => scrollMembers('right')}
+							>
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 						</div>
@@ -741,30 +794,50 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 												{canManage && (
 													<>
 														{member.role === 'MEMBER' && (
-															<DropdownMenuItem onClick={() => { setSelectedMember(member); setMemberAction('promote'); }}>
-																<UserPlus className="mr-2 h-4 w-4" />Make Admin
+															<DropdownMenuItem
+																onClick={() => {
+																	setSelectedMember(member);
+																	setMemberAction('promote');
+																}}
+															>
+																<UserPlus className="mr-2 h-4 w-4" />
+																Make Admin
 															</DropdownMenuItem>
 														)}
 														{member.role === 'ADMIN' && !isCreator && (
-															<DropdownMenuItem onClick={() => { setSelectedMember(member); setMemberAction('demote'); }}>
-																<UserMinus className="mr-2 h-4 w-4" />Remove Admin
+															<DropdownMenuItem
+																onClick={() => {
+																	setSelectedMember(member);
+																	setMemberAction('demote');
+																}}
+															>
+																<UserMinus className="mr-2 h-4 w-4" />
+																Remove Admin
 															</DropdownMenuItem>
 														)}
 														<DropdownMenuSeparator />
 														<DropdownMenuItem
 															className="text-destructive focus:text-destructive"
-															onClick={() => { setSelectedMember(member); setMemberAction('remove'); }}
+															onClick={() => {
+																setSelectedMember(member);
+																setMemberAction('remove');
+															}}
 														>
-															<UserMinus className="mr-2 h-4 w-4" />Remove
+															<UserMinus className="mr-2 h-4 w-4" />
+															Remove
 														</DropdownMenuItem>
 													</>
 												)}
 												{isCurrentUser && (
 													<DropdownMenuItem
 														className="text-destructive focus:text-destructive"
-														onClick={() => { setSelectedMember(member); setMemberAction('leave'); }}
+														onClick={() => {
+															setSelectedMember(member);
+															setMemberAction('leave');
+														}}
 													>
-														<LogOut className="mr-2 h-4 w-4" />Leave Circle
+														<LogOut className="mr-2 h-4 w-4" />
+														Leave Circle
 													</DropdownMenuItem>
 												)}
 											</DropdownMenuContent>
@@ -827,7 +900,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							</PageTabsTrigger>
 						</PageTabsList>
 						{itemsTab === 'shared' && (
-							<Button onClick={() => setShowAddItem(true)} className="gap-2 self-end sm:self-auto" size="sm">
+							<Button
+								onClick={() => setShowAddItem(true)}
+								className="gap-2 self-end sm:self-auto"
+								size="sm"
+							>
 								<Plus className="h-4 w-4" />
 								Add Item
 							</Button>
@@ -997,7 +1074,10 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							onClick={async () => {
 								if (!itemToDelete) return;
 								try {
-									await deleteItem({ id: itemToDelete.id, circleIds: itemToDelete.circles.map(c => c.id) }).unwrap();
+									await deleteItem({
+										id: itemToDelete.id,
+										circleIds: itemToDelete.circles.map(c => c.id),
+									}).unwrap();
 									toast({
 										title: 'Item deleted',
 										description: `${itemToDelete.name} has been deleted.`,
@@ -1009,7 +1089,8 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									if (status === 409) {
 										toast({
 											title: 'Cannot delete item',
-											description: 'This item has active borrows. Complete or cancel all borrows first.',
+											description:
+												'This item has active borrows. Complete or cancel all borrows first.',
 											variant: 'destructive',
 										});
 									} else {
@@ -1047,12 +1128,14 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					<DialogHeader>
 						<DialogTitle>Remove from circle</DialogTitle>
 						<DialogDescription>
-							&quot;{itemToRemoveFromCircle?.name}&quot; will be removed from this circle. The item will still
-							exist for its owner.
+							&quot;{itemToRemoveFromCircle?.name}&quot; will be removed from this circle. The item will
+							still exist for its owner.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-2 py-1">
-						<p className="text-sm font-medium">Reason <span className="font-normal text-muted-foreground">(optional)</span></p>
+						<p className="text-sm font-medium">
+							Reason <span className="font-normal text-muted-foreground">(optional)</span>
+						</p>
 						<Textarea
 							placeholder="Let the owner know why…"
 							value={removeReason}
@@ -1063,7 +1146,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 						/>
 					</div>
 					<DialogFooter className="gap-2 sm:gap-0">
-						<Button variant="outline" onClick={() => setItemToRemoveFromCircle(null)} disabled={isRemovingFromCircle}>
+						<Button
+							variant="outline"
+							onClick={() => setItemToRemoveFromCircle(null)}
+							disabled={isRemovingFromCircle}
+						>
 							Cancel
 						</Button>
 						<Button
@@ -1166,7 +1253,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 				currentCircleId={circleId}
 				onItemCreated={() => refetchItems()}
 			/>
-
 		</PageShell>
 	);
 }

@@ -384,10 +384,7 @@ export function ChatContainer({
 		onTogglePin: () => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt),
 		onToggleMute: () =>
 			activeThread &&
-			handleMute(
-				activeThread.id,
-				!(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date()),
-			),
+			handleMute(activeThread.id, !(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date())),
 		onToggleArchive: () => activeThread && handleArchive(activeThread.id, !activeThread.archivedAt),
 		onDelete: () => activeThread && handleDelete(activeThread.id),
 		onToggleSearch: handleToggleSearch,
@@ -458,35 +455,35 @@ export function ChatContainer({
 	// Desktop layout: PageShell + PageHeader + split-pane
 	return (
 		<>
-		<PageShell className="flex h-full max-w-none flex-col overflow-hidden">
-			<div className="flex-shrink-0">
-				<PageHeader title="Messages" description="Chat with people in your circles" />
-			</div>
-			<div
-				className={cn(
-					'flex flex-1 flex-col overflow-hidden md:flex-row',
-					'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
-				)}
-			>
-				{!hideList && (
-					<ChatList
-						threads={threads}
-						activeId={activeId}
-						searchValue={threadSearch}
-						onSearch={setThreadSearch}
-						onSelect={handleSelectThread}
-					/>
-				)}
+			<PageShell className="flex h-full max-w-none flex-col overflow-hidden">
+				<div className="flex-shrink-0">
+					<PageHeader title="Messages" description="Chat with people in your circles" />
+				</div>
+				<div
+					className={cn(
+						'flex flex-1 flex-col overflow-hidden md:flex-row',
+						'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
+					)}
+				>
+					{!hideList && (
+						<ChatList
+							threads={threads}
+							activeId={activeId}
+							searchValue={threadSearch}
+							onSearch={setThreadSearch}
+							onSelect={handleSelectThread}
+						/>
+					)}
 
-				{showThreadPanel && (
-					<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
-						<ChatHeader {...chatHeaderProps} />
-						{threadContent}
-					</div>
-				)}
-			</div>
-		</PageShell>
-		<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
+					{showThreadPanel && (
+						<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
+							<ChatHeader {...chatHeaderProps} />
+							{threadContent}
+						</div>
+					)}
+				</div>
+			</PageShell>
+			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
 		</>
 	);
 }

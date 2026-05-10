@@ -158,7 +158,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		const { id } = await params;
 		const userId = session.user.id;
 		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, archived, estimatedWeightKg, estimatedNewPriceUsd, isValueVisible } = body;
+		const {
+			name,
+			description,
+			imagePath,
+			imageUrl,
+			categories,
+			tags,
+			circleIds,
+			mediaPaths,
+			archived,
+			estimatedWeightKg,
+			estimatedNewPriceUsd,
+			isValueVisible,
+		} = body;
 
 		// Validate user-provided imageUrl is from our Supabase storage (SSRF prevention)
 		if (imageUrl && typeof imageUrl === 'string') {
@@ -319,7 +332,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			const capturedImagePath = item.imagePath;
 			after(async () => {
 				try {
-					const embeddingImageUrl = imageChanged && imageUrl ? imageUrl : await getSignedUrl(capturedImagePath, 'items');
+					const embeddingImageUrl =
+						imageChanged && imageUrl ? imageUrl : await getSignedUrl(capturedImagePath, 'items');
 					const embedding = await generateDocumentEmbedding(embeddingImageUrl, combinedText);
 					const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
 					await prisma.$executeRaw`UPDATE items SET embedding = ${embeddingVector} WHERE id = ${capturedId}`;
@@ -447,7 +461,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
 		if (activeTransaction) {
 			return NextResponse.json(
-				{ error: 'Cannot delete this item — it has active borrow transactions. Complete or cancel all borrows first.' },
+				{
+					error: 'Cannot delete this item — it has active borrow transactions. Complete or cancel all borrows first.',
+				},
 				{ status: 409 },
 			);
 		}

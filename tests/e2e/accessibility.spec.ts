@@ -36,7 +36,10 @@ test.describe('accessibility', () => {
 			await page.waitForLoadState('networkidle');
 
 			// Search input should have a label, placeholder, or aria-label
-			const searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search/i)).first();
+			const searchInput = page
+				.getByRole('searchbox')
+				.or(page.getByPlaceholder(/search/i))
+				.first();
 			const hasSearch = await searchInput.isVisible({ timeout: 5000 }).catch(() => false);
 
 			if (hasSearch) {
@@ -153,7 +156,10 @@ test.describe('accessibility', () => {
 
 			// A focused element should be visible (no invisible focus traps)
 			const focused = page.locator(':focus');
-			const hasFocused = await focused.count().then(c => c > 0).catch(() => false);
+			const hasFocused = await focused
+				.count()
+				.then(c => c > 0)
+				.catch(() => false);
 			expect(hasFocused || true).toBeTruthy(); // soft check — focus may be on body
 		});
 	});

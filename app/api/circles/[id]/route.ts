@@ -7,7 +7,12 @@ import { getSignedUrl } from '@/lib/supabase';
 import { z } from 'zod';
 
 const updateCircleSchema = z.object({
-	name: z.string().trim().min(1, 'Invalid circle name').max(100, 'Circle name must be less than 100 characters').optional(),
+	name: z
+		.string()
+		.trim()
+		.min(1, 'Invalid circle name')
+		.max(100, 'Circle name must be less than 100 characters')
+		.optional(),
 	description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullish(),
 	avatarUrl: z.string().url('Invalid avatar URL').nullish(),
 });
@@ -128,7 +133,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 		const userId = session.user.id;
 		const parsedBody = updateCircleSchema.safeParse(await req.json());
 		if (!parsedBody.success) {
-			return NextResponse.json({ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
+			return NextResponse.json(
+				{ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
 		const { name, description, avatarUrl } = parsedBody.data;
 

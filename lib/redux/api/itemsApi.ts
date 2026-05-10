@@ -322,16 +322,17 @@ export const itemsApi = createApi({
 		}),
 
 		// Circle admin: remove an item from a circle (does not delete the item)
-		removeItemFromCircle: builder.mutation<{ success: boolean }, { circleId: string; itemId: string; reason?: string }>(
-			{
-				query: ({ circleId, itemId, reason }) => ({
-					url: `/circles/${circleId}/items/${itemId}`,
-					method: 'DELETE',
-					body: { reason },
-				}),
-				invalidatesTags: (_result, _error, { circleId }) => [{ type: 'CircleItems', id: circleId }, 'Items'],
-			},
-		),
+		removeItemFromCircle: builder.mutation<
+			{ success: boolean },
+			{ circleId: string; itemId: string; reason?: string }
+		>({
+			query: ({ circleId, itemId, reason }) => ({
+				url: `/circles/${circleId}/items/${itemId}`,
+				method: 'DELETE',
+				body: { reason },
+			}),
+			invalidatesTags: (_result, _error, { circleId }) => [{ type: 'CircleItems', id: circleId }, 'Items'],
+		}),
 	}),
 });
 

@@ -53,9 +53,7 @@ test.describe('listings page', () => {
 		await page.waitForLoadState('networkidle');
 
 		// Look for filter controls
-		const filterButton = page
-			.getByRole('button', { name: /filter|available|unavailable/i })
-			.first();
+		const filterButton = page.getByRole('button', { name: /filter|available|unavailable/i }).first();
 		const hasFilter = await filterButton.isVisible({ timeout: 3000 }).catch(() => false);
 
 		if (hasFilter) {
@@ -118,7 +116,10 @@ test.describe('listings page', () => {
 		const archivedInMain = page.getByText(item.name);
 		// Either it's not visible, or there's an archived section
 		const isVisible = await archivedInMain.isVisible({ timeout: 3000 }).catch(() => false);
-		const hasArchivedSection = await page.getByText(/archived/i).isVisible({ timeout: 2000 }).catch(() => false);
+		const hasArchivedSection = await page
+			.getByText(/archived/i)
+			.isVisible({ timeout: 2000 })
+			.catch(() => false);
 
 		// Either archived items are hidden OR an archived section exists
 		expect(!isVisible || hasArchivedSection || count >= 0).toBeTruthy();

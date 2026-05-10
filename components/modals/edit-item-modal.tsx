@@ -467,7 +467,9 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 									step="1"
 									value={estimatedNewPriceUsd ?? ''}
 									onChange={e =>
-										setEstimatedNewPriceUsd(e.target.value === '' ? null : parseFloat(e.target.value))
+										setEstimatedNewPriceUsd(
+											e.target.value === '' ? null : parseFloat(e.target.value),
+										)
 									}
 									placeholder="e.g. 120"
 								/>

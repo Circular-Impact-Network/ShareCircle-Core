@@ -1,7 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, Search, LayoutGrid, MessageSquare, LogOut, Plus, Settings, Bell, History, MessageSquarePlus } from 'lucide-react';
+import {
+	Home,
+	Search,
+	LayoutGrid,
+	MessageSquare,
+	LogOut,
+	Plus,
+	Settings,
+	Bell,
+	History,
+	MessageSquarePlus,
+} from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -66,97 +77,104 @@ export function Sidebar() {
 
 	return (
 		<>
-		<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
-			<div className="flex h-full flex-col overflow-hidden">
-				{/* Logo */}
-				<div className="flex items-center gap-3 border-b border-border px-3 py-3">
-					<Link href="/home" className="flex flex-1 items-center gap-2.5">
-						<div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-							<Image
-								src="/share-circle-icon-square.png"
-								alt="ShareCircle"
-								width={36}
-								height={36}
-								className="h-9 w-9 object-contain"
-								priority
-							/>
-						</div>
-						<span className="text-sm font-semibold leading-tight text-foreground">ShareCircle</span>
-					</Link>
-				</div>
-
-				{/* Navigation */}
-				<ScrollArea className="flex-1">
-					<nav className="space-y-1.5 p-3">
-						{navItems.map(item => {
-							const Icon = item.icon;
-							const active = isActive(item.href);
-							let unreadCount = 0;
-							if (item.id === 'notifications') unreadCount = totalNotificationUnread;
-							else if (item.id === 'messages') unreadCount = totalMessageUnread;
-							return (
-								<Link
-									key={item.id}
-									href={item.href}
-									className={cn(
-										'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
-										active
-											? 'bg-primary text-primary-foreground shadow-sm'
-											: 'text-foreground hover:bg-muted/80',
-									)}
-								>
-									<Icon className="h-4 w-4" />
-									<span className="flex-1">{item.label}</span>
-									{unreadCount > 0 && (
-										<Badge
-											variant={active ? 'secondary' : 'destructive'}
-											className="h-5 min-w-[20px] px-1.5 text-[10px]"
-										>
-											{unreadCount > 99 ? '99+' : unreadCount}
-										</Badge>
-									)}
-								</Link>
-							);
-						})}
-					</nav>
-				</ScrollArea>
-
-				{/* Feedback */}
-				<div className="px-3 pb-2">
-					<button
-						type="button"
-						onClick={() => setShowFeedbackModal(true)}
-						className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
-					>
-						<MessageSquarePlus className="h-4 w-4" />
-						<span>Share feedback</span>
-					</button>
-				</div>
-
-				{/* User Profile Section */}
-				{(userName || userEmail) && (
-					<div className="border-t border-border px-4 py-2.5">
-						<div className="flex items-center gap-2.5">
-							<Avatar className="h-9 w-9 bg-primary">
-								<AvatarImage src={userImage || ''} />
-								<AvatarFallback className="bg-primary font-semibold leading-[1.6rem] text-primary-foreground">
-									{getInitials(userName || userEmail || 'U')}
-								</AvatarFallback>
-							</Avatar>
-							<div className="min-w-0 flex-1">
-								<p className="truncate text-sm font-medium">{userName || userEmail?.split('@')[0]}</p>
-								<p className="truncate text-xs text-muted-foreground">{userEmail}</p>
+			<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
+				<div className="flex h-full flex-col overflow-hidden">
+					{/* Logo */}
+					<div className="flex items-center gap-3 border-b border-border px-3 py-3">
+						<Link href="/home" className="flex flex-1 items-center gap-2.5">
+							<div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+								<Image
+									src="/share-circle-icon-square.png"
+									alt="ShareCircle"
+									width={36}
+									height={36}
+									className="h-9 w-9 object-contain"
+									priority
+								/>
 							</div>
-							<Button variant="outline" size="icon" className="h-8 w-8 bg-transparent" onClick={handleLogout}>
-								<LogOut className="h-4 w-4" />
-							</Button>
-						</div>
+							<span className="text-sm font-semibold leading-tight text-foreground">ShareCircle</span>
+						</Link>
 					</div>
-				)}
-			</div>
-		</aside>
 
-		<FeedbackModal open={showFeedbackModal} onOpenChange={setShowFeedbackModal} />
+					{/* Navigation */}
+					<ScrollArea className="flex-1">
+						<nav className="space-y-1.5 p-3">
+							{navItems.map(item => {
+								const Icon = item.icon;
+								const active = isActive(item.href);
+								let unreadCount = 0;
+								if (item.id === 'notifications') unreadCount = totalNotificationUnread;
+								else if (item.id === 'messages') unreadCount = totalMessageUnread;
+								return (
+									<Link
+										key={item.id}
+										href={item.href}
+										className={cn(
+											'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
+											active
+												? 'bg-primary text-primary-foreground shadow-sm'
+												: 'text-foreground hover:bg-muted/80',
+										)}
+									>
+										<Icon className="h-4 w-4" />
+										<span className="flex-1">{item.label}</span>
+										{unreadCount > 0 && (
+											<Badge
+												variant={active ? 'secondary' : 'destructive'}
+												className="h-5 min-w-[20px] px-1.5 text-[10px]"
+											>
+												{unreadCount > 99 ? '99+' : unreadCount}
+											</Badge>
+										)}
+									</Link>
+								);
+							})}
+						</nav>
+					</ScrollArea>
+
+					{/* Feedback */}
+					<div className="px-3 pb-2">
+						<button
+							type="button"
+							onClick={() => setShowFeedbackModal(true)}
+							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+						>
+							<MessageSquarePlus className="h-4 w-4" />
+							<span>Share feedback</span>
+						</button>
+					</div>
+
+					{/* User Profile Section */}
+					{(userName || userEmail) && (
+						<div className="border-t border-border px-4 py-2.5">
+							<div className="flex items-center gap-2.5">
+								<Avatar className="h-9 w-9 bg-primary">
+									<AvatarImage src={userImage || ''} />
+									<AvatarFallback className="bg-primary font-semibold leading-[1.6rem] text-primary-foreground">
+										{getInitials(userName || userEmail || 'U')}
+									</AvatarFallback>
+								</Avatar>
+								<div className="min-w-0 flex-1">
+									<p className="truncate text-sm font-medium">
+										{userName || userEmail?.split('@')[0]}
+									</p>
+									<p className="truncate text-xs text-muted-foreground">{userEmail}</p>
+								</div>
+								<Button
+									variant="outline"
+									size="icon"
+									className="h-8 w-8 bg-transparent"
+									onClick={handleLogout}
+								>
+									<LogOut className="h-4 w-4" />
+								</Button>
+							</div>
+						</div>
+					)}
+				</div>
+			</aside>
+
+			<FeedbackModal open={showFeedbackModal} onOpenChange={setShowFeedbackModal} />
 		</>
 	);
 }

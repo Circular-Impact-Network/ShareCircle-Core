@@ -126,7 +126,10 @@ export async function POST(req: NextRequest) {
 		const userId = session.user.id;
 		const parsed = createBorrowRequestSchema.safeParse(await req.json());
 		if (!parsed.success) {
-			return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid request body' }, { status: 400 });
+			return NextResponse.json(
+				{ error: parsed.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
 		const { itemId, message, desiredFrom, desiredTo, joinQueue } = parsed.data;
 

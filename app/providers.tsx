@@ -17,8 +17,8 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-	const [theme, setTheme] = useState<string>(
-		() => (typeof window !== 'undefined' ? (localStorage.getItem('sharecircle_theme') ?? 'light') : 'light'),
+	const [theme, setTheme] = useState<string>(() =>
+		typeof window !== 'undefined' ? (localStorage.getItem('sharecircle_theme') ?? 'light') : 'light',
 	);
 
 	const updateTheme = (newTheme: string) => {

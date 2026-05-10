@@ -7,7 +7,6 @@ import { prisma } from './prisma';
 import { getOtpIdentifier, hashOtp, normalizeEmail, timingSafeEqualHex } from './otp';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from './phone';
 
-
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma),
 	secret: process.env.NEXTAUTH_SECRET,
