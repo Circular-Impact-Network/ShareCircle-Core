@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3003';
+// Skip the local server when targeting a remote deployment (smoke-staging, smoke-production).
+const isRemoteTarget = !!process.env.PLAYWRIGHT_BASE_URL && !process.env.PLAYWRIGHT_BASE_URL.includes('localhost');
 
 export default defineConfig({
 	testDir: './tests/e2e',
@@ -20,20 +22,24 @@ export default defineConfig({
 	},
 	globalSetup: path.join(__dirname, 'tests/e2e/global-setup.ts'),
 	globalTeardown: path.join(__dirname, 'tests/e2e/global-teardown.ts'),
-	webServer: {
-		// CI: use the production build (npm run build runs first in ci.yml); Local: dev server with HMR.
-		command: process.env.CI ? 'npm run start' : 'npm run dev',
-		url: baseURL,
-		reuseExistingServer: !process.env.CI, // Always start fresh in CI; reuse locally for speed.
-		timeout: 120_000,
-		// Spread full env so DATABASE_URL / NEXTAUTH_SECRET / Supabase keys reach the Next.js process.
-		// Without this, the webServer only gets the explicit keys and DB queries fail.
-		env: {
-			...(process.env as Record<string, string>),
-			SKIP_SMS: process.env.SKIP_SMS ?? 'true',
-			SKIP_EMAIL: process.env.SKIP_EMAIL ?? 'true',
-		},
-	},
+	...(isRemoteTarget
+		? {}
+		: {
+				webServer: {
+					// CI: use the production build (npm run build runs first in ci.yml); Local: dev server with HMR.
+					command: process.env.CI ? 'npm run start' : 'npm run dev',
+					url: baseURL,
+					reuseExistingServer: !process.env.CI, // Always start fresh in CI; reuse locally for speed.
+					timeout: 120_000,
+					// Spread full env so DATABASE_URL / NEXTAUTH_SECRET / Supabase keys reach the Next.js process.
+					// Without this, the webServer only gets the explicit keys and DB queries fail.
+					env: {
+						...(process.env as Record<string, string>),
+						SKIP_SMS: process.env.SKIP_SMS ?? 'true',
+						SKIP_EMAIL: process.env.SKIP_EMAIL ?? 'true',
+					},
+				},
+			}),
 	projects: [
 		{
 			name: 'chromium',
