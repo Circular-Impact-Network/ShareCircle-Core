@@ -45,16 +45,14 @@ export function MobileHeader() {
 		<>
 			<header className="fixed left-0 right-0 top-0 z-30 flex h-12 items-center justify-between border-b border-border/50 bg-background/95 backdrop-blur-sm px-3 lg:hidden">
 				<Link href="/home" className="flex items-center gap-2">
-					<div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-						<Image
-							src="/share-circle-icon-square.png"
-							alt="ShareCircle"
-							width={32}
-							height={32}
-							className="h-8 w-8 object-contain"
-							priority
-						/>
-					</div>
+					<Image
+						src="/logo_new_removeBg.png"
+						alt="ShareCircle"
+						width={32}
+						height={32}
+						className="h-8 w-8 shrink-0 rounded-xl object-contain"
+						priority
+					/>
 					<span className="text-sm font-semibold text-foreground">ShareCircle</span>
 				</Link>
 

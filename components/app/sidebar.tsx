@@ -80,18 +80,16 @@ export function Sidebar() {
 			<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
 				<div className="flex h-full flex-col overflow-hidden">
 					{/* Logo */}
-					<div className="flex items-center gap-3 border-b border-border px-3 py-3">
-						<Link href="/home" className="flex flex-1 items-center gap-2.5">
-							<div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-								<Image
-									src="/share-circle-icon-square.png"
-									alt="ShareCircle"
-									width={36}
-									height={36}
-									className="h-9 w-9 object-contain"
-									priority
-								/>
-							</div>
+					<div className="flex items-center gap-3 border-b border-border px-2 py-1.5">
+						<Link href="/home" className="flex flex-1 items-center">
+							<Image
+								src="/logo_new_removeBg.png"
+								alt="ShareCircle"
+								width={48}
+								height={48}
+								className="h-12 w-12 shrink-0 rounded-xl object-contain"
+								priority
+							/>
 							<span className="text-sm font-semibold leading-tight text-foreground">ShareCircle</span>
 						</Link>
 					</div>

@@ -155,8 +155,11 @@ export async function POST(req: NextRequest) {
 				);
 			}
 		} else {
-			// Persist OTP for e2e test retrieval regardless of email config
-			if (process.env.NODE_ENV !== 'production' && /^e2e\+.+@example\.com$/i.test(normalizedEmail)) {
+			// Persist OTP for e2e test retrieval — allowed in dev or when TEST_CLEANUP_SECRET is set (CI prod build)
+			if (
+				(process.env.NODE_ENV !== 'production' || !!process.env.TEST_CLEANUP_SECRET) &&
+				/^e2e\+.+@example\.com$/i.test(normalizedEmail)
+			) {
 				await prisma.testOtp.create({ data: { email: normalizedEmail, otp } });
 			}
 

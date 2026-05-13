@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 // Returns the most recent OTP for the given test email.
 // Only available in non-production environments and requires TEST_CLEANUP_SECRET header.
 export async function GET(req: NextRequest) {
-	if (process.env.NODE_ENV === 'production') {
+	if (process.env.NODE_ENV === 'production' && !process.env.TEST_CLEANUP_SECRET) {
 		return NextResponse.json({ error: 'Not found' }, { status: 404 });
 	}
 
