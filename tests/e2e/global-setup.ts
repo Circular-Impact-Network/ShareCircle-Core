@@ -99,17 +99,40 @@ export default async function globalSetup(config: FullConfig) {
 		createdUsers.push({ ...user, id: data.user.id });
 	}
 
+	// Get session tokens programmatically — avoids router.push race conditions in production builds.
+	const secret = process.env.TEST_CLEANUP_SECRET!;
+	const sessionTokens: Record<string, { token: string; cookieName: string }> = {};
+	for (const user of createdUsers) {
+		const sessionRes = await api.post('/api/test/create-session', {
+			data: { email: user.email },
+			headers: { 'x-test-secret': secret },
+		});
+		if (!sessionRes.ok()) {
+			throw new Error(`Failed to create test session for ${user.email}: ${sessionRes.status()}`);
+		}
+		const data = (await sessionRes.json()) as { token: string; cookieName: string };
+		sessionTokens[user.key] = data;
+	}
+
 	await api.dispose();
 
 	const browser = await chromium.launch();
 	for (const user of createdUsers) {
+		const { token, cookieName } = sessionTokens[user.key];
 		const context = await browser.newContext();
+		await context.addCookies([
+			{
+				name: cookieName,
+				value: token,
+				url: baseURL,
+				httpOnly: true,
+				secure: false,
+				sameSite: 'Lax',
+			},
+		]);
 		const page = await context.newPage();
-		await page.goto(`${baseURL}/login`);
-		await page.getByPlaceholder('you@example.com').fill(user.email);
-		await page.getByPlaceholder('••••••••').fill(user.password);
-		await page.getByRole('button', { name: 'Login', exact: true }).click();
-		await page.waitForURL('**/home');
+		await page.goto(`${baseURL}/home`);
+		await page.waitForURL('**/home', { timeout: 15000 });
 		await context.storageState({ path: storagePaths[user.key] });
 		await context.close();
 	}
