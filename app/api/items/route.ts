@@ -352,7 +352,12 @@ export async function POST(req: NextRequest) {
 		});
 
 		// Generate signed URL for the response
-		const signedImageUrl = await getSignedUrl(item.imagePath, 'items');
+		let signedImageUrl = '';
+		try {
+			signedImageUrl = await getSignedUrl(item.imagePath, 'items');
+		} catch (err) {
+			console.error(`Failed to get signed URL for new item ${item.id}:`, err);
+		}
 
 		// Generate embedding after response — after() guarantees execution on Vercel serverless
 		if (imageUrl) {
@@ -370,7 +375,12 @@ export async function POST(req: NextRequest) {
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			signedImageUrl, // Main image is first
-			...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+			...(item.mediaPaths || []).map(path =>
+				getSignedUrl(path, 'media').catch(err => {
+					console.error(`Failed to get media URL for item ${item.id}:`, err);
+					return '';
+				}),
+			),
 		]);
 
 		return NextResponse.json(

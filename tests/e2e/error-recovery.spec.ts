@@ -15,7 +15,7 @@ test.describe('error recovery', () => {
 			await page.waitForLoadState('networkidle');
 
 			// Should either show a 404 / not found message, or redirect away
-			const notFoundMsg = page.getByText(/not found|doesn't exist|item not found|404/i);
+			const notFoundMsg = page.getByText(/not found|doesn't exist|item not found|404/i).first();
 			const isRedirected = !page.url().includes('/items/non-existent');
 
 			const hasNotFound = await notFoundMsg.isVisible({ timeout: 5000 }).catch(() => false);

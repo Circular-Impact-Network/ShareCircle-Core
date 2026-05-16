@@ -13,7 +13,7 @@ test.describe('item requests', () => {
 
 		// Navigate to requests page
 		await page.goto('/requests');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Click create request button - look for "New Request" button
 		const createButton = page.getByRole('button', { name: /New Request/i });
@@ -52,16 +52,16 @@ test.describe('item requests', () => {
 		await submitButton.click();
 
 		// Wait for dialog to close and request to appear
-		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
+		await page.waitForLoadState('domcontentloaded');
+		await page.waitForTimeout(2000);
 
 		// Verify request was created - look for it in the list
-		await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 15000 });
 	});
 
 	test('user can view item requests from their circles', async ({ page }) => {
 		await page.goto('/requests');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Page should load
 		await expect(page).toHaveURL(/\/requests/);

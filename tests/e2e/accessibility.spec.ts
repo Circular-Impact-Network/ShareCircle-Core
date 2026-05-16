@@ -187,7 +187,7 @@ test.describe('accessibility', () => {
 			await page.goto('/login');
 			await page.waitForLoadState('networkidle');
 
-			const loginButton = page.getByRole('button', { name: /login/i });
+			const loginButton = page.getByRole('button', { name: 'Login', exact: true });
 			await expect(loginButton).toBeVisible();
 
 			// Button must not be disabled initially

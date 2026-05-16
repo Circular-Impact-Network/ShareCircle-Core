@@ -163,6 +163,7 @@ export function Sidebar() {
 									size="icon"
 									className="h-8 w-8 bg-transparent"
 									onClick={handleLogout}
+									aria-label="Log out"
 								>
 									<LogOut className="h-4 w-4" />
 								</Button>

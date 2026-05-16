@@ -47,7 +47,7 @@ test.describe('OTP email verification', () => {
 		try {
 			// 1. Sign up
 			await page.goto('/signup');
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
 
 			await page.getByPlaceholder(/name/i).fill(`OTP Test User ${ts}`);
 			await page.getByPlaceholder('you@example.com').fill(email);
@@ -58,7 +58,8 @@ test.describe('OTP email verification', () => {
 			if (hasConfirm) await confirmInput.fill(password);
 
 			await page.getByRole('button', { name: /sign up|create account/i }).click();
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
+			await page.waitForTimeout(1000);
 
 			// 2. Should land on OTP entry page
 			const onVerifyPage = page.url().includes('verify') || page.url().includes('otp');
@@ -78,7 +79,8 @@ test.describe('OTP email verification', () => {
 			// 4. Fill OTP
 			await otpInput.first().fill(otp!);
 			await page.getByRole('button', { name: /verify|confirm|submit/i }).click();
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
+			await page.waitForTimeout(2000);
 
 			// 5. Should redirect to home after verification
 			expect(page.url()).not.toContain('/signup');

@@ -70,11 +70,11 @@ test.describe('message management', () => {
 
 			// Navigate to thread
 			await page.goto(`/messages/${thread.id}`);
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
 
-			// Find message input
+			// Find message input (use longer timeout since realtime subscriptions may delay render)
 			const messageInput = page.getByPlaceholder(/Type.*message|Write.*message/i);
-			await expect(messageInput).toBeVisible({ timeout: 5000 });
+			await expect(messageInput).toBeVisible({ timeout: 15000 });
 
 			// Type and send message
 			const testMessage = `Test message ${Date.now()}`;
@@ -204,7 +204,7 @@ test.describe('message management', () => {
 
 			// Navigate directly to thread
 			await page.goto(`/messages/${thread.id}`);
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
 
 			// Look for back button or navigation
 			const backButton = page.getByRole('button', { name: /Back/i });

@@ -53,7 +53,7 @@ test.describe('authentication flows', () => {
 
 			// Either redirects to dashboard or shows error (if user doesn't exist)
 			const url = page.url();
-			const errorMessage = page.getByText(/invalid|error|incorrect/i);
+			const errorMessage = page.getByText(/invalid|error|incorrect/i).first();
 			const hasError = await errorMessage.isVisible({ timeout: 2000 }).catch(() => false);
 
 			// Test passes if redirected OR shows a proper error (both are valid behaviors)
