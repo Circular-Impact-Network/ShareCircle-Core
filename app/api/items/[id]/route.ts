@@ -224,55 +224,68 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			}
 		}
 
-		// Validate listing text against main image and supporting media before updating
-		const currentItem = await prisma.item.findUnique({
-			where: { id },
-			select: { name: true, description: true, categories: true, tags: true },
-		});
-		const finalName = name !== undefined ? name.trim() : (currentItem?.name ?? '');
-		const finalDescription =
-			description !== undefined ? (description?.trim() ?? null) : (currentItem?.description ?? null);
-		const finalCategories = categories !== undefined ? categories : (currentItem?.categories ?? []);
-		const finalTags = tags !== undefined ? tags : (currentItem?.tags ?? []);
-		const combinedText = buildEnrichedText({
-			name: finalName,
-			description: finalDescription,
-			categories: finalCategories,
-			tags: finalTags,
-		});
-		const imageEntries: { url: string; label: string }[] = [];
-		const mainImageUrl =
-			typeof imageUrl === 'string' && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
-		imageEntries.push({ url: mainImageUrl, label: 'Main image' });
-		const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : (item.mediaPaths ?? []);
-		for (let i = 0; i < mediaPathsList.length; i++) {
-			try {
-				const url = await getSignedUrl(mediaPathsList[i], 'media');
-				imageEntries.push({ url, label: `Additional photo ${i + 1}` });
-			} catch {
-				// Skip if we can't get URL
+		// Only validate listing content against images when content fields are actually changing
+		const contentChanging =
+			name !== undefined ||
+			description !== undefined ||
+			categories !== undefined ||
+			tags !== undefined ||
+			imagePath !== undefined ||
+			mediaPaths !== undefined;
+
+		// Hoisted so the after() embedding block can access it when metadataChanged is true
+		let combinedText = '';
+
+		if (contentChanging) {
+			const currentItem = await prisma.item.findUnique({
+				where: { id },
+				select: { name: true, description: true, categories: true, tags: true },
+			});
+			const finalName = name !== undefined ? name.trim() : (currentItem?.name ?? '');
+			const finalDescription =
+				description !== undefined ? (description?.trim() ?? null) : (currentItem?.description ?? null);
+			const finalCategories = categories !== undefined ? categories : (currentItem?.categories ?? []);
+			const finalTags = tags !== undefined ? tags : (currentItem?.tags ?? []);
+			combinedText = buildEnrichedText({
+				name: finalName,
+				description: finalDescription,
+				categories: finalCategories,
+				tags: finalTags,
+			});
+			const imageEntries: { url: string; label: string }[] = [];
+			const mainImageUrl =
+				typeof imageUrl === 'string' && imageUrl ? imageUrl : await getSignedUrl(item.imagePath, 'items');
+			imageEntries.push({ url: mainImageUrl, label: 'Main image' });
+			const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : (item.mediaPaths ?? []);
+			for (let i = 0; i < mediaPathsList.length; i++) {
+				try {
+					const url = await getSignedUrl(mediaPathsList[i], 'media');
+					imageEntries.push({ url, label: `Additional photo ${i + 1}` });
+				} catch {
+					// Skip if we can't get URL
+				}
 			}
-		}
-		const validation = await validateListingAgainstImages(imageEntries, {
-			name: finalName,
-			description: finalDescription,
-			categories: finalCategories,
-			tags: finalTags,
-		});
-		if (!validation.valid) {
-			return NextResponse.json(
-				{
-					error: 'Listing does not match photo(s)',
-					code: 'ITEM_MISMATCH',
-					message: 'Your description does not match one or more photos. Please update the text or photos.',
-					details: validation.failures.map(f => ({
-						imageLabel: f.imageLabel,
-						reason: f.reason,
-						detectedItems: f.detectedItems,
-					})),
-				},
-				{ status: 422 },
-			);
+			const validation = await validateListingAgainstImages(imageEntries, {
+				name: finalName,
+				description: finalDescription,
+				categories: finalCategories,
+				tags: finalTags,
+			});
+			if (!validation.valid) {
+				return NextResponse.json(
+					{
+						error: 'Listing does not match photo(s)',
+						code: 'ITEM_MISMATCH',
+						message: 'Your description does not match one or more photos. Please update the text or photos.',
+						details: validation.failures.map(f => ({
+							imageLabel: f.imageLabel,
+							reason: f.reason,
+							detectedItems: f.detectedItems,
+						})),
+					},
+					{ status: 422 },
+				);
+			}
 		}
 
 		const imageChanged = imagePath && imagePath !== item.imagePath;

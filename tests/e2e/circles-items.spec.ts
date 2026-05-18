@@ -12,7 +12,7 @@ test.describe('circles and items', () => {
 		const circleName = `E2E Circle ${Date.now()}`;
 
 		await page.goto('/circles');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 		await page.getByRole('button', { name: /Create Circle/i }).click();
 		await page.getByLabel('Circle Name').fill(circleName);
 		await page.getByRole('dialog').getByRole('button', { name: 'Create Circle' }).click();
@@ -25,11 +25,11 @@ test.describe('circles and items', () => {
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 		const user2Page = await user2Context.newPage();
 		await user2Page.goto('/circles');
-		await user2Page.waitForLoadState('networkidle');
+		await user2Page.waitForLoadState('domcontentloaded');
 		await user2Page.getByRole('button', { name: /Join/i }).first().click();
 		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
-		await user2Page.waitForLoadState('networkidle');
+		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible();
 		await user2Context.close();
 
@@ -66,7 +66,7 @@ test.describe('circles and items', () => {
 		});
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 		await page.getByRole('button', { name: /Add Item/i }).click();
 
 		// Wait for modal to open

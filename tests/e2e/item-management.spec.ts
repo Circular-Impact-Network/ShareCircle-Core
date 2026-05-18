@@ -141,8 +141,8 @@ test.describe('item management', () => {
 			// If specific testid not found, look for any delete button near item name text
 			const itemCard = page.locator('text=' + item.name).first();
 			if (await itemCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-				// Find the delete button in the actions area
-				const cardContainer = itemCard.locator('..').locator('..');
+				// Find the delete button in the actions area (3 levels up = CardContent)
+				const cardContainer = itemCard.locator('..').locator('..').locator('..');
 				await cardContainer.getByRole('button', { name: /delete/i }).click();
 			} else if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
 				await deleteButton.click();

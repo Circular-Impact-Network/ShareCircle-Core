@@ -19,7 +19,7 @@ test.describe('borrow workflow', () => {
 
 		// Step 1: User1 creates a circle
 		await page.goto('/circles');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 		await page.getByRole('button', { name: /Create Circle/i }).click();
 		await page.getByLabel('Circle Name').fill(circleName);
 		await page.getByRole('dialog').getByRole('button', { name: 'Create Circle' }).click();
@@ -32,11 +32,11 @@ test.describe('borrow workflow', () => {
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 		const user2Page = await user2Context.newPage();
 		await user2Page.goto('/circles');
-		await user2Page.waitForLoadState('networkidle');
+		await user2Page.waitForLoadState('domcontentloaded');
 		await user2Page.getByRole('button', { name: /Join/i }).first().click();
 		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
-		await user2Page.waitForLoadState('networkidle');
+		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible();
 
 		// Step 3: User1 adds an item - mock the upload and AI detection
@@ -73,7 +73,7 @@ test.describe('borrow workflow', () => {
 		});
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 		await page.getByRole('button', { name: /Add Item/i }).click();
 
 		// Wait for modal to open
@@ -138,7 +138,7 @@ test.describe('borrow workflow', () => {
 		await createButton.click();
 
 		// Wait for modal to close and item to appear
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 		await page.waitForTimeout(1000);
 
 		// Verify item was created - look for it in the listings page

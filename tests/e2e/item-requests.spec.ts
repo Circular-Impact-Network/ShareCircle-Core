@@ -4,11 +4,16 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
+import { TestAPI } from './helpers/test-data';
 
 test.describe('item requests', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
-	test('user can create an item request in their circle', async ({ page, users }) => {
+	test('user can create an item request in their circle', async ({ page, request, users }) => {
+		// Ensure user1 has at least one circle so the request form can be submitted
+		const api = new TestAPI(request);
+		await api.createCircle({ name: `Request Test Circle ${Date.now()}` });
+
 		const requestTitle = `Looking for a ladder ${Date.now()}`;
 
 		// Navigate to requests page

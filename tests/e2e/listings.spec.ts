@@ -10,7 +10,7 @@ test.describe('listings page', () => {
 
 	test('page loads and shows correct heading', async ({ page }) => {
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		await expect(page).toHaveURL(/\/listings/);
 		// Heading or empty state should be visible
@@ -32,7 +32,7 @@ test.describe('listings page', () => {
 		});
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		await expect(page.getByText(item.name)).toBeVisible({ timeout: 10000 });
 
@@ -50,7 +50,7 @@ test.describe('listings page', () => {
 		});
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Look for filter controls
 		const filterButton = page.getByRole('button', { name: /filter|available|unavailable/i }).first();
@@ -58,7 +58,7 @@ test.describe('listings page', () => {
 
 		if (hasFilter) {
 			await filterButton.click();
-			await page.waitForLoadState('networkidle');
+			await page.waitForLoadState('domcontentloaded');
 			// Page should still be on /listings after filtering
 			expect(page.url()).toContain('/listings');
 		}
@@ -77,14 +77,14 @@ test.describe('listings page', () => {
 		});
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		const itemLink = page.getByText(item.name);
 		const visible = await itemLink.isVisible({ timeout: 8000 }).catch(() => false);
 
 		if (visible) {
 			await itemLink.click();
-			await page.waitForLoadState('networkidle');
+			await page.waitForURL(`**/items/${item.id}`, { timeout: 10000 });
 			expect(page.url()).toContain(`/items/${item.id}`);
 		}
 
@@ -105,7 +105,7 @@ test.describe('listings page', () => {
 		await api.updateItem(item.id, { archived: true });
 
 		await page.goto('/listings');
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Archived item should not appear by default in the active list
 		// (may appear in an "archived" section or tab)
