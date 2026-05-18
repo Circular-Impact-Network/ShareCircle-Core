@@ -62,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				...borrowRequest,
 				item: {
 					...borrowRequest.item,
-					imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items'),
+					imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items').catch(() => ''),
 				},
 			},
 			{ status: 200 },
@@ -189,7 +189,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					...updatedRequest,
 					item: {
 						...updatedRequest.item,
-						imageUrl: await getSignedUrl(updatedRequest.item.imagePath, 'items'),
+						imageUrl: await getSignedUrl(updatedRequest.item.imagePath, 'items').catch(() => ''),
 					},
 				},
 				{ status: 200 },
@@ -271,7 +271,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					transaction: result.transaction,
 					item: {
 						...borrowRequest.item,
-						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items'),
+						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items').catch(() => ''),
 						isAvailable: false,
 					},
 				},

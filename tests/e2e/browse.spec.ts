@@ -113,7 +113,7 @@ test.describe('browse page', () => {
 
 		if (visible) {
 			await itemCard.click();
-			await page.waitForLoadState('networkidle');
+			await page.waitForURL(new RegExp(`/items/${item.id}`), { timeout: 10000 });
 			expect(page.url()).toContain(`/items/${item.id}`);
 		}
 

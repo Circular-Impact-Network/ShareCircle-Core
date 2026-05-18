@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 				...entry,
 				item: {
 					...entry.item,
-					imageUrl: await getSignedUrl(entry.item.imagePath, 'items'),
+					imageUrl: await getSignedUrl(entry.item.imagePath, 'items').catch(() => ''),
 				},
 			})),
 		);

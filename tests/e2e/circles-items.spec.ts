@@ -12,11 +12,12 @@ test.describe('circles and items', () => {
 		const circleName = `E2E Circle ${Date.now()}`;
 
 		await page.goto('/circles');
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: /Create Circle/i }).click();
 		await page.getByLabel('Circle Name').fill(circleName);
-		await page.getByRole('button', { name: 'Create Circle' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Create Circle' }).click();
 
-		const inviteCode = await page.locator('code').first().textContent();
+		const inviteCode = await page.locator('[role="dialog"] code').first().textContent({ timeout: 30000 });
 		expect(inviteCode).toBeTruthy();
 		await page.getByRole('button', { name: 'Done' }).click();
 		await expect(page.getByText(circleName).first()).toBeVisible();

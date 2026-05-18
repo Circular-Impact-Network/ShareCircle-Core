@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
 				...request,
 				item: {
 					...request.item,
-					imageUrl: await getSignedUrl(request.item.imagePath, 'items'),
+					imageUrl: await getSignedUrl(request.item.imagePath, 'items').catch(() => ''),
 				},
 			})),
 		);
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
 						...queueEntry,
 						item: {
 							...queueEntry.item,
-							imageUrl: await getSignedUrl(queueEntry.item.imagePath, 'items'),
+							imageUrl: await getSignedUrl(queueEntry.item.imagePath, 'items').catch(() => ''),
 						},
 					},
 				},
@@ -341,7 +341,7 @@ export async function POST(req: NextRequest) {
 					...borrowRequest,
 					item: {
 						...borrowRequest.item,
-						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items'),
+						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items').catch(() => ''),
 					},
 				},
 			},
