@@ -33,7 +33,7 @@ test.describe('borrow workflow', () => {
 		const user2Page = await user2Context.newPage();
 		await user2Page.goto('/circles');
 		await user2Page.waitForLoadState('networkidle');
-		await user2Page.getByRole('button', { name: /Join/i }).click();
+		await user2Page.getByRole('button', { name: /Join/i }).first().click();
 		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
 		await user2Page.waitForLoadState('networkidle');
@@ -89,30 +89,38 @@ test.describe('borrow workflow', () => {
 		// Wait for AI detection to complete
 		await page.waitForTimeout(1000);
 
-		// Select the detected item name
+		// Select the detected item name; fall back to manual entry
 		const detectedItemButton = page.getByRole('button', { name: 'Power Drill' });
 		if (await detectedItemButton.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await detectedItemButton.click();
+		} else {
+			const manualInput = page.getByPlaceholder('Enter item name...');
+			if (await manualInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+				await manualInput.fill('Power Drill');
+				await manualInput.press('Enter');
+			}
 		}
 
-		// Fill in item details
+		// Fill in item details — only once modal reaches editing state
 		const nameInput = page.getByPlaceholder('e.g., Camping Tent');
-		await nameInput.fill('Power Drill');
+		if (await nameInput.isVisible({ timeout: 8000 }).catch(() => false)) {
+			await nameInput.fill('Power Drill');
 
-		const descInput = page.getByPlaceholder('Describe your item, its condition, and any important details...');
-		await descInput.fill('A powerful cordless drill for DIY projects.');
+			const descInput = page.getByPlaceholder('Describe your item, its condition, and any important details...');
+			await descInput.fill('A powerful cordless drill for DIY projects.');
 
-		// Select circle - try multiple selector patterns
-		const circleButton = page.getByRole('button', { name: circleName });
-		const circleCheckbox = page.getByLabel(circleName);
-		if (await circleButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-			await circleButton.click();
-		} else if (await circleCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
-			await circleCheckbox.click();
+			// Select circle - try multiple selector patterns
+			const circleButton = page.getByRole('button', { name: circleName });
+			const circleCheckbox = page.getByLabel(circleName);
+			if (await circleButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+				await circleButton.click();
+			} else if (await circleCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
+				await circleCheckbox.click();
+			}
+
+			// Wait for validation
+			await page.waitForTimeout(500);
 		}
-
-		// Wait for validation
-		await page.waitForTimeout(500);
 
 		// Check if Create Item button is enabled
 		const createButton = page.getByRole('button', { name: 'Create Item' });

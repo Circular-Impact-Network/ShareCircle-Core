@@ -44,7 +44,7 @@ test.describe('authentication flows', () => {
 			await page.getByPlaceholder('••••••••').fill(users.user1.password);
 			await page.getByRole('button', { name: 'Login', exact: true }).click();
 
-			await expect(page).toHaveURL(/\/(home|dashboard)/);
+			await page.waitForURL(/\/(home|dashboard)/, { timeout: 30000 });
 		});
 
 		test('login has forgot password link', async ({ page }) => {

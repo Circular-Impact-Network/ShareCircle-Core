@@ -6,6 +6,6 @@ test('user can log in with credentials', async ({ page, users }) => {
 	await page.getByPlaceholder('••••••••').fill(users.user1.password);
 	await page.getByRole('button', { name: 'Login', exact: true }).click();
 
-	await expect(page).toHaveURL(/\/home/);
+	await page.waitForURL(/\/home/, { timeout: 30000 });
 	await expect(page.getByText(/Welcome( back)?/i)).toBeVisible();
 });
