@@ -276,7 +276,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					{
 						error: 'Listing does not match photo(s)',
 						code: 'ITEM_MISMATCH',
-						message: 'Your description does not match one or more photos. Please update the text or photos.',
+						message:
+							'Your description does not match one or more photos. Please update the text or photos.',
 						details: validation.failures.map(f => ({
 							imageLabel: f.imageLabel,
 							reason: f.reason,
