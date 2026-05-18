@@ -39,15 +39,12 @@ test.describe('authentication flows', () => {
 
 		test('login redirects to dashboard on success', async ({ page, users }) => {
 			await page.goto('/login');
-			await page.waitForLoadState('networkidle');
 
 			await page.getByPlaceholder('you@example.com').fill(users.user1.email);
 			await page.getByPlaceholder('••••••••').fill(users.user1.password);
 			await page.getByRole('button', { name: 'Login', exact: true }).click();
 
-			// Should redirect to home/dashboard on success
-			await page.waitForURL(/\/(home|dashboard)/, { timeout: 10000 });
-			expect(page.url()).not.toContain('/login');
+			await expect(page).toHaveURL(/\/(home|dashboard)/);
 		});
 
 		test('login has forgot password link', async ({ page }) => {

@@ -25,9 +25,11 @@ test.describe('circles and items', () => {
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 		const user2Page = await user2Context.newPage();
 		await user2Page.goto('/circles');
+		await user2Page.waitForLoadState('networkidle');
 		await user2Page.getByRole('button', { name: /Join/i }).click();
 		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
+		await user2Page.waitForLoadState('networkidle');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible();
 		await user2Context.close();
 
