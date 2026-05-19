@@ -175,8 +175,14 @@ test.describe('search functionality', () => {
 			await page.waitForTimeout(500);
 
 			// Should show items grid or empty state (items render in items-grid, not item-card)
-			const hasItems = await page.locator('[data-testid="items-grid"]').isVisible({ timeout: 3000 }).catch(() => false);
-			const hasEmptyState = await page.getByText(/No items yet|No matching items/i).isVisible({ timeout: 2000 }).catch(() => false);
+			const hasItems = await page
+				.locator('[data-testid="items-grid"]')
+				.isVisible({ timeout: 3000 })
+				.catch(() => false);
+			const hasEmptyState = await page
+				.getByText(/No items yet|No matching items/i)
+				.isVisible({ timeout: 2000 })
+				.catch(() => false);
 
 			expect(hasItems || hasEmptyState).toBeTruthy();
 		}
