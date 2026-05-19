@@ -51,13 +51,13 @@ test.describe('OTP email verification', () => {
 
 			await page.getByPlaceholder('John Doe').fill(`OTP Test User ${ts}`);
 			await page.getByPlaceholder('you@example.com').fill(email);
-			await page.getByPlaceholder('••••••••').fill(password);
+			await page.getByPlaceholder('••••••••').first().fill(password);
 
 			const confirmInput = page.getByPlaceholder(/confirm.*password/i);
 			const hasConfirm = await confirmInput.isVisible({ timeout: 2000 }).catch(() => false);
 			if (hasConfirm) await confirmInput.fill(password);
 
-			await page.getByRole('button', { name: /sign up|create account/i }).click();
+			await page.getByRole('button', { name: /^(sign up|create account)$/i }).click();
 			await page.waitForLoadState('domcontentloaded');
 			await page.waitForTimeout(1000);
 
