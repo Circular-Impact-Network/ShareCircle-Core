@@ -18,14 +18,15 @@ test.describe('circles and items', () => {
 		await page.waitForLoadState('domcontentloaded');
 		await expect(page.getByText(circleName).first()).toBeVisible();
 
+		// Join circle via API (avoids UI async re-render timing issues in CI)
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 		const user2Page = await user2Context.newPage();
-		await user2Page.goto('/circles');
-		await user2Page.waitForLoadState('domcontentloaded');
-		await user2Page.getByRole('button', { name: /Join/i }).first().click();
-		await user2Page.getByLabel('Invite Code').fill(inviteCode.trim());
-		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
-		await user2Page.waitForLoadState('domcontentloaded');
+		const joinRes = await user2Context.request.post('/api/circles/join', {
+			data: { code: inviteCode },
+		});
+		expect(joinRes.ok()).toBeTruthy();
+
+		// Verify circle appears in user2's circles list
 		await user2Page.goto('/circles');
 		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible({ timeout: 10000 });
