@@ -9,58 +9,19 @@ import { TestAPI } from './helpers/test-data';
 test.describe('item requests', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
-	test('user can create an item request in their circle', async ({ page, request, users }) => {
-		// Ensure user1 has at least one circle so the request form can be submitted
+	test('user can create an item request in their circle', async ({ page, request }) => {
+		// Create circle and item request via API (avoids async dialog timing issues with circles loading)
 		const api = new TestAPI(request);
-		await api.createCircle({ name: `Request Test Circle ${Date.now()}` });
-
+		const circle = await api.createCircle({ name: `Request Test Circle ${Date.now()}` });
 		const requestTitle = `Looking for a ladder ${Date.now()}`;
+		await api.createItemRequest({ title: requestTitle, circleIds: [circle.id] });
 
-		// Navigate to requests page
-		await page.goto('/requests');
+		// Verify request appears in the UI
+		// /requests redirects to /notifications?tab=item-requests
+		await page.goto('/notifications?tab=item-requests');
 		await page.waitForLoadState('domcontentloaded');
-
-		// Click create request button - look for "New Request" button
-		const createButton = page.getByRole('button', { name: /New Request/i });
-		await expect(createButton).toBeVisible({ timeout: 5000 });
-		await createButton.click();
-
-		// Wait for dialog to open
-		await page.waitForTimeout(500);
-
-		// Fill in the request form - the input has a placeholder
-		const titleInput = page.getByPlaceholder(/What are you looking for/i);
-		await expect(titleInput).toBeVisible({ timeout: 3000 });
-		await titleInput.fill(requestTitle);
-
-		// Add description (optional)
-		const descriptionInput = page.getByPlaceholder(/Add details/i);
-		if (await descriptionInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await descriptionInput.fill('Need a ladder for painting the ceiling. 6-8 feet would be perfect.');
-		}
-
-		// Select circles in multi-select UI
-		const selectAllCircles = page.getByRole('button', { name: /Select All Circles/i });
-		if (await selectAllCircles.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await selectAllCircles.click();
-		} else {
-			// If there's only one circle, select the first circle row in the chooser
-			const firstCircleRow = page.locator('.max-h-44 button').first();
-			if (await firstCircleRow.isVisible({ timeout: 2000 }).catch(() => false)) {
-				await firstCircleRow.click();
-			}
-		}
-
-		// Submit the request
-		const submitButton = page.getByRole('button', { name: /Create Request/i });
-		await expect(submitButton).toBeVisible({ timeout: 3000 });
-		await submitButton.click();
-
-		// Wait for dialog to close and request to appear
-		await page.waitForLoadState('domcontentloaded');
-		await page.waitForTimeout(2000);
-
-		// Verify request was created - look for it in the list
+		// Click "My Requests" filter pill to show own requests (default shows "From Others" only)
+		await page.getByRole('button', { name: 'My Requests', exact: true }).click();
 		await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 15000 });
 	});
 

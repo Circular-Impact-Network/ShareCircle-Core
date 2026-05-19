@@ -156,9 +156,9 @@ test.describe('item management', () => {
 			// Dialog should close and item should be removed from list
 			await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-			// Verify item is gone from UI
+			// Verify item is gone from UI (use count 0 to avoid strict mode violation when name appears in multiple elements)
 			await page.waitForTimeout(1000);
-			await expect(page.locator('text=' + item.name)).not.toBeVisible({ timeout: 5000 });
+			await expect(page.getByText(item.name)).toHaveCount(0, { timeout: 5000 });
 
 			// Verify item is gone from API
 			const afterResponse = await request.get(`/api/items/${item.id}`);

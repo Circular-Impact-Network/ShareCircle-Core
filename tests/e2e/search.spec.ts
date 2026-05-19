@@ -174,12 +174,9 @@ test.describe('search functionality', () => {
 			await searchInput.press('Enter');
 			await page.waitForTimeout(500);
 
-			// Should show all items again or empty state
-			const items = page.locator('[data-testid="item-card"]');
-			const emptyState = page.getByText(/No items|Browse/i);
-
-			const hasItems = (await items.count()) > 0;
-			const hasEmptyState = await emptyState.isVisible().catch(() => false);
+			// Should show items grid or empty state (items render in items-grid, not item-card)
+			const hasItems = await page.locator('[data-testid="items-grid"]').isVisible({ timeout: 3000 }).catch(() => false);
+			const hasEmptyState = await page.getByText(/No items yet|No matching items/i).isVisible({ timeout: 2000 }).catch(() => false);
 
 			expect(hasItems || hasEmptyState).toBeTruthy();
 		}
