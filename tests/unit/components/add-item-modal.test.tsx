@@ -36,7 +36,7 @@ vi.mock('@/lib/redux/api/itemsApi', () => ({
 	useCleanupImageMutation: () => [cleanupImageMock],
 }));
 
-vi.mock('@/hooks/use-toast', () => ({
+vi.mock('@/hooks/useToast', () => ({
 	useToast: () => ({ toast: vi.fn() }),
 }));
 

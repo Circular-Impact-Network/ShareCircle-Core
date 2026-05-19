@@ -104,7 +104,7 @@ test.describe('settings and profile', () => {
 		// Look for notification preferences section with the data-testid we added
 		const notificationPrefs = page.locator('[data-testid="notification-preferences"]');
 		const notificationToggle = page.locator('[data-testid="notification-toggle"]');
-		const notificationText = page.getByText(/Notifications/i);
+		const notificationText = page.getByText(/Notifications/i).first();
 
 		// At least one notification setting should exist
 		const hasNotifPrefs = await notificationPrefs.isVisible({ timeout: 3000 }).catch(() => false);

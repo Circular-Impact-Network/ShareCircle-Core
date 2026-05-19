@@ -3,8 +3,8 @@
 import { createContext, useContext, useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
-import { useToast } from '@/hooks/use-toast';
+import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { useToast } from '@/hooks/useToast';
 import { getBrowserPushPermission, isPushSupported, urlBase64ToUint8Array } from '@/lib/push-client';
 import { notificationsApi } from '@/lib/redux/api/notificationsApi';
 import { borrowApi } from '@/lib/redux/api/borrowApi';

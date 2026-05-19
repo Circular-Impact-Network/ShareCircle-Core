@@ -5,6 +5,10 @@ export interface UnreadCountResponse {
 	unreadCount: number;
 }
 
+export interface CreateThreadResponse {
+	id: string;
+}
+
 export const messagesApi = createApi({
 	reducerPath: 'messagesApi',
 	baseQuery: fetchBaseQuery({
@@ -22,6 +26,16 @@ export const messagesApi = createApi({
 			providesTags: ['UnreadCount'],
 		}),
 
+		// Get or create a direct message thread with another user
+		createThread: builder.mutation<CreateThreadResponse, { otherUserId: string }>({
+			query: body => ({
+				url: '/threads',
+				method: 'POST',
+				body,
+			}),
+			invalidatesTags: ['Threads'],
+		}),
+
 		// Get recent chat threads
 		getRecentThreads: builder.query<ChatThread[], { limit?: number } | void>({
 			query: params => {
@@ -37,4 +51,4 @@ export const messagesApi = createApi({
 	}),
 });
 
-export const { useGetUnreadMessageCountQuery, useGetRecentThreadsQuery } = messagesApi;
+export const { useGetUnreadMessageCountQuery, useGetRecentThreadsQuery, useCreateThreadMutation } = messagesApi;

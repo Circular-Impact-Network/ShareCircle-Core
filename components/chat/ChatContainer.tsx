@@ -320,18 +320,19 @@ export function ChatContainer({
 		[activeId, fetchThreads],
 	);
 
-	const handleRealtimeReceipt = useCallback((receipt: MessageReceipt) => {
+	const handleRealtimeReceipts = useCallback((incoming: MessageReceipt[]) => {
 		setMessages(prev =>
-			prev.map(message =>
-				message.id === receipt.messageId
-					? {
-							...message,
-							receipts: message.receipts.some(r => r.id === receipt.id)
-								? message.receipts.map(r => (r.id === receipt.id ? receipt : r))
-								: [...message.receipts, receipt],
-						}
-					: message,
-			),
+			prev.map(message => {
+				const updated = incoming.filter(r => r.messageId === message.id);
+				if (updated.length === 0) return message;
+				const merged = [...message.receipts];
+				for (const receipt of updated) {
+					const idx = merged.findIndex(r => r.id === receipt.id);
+					if (idx >= 0) merged[idx] = receipt;
+					else merged.push(receipt);
+				}
+				return { ...message, receipts: merged };
+			}),
 		);
 	}, []);
 
@@ -339,7 +340,7 @@ export function ChatContainer({
 		conversationId: activeId,
 		currentUserId: currentUser?.id || null,
 		onMessage: handleRealtimeMessage,
-		onReceipt: handleRealtimeReceipt,
+		onReceipts: handleRealtimeReceipts,
 	});
 
 	// Listen for new messages across ALL conversations (even when not viewing a specific chat)
@@ -383,10 +384,7 @@ export function ChatContainer({
 		onTogglePin: () => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt),
 		onToggleMute: () =>
 			activeThread &&
-			handleMute(
-				activeThread.id,
-				!(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date()),
-			),
+			handleMute(activeThread.id, !(activeThread.mutedUntil && new Date(activeThread.mutedUntil) > new Date())),
 		onToggleArchive: () => activeThread && handleArchive(activeThread.id, !activeThread.archivedAt),
 		onDelete: () => activeThread && handleDelete(activeThread.id),
 		onToggleSearch: handleToggleSearch,
@@ -457,35 +455,35 @@ export function ChatContainer({
 	// Desktop layout: PageShell + PageHeader + split-pane
 	return (
 		<>
-		<PageShell className="flex h-full max-w-none flex-col overflow-hidden">
-			<div className="flex-shrink-0">
-				<PageHeader title="Messages" description="Chat with people in your circles" />
-			</div>
-			<div
-				className={cn(
-					'flex flex-1 flex-col overflow-hidden md:flex-row',
-					'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
-				)}
-			>
-				{!hideList && (
-					<ChatList
-						threads={threads}
-						activeId={activeId}
-						searchValue={threadSearch}
-						onSearch={setThreadSearch}
-						onSelect={handleSelectThread}
-					/>
-				)}
+			<PageShell className="flex h-full max-w-none flex-col overflow-hidden">
+				<div className="flex-shrink-0">
+					<PageHeader title="Messages" description="Chat with people in your circles" />
+				</div>
+				<div
+					className={cn(
+						'flex flex-1 flex-col overflow-hidden md:flex-row',
+						'min-h-[72vh] rounded-2xl border border-border/70 bg-card/30 shadow-sm backdrop-blur',
+					)}
+				>
+					{!hideList && (
+						<ChatList
+							threads={threads}
+							activeId={activeId}
+							searchValue={threadSearch}
+							onSearch={setThreadSearch}
+							onSelect={handleSelectThread}
+						/>
+					)}
 
-				{showThreadPanel && (
-					<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
-						<ChatHeader {...chatHeaderProps} />
-						{threadContent}
-					</div>
-				)}
-			</div>
-		</PageShell>
-		<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
+					{showThreadPanel && (
+						<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
+							<ChatHeader {...chatHeaderProps} />
+							{threadContent}
+						</div>
+					)}
+				</div>
+			</PageShell>
+			<AddItemModal open={showAddItem} onOpenChange={setShowAddItem} />
 		</>
 	);
 }

@@ -1,9 +1,16 @@
+import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { JoinType, MemberRole } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
+import { z } from 'zod';
+
+const createCircleSchema = z.object({
+	name: z.string().trim().min(1, 'Circle name is required').max(100, 'Circle name must be less than 100 characters'),
+	description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullish(),
+});
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -12,7 +19,7 @@ function generateInviteCode(): string {
 	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding similar characters like 0/O, 1/I/L
 	let code = '';
 	for (let i = 0; i < 8; i++) {
-		code += chars.charAt(Math.floor(Math.random() * chars.length));
+		code += chars[randomInt(0, chars.length)];
 	}
 	return code;
 }
@@ -139,16 +146,14 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
-		const body = await req.json();
-		const { name, description } = body;
-
-		if (!name || typeof name !== 'string' || name.trim().length === 0) {
-			return NextResponse.json({ error: 'Circle name is required' }, { status: 400 });
+		const parsed = createCircleSchema.safeParse(await req.json());
+		if (!parsed.success) {
+			return NextResponse.json(
+				{ error: parsed.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
-
-		if (name.trim().length > 100) {
-			return NextResponse.json({ error: 'Circle name must be less than 100 characters' }, { status: 400 });
-		}
+		const { name, description } = parsed.data;
 
 		// Generate unique invite code
 		let inviteCode = generateInviteCode();
@@ -176,29 +181,45 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Create circle and add creator as ADMIN member in a transaction
-		const circle = await prisma.$transaction(async tx => {
-			const newCircle = await tx.circle.create({
-				data: {
-					name: name.trim(),
-					description: description?.trim() || null,
-					inviteCode,
-					inviteExpiresAt: getInviteExpiryDate(),
-					createdById: userId,
-				},
-			});
+		// Retry on P2028 (Prisma Accelerate transaction timeout under connection pool pressure)
+		let circle: Awaited<ReturnType<typeof prisma.circle.create>>;
+		let txAttempt = 0;
+		while (true) {
+			try {
+				circle = await prisma.$transaction(async tx => {
+					const newCircle = await tx.circle.create({
+						data: {
+							name: name.trim(),
+							description: description?.trim() || null,
+							inviteCode,
+							inviteExpiresAt: getInviteExpiryDate(),
+							createdById: userId,
+						},
+					});
 
-			// Add creator as ADMIN member
-			await tx.circleMember.create({
-				data: {
-					circleId: newCircle.id,
-					userId: userId,
-					role: MemberRole.ADMIN,
-					joinType: JoinType.CREATED,
-				},
-			});
+					// Add creator as ADMIN member
+					await tx.circleMember.create({
+						data: {
+							circleId: newCircle.id,
+							userId: userId,
+							role: MemberRole.ADMIN,
+							joinType: JoinType.CREATED,
+						},
+					});
 
-			return newCircle;
-		});
+					return newCircle;
+				});
+				break;
+			} catch (err) {
+				const code = (err as { code?: string })?.code;
+				if (code === 'P2028' && txAttempt < 2) {
+					txAttempt++;
+					await new Promise(r => setTimeout(r, 300 * txAttempt));
+					continue;
+				}
+				throw err;
+			}
+		}
 
 		// Fetch the complete circle data with creator info
 		const createdCircle = await prisma.circle.findUnique({

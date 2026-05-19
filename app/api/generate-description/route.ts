@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
 	try {
 		// Authentication check
@@ -32,9 +34,9 @@ export async function POST(request: Request) {
 
 		const { text } = await generateText({
 			model: google('gemini-2.5-flash'),
-			prompt: `Generate a compelling, brief product description (2-3 sentences) for a sharing/lending app for an item called "${itemTitle}".
-      Include practical information about the item that would help someone decide to borrow it.
-      Keep it concise and friendly. Do not include price information.`,
+			maxRetries: 2,
+			system: 'Generate compelling, brief product descriptions for a sharing/lending app. Keep responses 2-3 sentences, concise and friendly. Include practical information that helps someone decide to borrow the item. Do not include price information.',
+			prompt: `Item name: ${itemTitle}`,
 		});
 
 		return Response.json({ description: text });

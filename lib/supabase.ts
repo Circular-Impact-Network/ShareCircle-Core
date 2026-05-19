@@ -49,8 +49,20 @@ export const supabaseAdmin = new Proxy({} as SupabaseClient, {
  * @param userId - The user ID to organize files and enforce RLS
  * @returns The path of the uploaded file (used to generate signed URLs)
  */
+const MIME_TO_EXT: Record<string, string> = {
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/gif': 'gif',
+	'image/webp': 'webp',
+	'image/heic': 'heic',
+	'image/heif': 'heif',
+	'video/mp4': 'mp4',
+	'video/webm': 'webm',
+	'video/quicktime': 'mov',
+};
+
 export async function uploadImage(file: File, bucket: string = 'avatars', userId: string): Promise<string> {
-	const fileExt = file.name.split('.').pop();
+	const fileExt = MIME_TO_EXT[file.type] ?? 'bin';
 	const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
 	const admin = getSupabaseAdmin();
@@ -67,19 +79,27 @@ export async function uploadImage(file: File, bucket: string = 'avatars', userId
 	return data.path;
 }
 
+// Module-level URL cache keyed by "bucket:filePath".
+// On Vercel serverless each instance has its own cache, but this still eliminates
+// repeated calls within a single request (N+1 on item list pages).
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
 /**
- * Get a signed URL for a private image
- * Uses admin client (service role key) for server-side operations
- * @param filePath - The path of the file in storage
- * @param bucket - The storage bucket name
- * @param expiresIn - Expiration time in seconds (default: 1 year)
- * @returns The signed URL
+ * Get a signed URL for a private image.
+ * URLs are cached for (expiresIn - 300) seconds to reduce Supabase Storage API calls.
+ * Default expiry is 1 hour; callers should refresh on receiving a 403.
  */
 export async function getSignedUrl(
 	filePath: string,
 	bucket: string = 'avatars',
-	expiresIn: number = 31536000, // 1 year in seconds
+	expiresIn: number = 3600, // 1 hour
 ): Promise<string> {
+	const cacheKey = `${bucket}:${filePath}`;
+	const cached = signedUrlCache.get(cacheKey);
+	if (cached && Date.now() < cached.expiresAt) {
+		return cached.url;
+	}
+
 	const admin = getSupabaseAdmin();
 	const { data, error } = await admin.storage.from(bucket).createSignedUrl(filePath, expiresIn);
 
@@ -87,6 +107,8 @@ export async function getSignedUrl(
 		throw new Error(`Failed to generate signed URL: ${error.message}`);
 	}
 
+	// Cache with a 5-minute buffer before actual expiry
+	signedUrlCache.set(cacheKey, { url: data.signedUrl, expiresAt: Date.now() + (expiresIn - 300) * 1000 });
 	return data.signedUrl;
 }
 

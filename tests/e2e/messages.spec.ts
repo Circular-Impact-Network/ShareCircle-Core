@@ -32,7 +32,7 @@ test.describe('messages', () => {
 			await page.goto(`/messages/${thread.id}`);
 		}
 
-		await page.waitForLoadState('networkidle');
+		await page.waitForLoadState('domcontentloaded');
 
 		// Find the message input and send a message
 		const messageInput = page.getByPlaceholder(/Type a message|Write a message/i);

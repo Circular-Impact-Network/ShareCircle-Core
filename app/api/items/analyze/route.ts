@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { analyzeImage, validateItemInImage } from '@/lib/ai';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
+export const maxDuration = 60;
+
 // POST /api/items/analyze - Analyze an image using AI
 export async function POST(req: NextRequest) {
 	try {
@@ -25,6 +27,16 @@ export async function POST(req: NextRequest) {
 
 		if (!imageUrl || typeof imageUrl !== 'string') {
 			return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
+		}
+
+		// Validate imageUrl is from our Supabase storage to prevent SSRF
+		try {
+			const parsed = new URL(imageUrl);
+			if (!parsed.hostname.endsWith('.supabase.co')) {
+				return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+			}
+		} catch {
+			return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
 		}
 
 		// Validate that the user's description matches something in the image

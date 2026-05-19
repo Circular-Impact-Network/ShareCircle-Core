@@ -12,7 +12,7 @@ export default function Landing() {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
 					<Link href="/">
 						<Image
-							src="/share-circle-logo.png"
+							src="/logo_new_removeBg.png"
 							alt="ShareCircle"
 							width={160}
 							height={48}

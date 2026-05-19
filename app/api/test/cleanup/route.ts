@@ -19,13 +19,12 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'No emails provided' }, { status: 400 });
 		}
 
-		const result = await prisma.user.deleteMany({
-			where: {
-				email: { in: emails },
-			},
-		});
+		const [users] = await Promise.all([
+			prisma.user.deleteMany({ where: { email: { in: emails } } }),
+			prisma.testOtp.deleteMany({ where: { email: { in: emails } } }),
+		]);
 
-		return NextResponse.json({ deleted: result.count }, { status: 200 });
+		return NextResponse.json({ deleted: users.count }, { status: 200 });
 	} catch (error) {
 		console.error('Test cleanup error:', error);
 		return NextResponse.json({ error: 'Failed to cleanup test data' }, { status: 500 });

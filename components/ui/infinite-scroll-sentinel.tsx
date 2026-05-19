@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useInfiniteScroll } from '@/hooks/use-infinite-scroll';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { cn } from '@/lib/utils';
 
 type InfiniteScrollSentinelProps = {

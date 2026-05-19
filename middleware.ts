@@ -28,6 +28,7 @@ export async function middleware(request: NextRequest) {
 		/^\/notifications$/,
 		/^\/requests$/,
 		/^\/settings$/,
+		/^\/dashboard(\/.*)?$/,
 	];
 
 	// Check if current path is a protected route

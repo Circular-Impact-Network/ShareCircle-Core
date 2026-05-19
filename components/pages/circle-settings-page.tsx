@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
 	ArrowLeft,
@@ -26,34 +26,19 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageShell } from '@/components/ui/page';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { CircleDetailSkeleton } from '@/components/ui/skeletons';
-
-interface Member {
-	id: string;
-	userId: string;
-	name: string | null;
-	email: string | null;
-	image: string | null;
-	role: 'ADMIN' | 'MEMBER';
-	joinType: 'CREATED' | 'CODE' | 'LINK';
-	joinedAt: string;
-}
-
-interface Circle {
-	id: string;
-	name: string;
-	description: string | null;
-	avatarUrl: string | null;
-	inviteCode: string;
-	inviteExpiresAt: string;
-	createdAt: string;
-	updatedAt: string;
-	createdBy: { id: string; name: string | null; image: string | null; email: string | null };
-	membersCount: number;
-	userRole: 'ADMIN' | 'MEMBER';
-	members: Member[];
-}
+import {
+	useGetCircleQuery,
+	useUpdateCircleMutation,
+	useDeleteCircleMutation,
+	useAddMemberMutation,
+	useUpdateMemberRoleMutation,
+	useRemoveMemberMutation,
+	useUploadCircleAvatarMutation,
+	useRemoveCircleAvatarMutation,
+	type CircleMember,
+} from '@/lib/redux/api/circlesApi';
 
 interface CircleSettingsPageProps {
 	circleId: string;
@@ -68,61 +53,55 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 	const { toast } = useToast();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const [circle, setCircle] = useState<Circle | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const { data: circle, isLoading } = useGetCircleQuery(circleId);
+
+	useEffect(() => {
+		if (circle && circle.userRole !== 'ADMIN') {
+			router.push(`/circles/${circleId}`);
+		}
+	}, [circle, circleId, router]);
 
 	// General tab
 	const [name, setName] = useState('');
+	const [nameInitialized, setNameInitialized] = useState(false);
 	const [description, setDescription] = useState('');
-	const [isSaving, setIsSaving] = useState(false);
-	const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-	const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+	const [descInitialized, setDescInitialized] = useState(false);
 	const [generalError, setGeneralError] = useState('');
+
+	if (circle && !nameInitialized) {
+		setName(circle.name);
+		setNameInitialized(true);
+	}
+	if (circle && !descInitialized) {
+		setDescription(circle.description || '');
+		setDescInitialized(true);
+	}
 
 	// Members tab
 	const [memberSearch, setMemberSearch] = useState('');
 	const [addEmail, setAddEmail] = useState('');
-	const [isAddingMember, setIsAddingMember] = useState(false);
-	const [processingMemberId, setProcessingMemberId] = useState<string | null>(null);
 
 	// Danger zone
 	const [confirmDelete, setConfirmDelete] = useState('');
-	const [isDeleting, setIsDeleting] = useState(false);
 
-	const fetchCircle = useCallback(async () => {
-		try {
-			setIsLoading(true);
-			const res = await fetch(`/api/circles/${circleId}`);
-			if (!res.ok) {
-				if (res.status === 403) {
-					router.push('/circles');
-					return;
-				}
-				throw new Error('Failed to fetch circle');
-			}
-			const data: Circle = await res.json();
-			if (data.userRole !== 'ADMIN') {
-				router.push(`/circles/${circleId}`);
-				return;
-			}
-			setCircle(data);
-			setName(data.name);
-			setDescription(data.description || '');
-		} catch {
-			toast({ title: 'Failed to load circle', variant: 'destructive' });
-			router.push('/circles');
-		} finally {
-			setIsLoading(false);
-		}
-	}, [circleId, router, toast]);
+	const [processingMemberId, setProcessingMemberId] = useState<string | null>(null);
 
-	useEffect(() => {
-		fetchCircle();
-	}, [fetchCircle]);
+	const [updateCircle, { isLoading: isSaving }] = useUpdateCircleMutation();
+	const [deleteCircle, { isLoading: isDeleting }] = useDeleteCircleMutation();
+	const [addMember, { isLoading: isAddingMember }] = useAddMemberMutation();
+	const [updateMemberRole] = useUpdateMemberRoleMutation();
+	const [removeMember] = useRemoveMemberMutation();
+	const [uploadCircleAvatar, { isLoading: isUploadingAvatar }] = useUploadCircleAvatarMutation();
+	const [removeCircleAvatar, { isLoading: isRemovingAvatar }] = useRemoveCircleAvatarMutation();
 
 	const getInitials = (n: string | null) => {
 		if (!n) return '?';
-		return n.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
+		return n
+			.split(' ')
+			.map(p => p[0])
+			.join('')
+			.toUpperCase()
+			.slice(0, 2);
 	};
 
 	const formatDate = (d: string) =>
@@ -131,24 +110,24 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 	const hasGeneralChanges = circle ? name !== circle.name || description !== (circle.description || '') : false;
 
 	const handleSaveGeneral = async () => {
-		if (!circle || !name.trim()) { setGeneralError('Circle name is required'); return; }
-		if (name.trim().length > 100) { setGeneralError('Circle name must be less than 100 characters'); return; }
-		setIsSaving(true);
+		if (!circle || !name.trim()) {
+			setGeneralError('Circle name is required');
+			return;
+		}
+		if (name.trim().length > 100) {
+			setGeneralError('Circle name must be less than 100 characters');
+			return;
+		}
 		setGeneralError('');
 		try {
-			const res = await fetch(`/api/circles/${circle.id}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: name.trim(), description: description.trim() || null }),
-			});
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update circle'); }
-			const updated = await res.json();
-			setCircle(prev => prev ? { ...prev, name: updated.name, description: updated.description } : null);
+			await updateCircle({
+				id: circle.id,
+				name: name.trim(),
+				description: description.trim() || undefined,
+			}).unwrap();
 			toast({ title: 'Settings saved' });
 		} catch (err) {
-			setGeneralError(err instanceof Error ? err.message : 'Failed to update circle');
-		} finally {
-			setIsSaving(false);
+			setGeneralError((err as { data?: { error?: string } })?.data?.error || 'Failed to update circle');
 		}
 	};
 
@@ -157,98 +136,103 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 		const file = e.target.files?.[0];
 		if (!file) return;
 		if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-			toast({ title: 'Invalid file type', description: 'Please upload a JPEG, PNG, GIF, or WebP image.', variant: 'destructive' });
+			toast({
+				title: 'Invalid file type',
+				description: 'Please upload a JPEG, PNG, GIF, or WebP image.',
+				variant: 'destructive',
+			});
 			return;
 		}
 		if (file.size > 5 * 1024 * 1024) {
-			toast({ title: 'File too large', description: 'Please upload an image smaller than 5MB.', variant: 'destructive' });
+			toast({
+				title: 'File too large',
+				description: 'Please upload an image smaller than 5MB.',
+				variant: 'destructive',
+			});
 			return;
 		}
-		setIsUploadingAvatar(true);
 		try {
-			const formData = new FormData();
-			formData.append('file', file);
-			const res = await fetch(`/api/circles/${circle.id}/avatar`, { method: 'POST', body: formData });
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to upload avatar'); }
-			const data = await res.json();
-			setCircle(prev => prev ? { ...prev, avatarUrl: data.avatarUrl } : null);
+			await uploadCircleAvatar({ circleId: circle.id, file }).unwrap();
 			toast({ title: 'Avatar updated' });
 		} catch (err) {
-			toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Failed to upload avatar', variant: 'destructive' });
+			toast({
+				title: 'Upload failed',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to upload avatar',
+				variant: 'destructive',
+			});
 		} finally {
-			setIsUploadingAvatar(false);
 			if (fileInputRef.current) fileInputRef.current.value = '';
 		}
 	};
 
 	const handleRemoveAvatar = async () => {
 		if (!circle) return;
-		setIsRemovingAvatar(true);
 		try {
-			const res = await fetch(`/api/circles/${circle.id}/avatar`, { method: 'DELETE' });
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to remove avatar'); }
-			setCircle(prev => prev ? { ...prev, avatarUrl: null } : null);
+			await removeCircleAvatar(circle.id).unwrap();
 			toast({ title: 'Avatar removed' });
 		} catch (err) {
-			toast({ title: 'Failed to remove avatar', description: err instanceof Error ? err.message : 'Failed to remove avatar', variant: 'destructive' });
-		} finally {
-			setIsRemovingAvatar(false);
+			toast({
+				title: 'Failed to remove avatar',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to remove avatar',
+				variant: 'destructive',
+			});
 		}
 	};
 
 	const handleAddMember = async () => {
 		if (!circle || !addEmail.trim() || !addEmail.includes('@')) {
-			toast({ title: 'Invalid email', description: 'Please enter a valid email address.', variant: 'destructive' });
+			toast({
+				title: 'Invalid email',
+				description: 'Please enter a valid email address.',
+				variant: 'destructive',
+			});
 			return;
 		}
-		setIsAddingMember(true);
 		try {
-			const res = await fetch(`/api/circles/${circle.id}/members`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email: addEmail.trim() }),
-			});
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to add member'); }
-			const newMember: Member = await res.json();
-			setCircle(prev => prev ? { ...prev, members: [...prev.members, newMember], membersCount: prev.membersCount + 1 } : null);
+			const newMember = await addMember({ circleId: circle.id, email: addEmail.trim() }).unwrap();
 			setAddEmail('');
 			toast({ title: 'Member added', description: `${newMember.name || newMember.email} has been added.` });
 		} catch (err) {
-			toast({ title: 'Failed to add member', description: err instanceof Error ? err.message : 'Failed to add member', variant: 'destructive' });
-		} finally {
-			setIsAddingMember(false);
+			toast({
+				title: 'Failed to add member',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to add member',
+				variant: 'destructive',
+			});
 		}
 	};
 
-	const handleUpdateMemberRole = async (member: Member, newRole: 'ADMIN' | 'MEMBER') => {
+	const handleUpdateMemberRole = async (member: CircleMember, newRole: 'ADMIN' | 'MEMBER') => {
 		if (!circle) return;
 		setProcessingMemberId(member.userId);
 		try {
-			const res = await fetch(`/api/circles/${circle.id}/members/${member.userId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ role: newRole }),
+			await updateMemberRole({ circleId: circle.id, userId: member.userId, role: newRole }).unwrap();
+			toast({
+				title: 'Role updated',
+				description: `${member.name || 'Member'} is now ${newRole === 'ADMIN' ? 'an admin' : 'a member'}.`,
 			});
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update role'); }
-			setCircle(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === member.userId ? { ...m, role: newRole } : m) } : null);
-			toast({ title: 'Role updated', description: `${member.name || 'Member'} is now ${newRole === 'ADMIN' ? 'an admin' : 'a member'}.` });
 		} catch (err) {
-			toast({ title: 'Failed to update role', description: err instanceof Error ? err.message : 'Failed to update role', variant: 'destructive' });
+			toast({
+				title: 'Failed to update role',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to update role',
+				variant: 'destructive',
+			});
 		} finally {
 			setProcessingMemberId(null);
 		}
 	};
 
-	const handleRemoveMember = async (member: Member) => {
+	const handleRemoveMember = async (member: CircleMember) => {
 		if (!circle) return;
 		setProcessingMemberId(member.userId);
 		try {
-			const res = await fetch(`/api/circles/${circle.id}/members/${member.userId}`, { method: 'DELETE' });
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to remove member'); }
-			setCircle(prev => prev ? { ...prev, members: prev.members.filter(m => m.userId !== member.userId), membersCount: prev.membersCount - 1 } : null);
+			await removeMember({ circleId: circle.id, userId: member.userId }).unwrap();
 			toast({ title: 'Member removed', description: `${member.name || 'Member'} has been removed.` });
 		} catch (err) {
-			toast({ title: 'Failed to remove member', description: err instanceof Error ? err.message : 'Failed to remove member', variant: 'destructive' });
+			toast({
+				title: 'Failed to remove member',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to remove member',
+				variant: 'destructive',
+			});
 		} finally {
 			setProcessingMemberId(null);
 		}
@@ -256,27 +240,31 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 
 	const handleDeleteCircle = async () => {
 		if (!circle || confirmDelete !== circle.name) {
-			toast({ title: 'Confirmation required', description: 'Please type the circle name exactly.', variant: 'destructive' });
+			toast({
+				title: 'Confirmation required',
+				description: 'Please type the circle name exactly.',
+				variant: 'destructive',
+			});
 			return;
 		}
-		setIsDeleting(true);
 		try {
-			const res = await fetch(`/api/circles/${circle.id}`, { method: 'DELETE' });
-			if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to delete circle'); }
+			await deleteCircle(circle.id).unwrap();
 			toast({ title: 'Circle deleted' });
 			router.push('/circles');
 		} catch (err) {
-			toast({ title: 'Failed to delete circle', description: err instanceof Error ? err.message : 'Failed to delete circle', variant: 'destructive' });
-		} finally {
-			setIsDeleting(false);
+			toast({
+				title: 'Failed to delete circle',
+				description: (err as { data?: { error?: string } })?.data?.error || 'Failed to delete circle',
+				variant: 'destructive',
+			});
 		}
 	};
 
 	if (isLoading) return <CircleDetailSkeleton />;
 	if (!circle) return null;
 
-	const filteredMembers = circle.members.filter(
-		m =>
+	const filteredMembers = (circle.members ?? []).filter(
+		(m: CircleMember) =>
 			m.name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
 			m.email?.toLowerCase().includes(memberSearch.toLowerCase()),
 	);
@@ -303,7 +291,9 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 			<PageTabs defaultValue={initialTab}>
 				<PageTabsList className="w-full sm:w-auto">
 					<PageTabsTrigger value="general">General</PageTabsTrigger>
-					<PageTabsTrigger value="members" badge={circle.members.length}>Members</PageTabsTrigger>
+					<PageTabsTrigger value="members" badge={(circle.members ?? []).length}>
+						Members
+					</PageTabsTrigger>
 					<PageTabsTrigger value="danger">Danger</PageTabsTrigger>
 				</PageTabsList>
 
@@ -316,7 +306,11 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 							<div className="relative">
 								<div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-border/50 overflow-hidden flex items-center justify-center">
 									{circle.avatarUrl ? (
-										<img src={circle.avatarUrl} alt={circle.name} className="h-full w-full object-cover" />
+										<img
+											src={circle.avatarUrl}
+											alt={circle.name}
+											className="h-full w-full object-cover"
+										/>
 									) : (
 										<Users className="h-8 w-8 text-primary" />
 									)}
@@ -360,7 +354,9 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 								)}
 							</div>
 						</div>
-						<p className="text-xs text-muted-foreground">Recommended: square image, at least 200×200px. Max 5MB.</p>
+						<p className="text-xs text-muted-foreground">
+							Recommended: square image, at least 200×200px. Max 5MB.
+						</p>
 					</div>
 
 					<Separator />
@@ -374,7 +370,10 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 							<Input
 								id="circle-name"
 								value={name}
-								onChange={e => { setName(e.target.value); setGeneralError(''); }}
+								onChange={e => {
+									setName(e.target.value);
+									setGeneralError('');
+								}}
 								placeholder="Enter circle name"
 								maxLength={100}
 								disabled={isSaving}
@@ -388,7 +387,7 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 								id="circle-description"
 								value={description}
 								onChange={e => setDescription(e.target.value)}
-								placeholder="What&apos;s this circle about?"
+								placeholder="What's this circle about?"
 								rows={3}
 								className="resize-none"
 								disabled={isSaving}
@@ -405,7 +404,10 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 					<div className="flex justify-end">
 						<Button onClick={handleSaveGeneral} disabled={isSaving || !hasGeneralChanges || !name.trim()}>
 							{isSaving ? (
-								<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Saving…
+								</>
 							) : (
 								'Save Changes'
 							)}
@@ -428,7 +430,11 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 								type="email"
 							/>
 							<Button onClick={handleAddMember} disabled={isAddingMember || !addEmail.trim()}>
-								{isAddingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+								{isAddingMember ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<UserPlus className="h-4 w-4" />
+								)}
 							</Button>
 						</div>
 						<p className="text-xs text-muted-foreground">User must have an existing ShareCircle account.</p>
@@ -469,23 +475,40 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 								const isProcessing = processingMemberId === member.userId;
 
 								return (
-									<div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card">
+									<div
+										key={member.id}
+										className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card"
+									>
 										<Avatar className="h-10 w-10 flex-shrink-0">
 											<AvatarImage src={member.image || undefined} />
-											<AvatarFallback className="text-sm">{getInitials(member.name)}</AvatarFallback>
+											<AvatarFallback className="text-sm">
+												{getInitials(member.name)}
+											</AvatarFallback>
 										</Avatar>
 
 										<div className="flex-1 min-w-0">
 											<div className="flex items-center gap-2 flex-wrap">
-												<p className="font-medium text-sm truncate">{member.name || member.email || 'Unknown'}</p>
+												<p className="font-medium text-sm truncate">
+													{member.name || member.email || 'Unknown'}
+												</p>
 												{member.role === 'ADMIN' && (
-													<Badge variant="secondary" className="gap-1 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-														<Crown className="h-3 w-3" />Admin
+													<Badge
+														variant="secondary"
+														className="gap-1 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+													>
+														<Crown className="h-3 w-3" />
+														Admin
 													</Badge>
 												)}
-												{isCreator && <Badge variant="outline" className="text-xs">Creator</Badge>}
+												{isCreator && (
+													<Badge variant="outline" className="text-xs">
+														Creator
+													</Badge>
+												)}
 											</div>
-											<p className="text-xs text-muted-foreground">Joined {formatDate(member.joinedAt)}</p>
+											<p className="text-xs text-muted-foreground">
+												Joined {formatDate(member.joinedAt)}
+											</p>
 										</div>
 
 										{!isCreator && (
@@ -498,7 +521,14 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 														onClick={() => handleUpdateMemberRole(member, 'ADMIN')}
 														disabled={isProcessing}
 													>
-														{isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Crown className="h-3 w-3" /><span className="hidden sm:inline">Make Admin</span></>}
+														{isProcessing ? (
+															<Loader2 className="h-3 w-3 animate-spin" />
+														) : (
+															<>
+																<Crown className="h-3 w-3" />
+																<span className="hidden sm:inline">Make Admin</span>
+															</>
+														)}
 													</Button>
 												) : (
 													<Button
@@ -508,7 +538,14 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 														onClick={() => handleUpdateMemberRole(member, 'MEMBER')}
 														disabled={isProcessing}
 													>
-														{isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Shield className="h-3 w-3" /><span className="hidden sm:inline">Remove Admin</span></>}
+														{isProcessing ? (
+															<Loader2 className="h-3 w-3 animate-spin" />
+														) : (
+															<>
+																<Shield className="h-3 w-3" />
+																<span className="hidden sm:inline">Remove Admin</span>
+															</>
+														)}
 													</Button>
 												)}
 												<Button
@@ -518,7 +555,11 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 													onClick={() => handleRemoveMember(member)}
 													disabled={isProcessing}
 												>
-													{isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserMinus className="h-4 w-4" />}
+													{isProcessing ? (
+														<Loader2 className="h-3 w-3 animate-spin" />
+													) : (
+														<UserMinus className="h-4 w-4" />
+													)}
 												</Button>
 											</div>
 										)}
@@ -564,9 +605,15 @@ export function CircleSettingsPage({ circleId, defaultTab }: CircleSettingsPageP
 							disabled={isDeleting || confirmDelete !== circle.name}
 						>
 							{isDeleting ? (
-								<><Loader2 className="h-4 w-4 animate-spin" />Deleting…</>
+								<>
+									<Loader2 className="h-4 w-4 animate-spin" />
+									Deleting…
+								</>
 							) : (
-								<><Trash2 className="h-4 w-4" />Delete Circle Permanently</>
+								<>
+									<Trash2 className="h-4 w-4" />
+									Delete Circle Permanently
+								</>
 							)}
 						</Button>
 					</div>

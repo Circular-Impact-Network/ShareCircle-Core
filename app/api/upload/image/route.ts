@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 // Allowed storage buckets (attachments for chat, media for item video)
 const ALLOWED_BUCKETS = ['avatars', 'items', 'media', 'attachments'];
@@ -12,6 +13,12 @@ export async function POST(req: NextRequest) {
 
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const identifier = getClientIdentifier(req, session.user.id);
+		const rateLimitResult = checkRateLimit(identifier, 'upload-image', RATE_LIMITS.upload);
+		if (!rateLimitResult.success) {
+			return rateLimitResponse(rateLimitResult);
 		}
 
 		// Get bucket from query params (default to 'avatars')

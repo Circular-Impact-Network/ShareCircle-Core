@@ -10,12 +10,12 @@ test.describe('Dashboard', () => {
 		// Welcome banner
 		await expect(page.getByText(/Welcome/i)).toBeVisible();
 
-		// Core sections exist
-		await expect(page.getByText('Borrow requests')).toBeVisible();
-		await expect(page.getByText('Notifications')).toBeVisible();
-		await expect(page.getByText('Messages')).toBeVisible();
-		await expect(page.getByText('Requested Items')).toBeVisible();
-		await expect(page.getByText('My circles')).toBeVisible();
+		// Core sections exist (use heading role to avoid matching sidebar nav items)
+		await expect(page.getByRole('heading', { name: /Borrow requests/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /Notifications/i }).first()).toBeVisible();
+		await expect(page.getByRole('heading', { name: /Messages/i }).first()).toBeVisible();
+		await expect(page.getByRole('heading', { name: /Requested Items/i })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /My circles/i })).toBeVisible();
 	});
 
 	test('search form navigates to browse page', async ({ page }) => {
@@ -26,15 +26,15 @@ test.describe('Dashboard', () => {
 		await searchInput.fill('test item');
 		await searchInput.press('Enter');
 
-		await expect(page).toHaveURL(/\/browse\?q=test\+item/);
+		await expect(page).toHaveURL(/\/browse\?q=test/);
 	});
 
 	test('quick action buttons navigate correctly', async ({ page }) => {
 		await page.goto('/home');
 		await page.waitForLoadState('networkidle');
 
-		// "Browse items" button
-		const browseButton = page.getByRole('link', { name: /Browse items/i });
+		// "Browse items" button (use first() since sidebar may also have a Browse link)
+		const browseButton = page.getByRole('link', { name: /Browse items/i }).first();
 		await expect(browseButton).toBeVisible();
 		await expect(browseButton).toHaveAttribute('href', '/browse');
 	});

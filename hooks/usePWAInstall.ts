@@ -25,6 +25,7 @@ export function usePWAInstall() {
 			(navigator as { standalone?: boolean }).standalone === true;
 
 		if (isStandalone) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect
 			setInstallStatus('installed');
 		}
 

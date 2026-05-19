@@ -12,12 +12,12 @@ import type { ChatUser } from '@/components/chat/types';
 const mockChannel = vi.fn();
 const mockSend = vi.fn();
 const mockSubscribe = vi.fn();
-const mockUnsubscribe = vi.fn();
+const mockRemoveChannel = vi.fn();
 const mockOn = vi.fn();
 
 let broadcastHandlers: Record<string, (payload: { payload: unknown }) => void> = {};
 
-vi.mock('@/lib/supabaseClient', () => ({
+vi.mock('@/lib/supabaseBrowser', () => ({
 	createBrowserSupabaseClient: () => ({
 		channel: (name: string) => {
 			mockChannel(name);
@@ -32,9 +32,9 @@ vi.mock('@/lib/supabaseClient', () => ({
 				},
 				send: mockSend,
 				subscribe: mockSubscribe,
-				unsubscribe: mockUnsubscribe,
 			};
 		},
+		removeChannel: mockRemoveChannel,
 	}),
 }));
 
@@ -102,7 +102,7 @@ describe('useTypingIndicator Hook', () => {
 
 		unmount();
 
-		expect(mockUnsubscribe).toHaveBeenCalled();
+		expect(mockRemoveChannel).toHaveBeenCalled();
 	});
 
 	it('adds user to typingUserIds when typing broadcast received', async () => {
@@ -295,11 +295,11 @@ describe('useTypingIndicator Hook', () => {
 		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1');
 
 		mockChannel.mockClear();
-		mockUnsubscribe.mockClear();
+		mockRemoveChannel.mockClear();
 
 		rerender({ conversationId: 'conversation-2' });
 
-		expect(mockUnsubscribe).toHaveBeenCalled();
+		expect(mockRemoveChannel).toHaveBeenCalled();
 		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-2');
 	});
 });

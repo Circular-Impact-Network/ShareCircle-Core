@@ -3,7 +3,7 @@
  * Tests: password reset, email verification, signup flow, login failures
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('authentication flows', () => {
 	test.describe('login page', () => {
@@ -37,27 +37,27 @@ test.describe('authentication flows', () => {
 			expect(hasError || stillOnLogin).toBeTruthy();
 		});
 
-		test('login redirects to dashboard on success', async ({ page }) => {
-			// Skip this test if we don't have valid test credentials
-			// This test depends on global-setup creating test users
-			await page.goto('/login');
-			await page.waitForLoadState('networkidle');
+		test('login redirects to dashboard on success', async ({ page, users }) => {
+			// Call NextAuth credentials endpoint directly to bypass React form hydration issues in CI
+			const csrfRes = await page.request.get('/api/auth/csrf');
+			const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
 
-			// Fill in test user credentials (these are created by global-setup)
-			await page.getByPlaceholder('you@example.com').fill('e2euser1@test.local');
-			await page.getByPlaceholder('••••••••').fill('TestPassword123!');
-			await page.getByRole('button', { name: 'Login', exact: true }).click();
+			const loginRes = await page.request.post('/api/auth/callback/credentials', {
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				data: new URLSearchParams({
+					email: users.user1.email,
+					password: users.user1.password,
+					csrfToken,
+					callbackUrl: 'http://localhost:3003/home',
+					json: 'true',
+				}).toString(),
+			});
+			expect(loginRes.ok()).toBeTruthy();
+			const { error } = (await loginRes.json()) as { ok: boolean; error?: string };
+			expect(error).toBeFalsy();
 
-			// Wait for navigation or error
-			await page.waitForTimeout(3000);
-
-			// Either redirects to dashboard or shows error (if user doesn't exist)
-			const url = page.url();
-			const errorMessage = page.getByText(/invalid|error|incorrect/i);
-			const hasError = await errorMessage.isVisible({ timeout: 2000 }).catch(() => false);
-
-			// Test passes if redirected OR shows a proper error (both are valid behaviors)
-			expect(!url.includes('/login') || hasError).toBeTruthy();
+			await page.goto('/home');
+			await page.waitForURL(/\/(home|dashboard)/, { timeout: 10000 });
 		});
 
 		test('login has forgot password link', async ({ page }) => {
@@ -281,11 +281,11 @@ test.describe('authentication flows', () => {
 	});
 
 	test.describe('logout', () => {
-		test('logout clears session and redirects', async ({ page }) => {
+		test('logout clears session and redirects', async ({ page, users }) => {
 			// First login
 			await page.goto('/login');
-			await page.getByPlaceholder('you@example.com').fill('e2euser1@test.local');
-			await page.getByPlaceholder('••••••••').fill('TestPassword123!');
+			await page.getByPlaceholder('you@example.com').fill(users.user1.email);
+			await page.getByPlaceholder('••••••••').fill(users.user1.password);
 			await page.getByRole('button', { name: 'Login', exact: true }).click();
 
 			// Wait for login to complete

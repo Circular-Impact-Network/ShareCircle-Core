@@ -9,7 +9,8 @@ type SendOtpSmsInput = {
 };
 
 function canSkipSms(): boolean {
-	return process.env.SKIP_SMS === 'true' || process.env.E2E_AUTO_VERIFY === 'true';
+	const isTestAutoVerify = process.env.NODE_ENV !== 'production' && process.env.E2E_AUTO_VERIFY === 'true';
+	return process.env.SKIP_SMS === 'true' || isTestAutoVerify;
 }
 
 function getOtpSmsMessage(code: string, context: OtpSmsContext): string {

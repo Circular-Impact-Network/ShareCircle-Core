@@ -1,5 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 
+// Provide required env vars for unit tests
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ?? 'test-secret-for-unit-tests';
+
 Object.defineProperty(window, 'matchMedia', {
 	writable: true,
 	value: (query: string) => ({

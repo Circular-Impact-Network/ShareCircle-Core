@@ -32,8 +32,7 @@ import { prisma } from '@/lib/prisma';
 import { deleteImage } from '@/lib/supabase';
 import { DELETE } from '@/app/api/items/[id]/route';
 
-const makeRequest = (id: string) =>
-	new NextRequest(`http://localhost/api/items/${id}`, { method: 'DELETE' });
+const makeRequest = (id: string) => new NextRequest(`http://localhost/api/items/${id}`, { method: 'DELETE' });
 
 const makeParams = (id: string) => Promise.resolve({ id });
 

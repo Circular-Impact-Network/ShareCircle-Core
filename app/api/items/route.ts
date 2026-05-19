@@ -1,10 +1,37 @@
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
+import { z } from 'zod';
+
+const isSupabaseUrl = (url: string) => {
+	try {
+		return new URL(url).hostname.endsWith('.supabase.co');
+	} catch {
+		return false;
+	}
+};
+
+const createItemSchema = z.object({
+	name: z.string().trim().min(1, 'Item name is required').max(200, 'Item name must be 200 characters or fewer'),
+	description: z.string().trim().max(2000, 'Description must be 2000 characters or fewer').nullish(),
+	imagePath: z.string().min(1, 'Image path is required'),
+	imageUrl: z.string().refine(isSupabaseUrl, 'Invalid image URL').optional(),
+	categories: z.array(z.string()).max(10, 'Maximum 10 categories allowed').optional().default([]),
+	tags: z.array(z.string()).max(10, 'Maximum 10 tags allowed').optional().default([]),
+	circleIds: z.array(z.string()).min(1, 'At least one circle must be selected'),
+	mediaPaths: z.array(z.string()).optional().default([]),
+	estimatedWeightKg: z.number().positive().nullish(),
+	estimatedNewPriceUsd: z.number().positive().nullish(),
+	isValueVisible: z.boolean().optional().default(true),
+});
+
+export const maxDuration = 60;
 
 // List and create items with mediaPaths and signed media URLs
 
@@ -55,18 +82,7 @@ export async function GET(req: NextRequest) {
 		const cursor = req.nextUrl.searchParams.get('cursor');
 		const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10) || 24), 100) : null;
 
-		// Get circles the user is a member of
-		const userCircles = await prisma.circleMember.findMany({
-			where: {
-				userId,
-				leftAt: null,
-			},
-			select: {
-				circleId: true,
-			},
-		});
-
-		const userCircleIds = userCircles.map(m => m.circleId);
+		const userCircleIds = await getUserCircleIds(userId);
 
 		// If circleId is specified, verify user is a member
 		if (circleId && !userCircleIds.includes(circleId)) {
@@ -225,32 +241,31 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
-		const body = await req.json();
-		const { name, description, imagePath, imageUrl, categories, tags, circleIds, mediaPaths, estimatedWeightKg, estimatedNewPriceUsd } = body;
-
-		// Validate required fields
-		if (!name || typeof name !== 'string' || name.trim().length === 0) {
-			return NextResponse.json({ error: 'Item name is required' }, { status: 400 });
+		const parsed = createItemSchema.safeParse(await req.json());
+		if (!parsed.success) {
+			return NextResponse.json(
+				{ error: parsed.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
-
-		if (!imagePath || typeof imagePath !== 'string') {
-			return NextResponse.json({ error: 'Image path is required' }, { status: 400 });
-		}
-
-		if (!circleIds || !Array.isArray(circleIds) || circleIds.length === 0) {
-			return NextResponse.json({ error: 'At least one circle must be selected' }, { status: 400 });
-		}
+		const {
+			name,
+			description,
+			imagePath,
+			imageUrl,
+			categories,
+			tags,
+			circleIds,
+			mediaPaths,
+			estimatedWeightKg,
+			estimatedNewPriceUsd,
+			isValueVisible,
+		} = parsed.data;
 
 		// Verify user is a member of all specified circles
 		const userCircles = await prisma.circleMember.findMany({
-			where: {
-				userId,
-				circleId: { in: circleIds },
-				leftAt: null,
-			},
-			select: {
-				circleId: true,
-			},
+			where: { userId, circleId: { in: circleIds }, leftAt: null },
+			select: { circleId: true },
 		});
 
 		const validCircleIds = userCircles.map(m => m.circleId);
@@ -262,10 +277,10 @@ export async function POST(req: NextRequest) {
 
 		// Validate listing (name must match image) against main image and supporting media
 		const imageEntries: { url: string; label: string }[] = [];
-		if (imageUrl && typeof imageUrl === 'string') {
+		if (imageUrl) {
 			imageEntries.push({ url: imageUrl, label: 'Main image' });
 		}
-		const mediaPathsList = Array.isArray(mediaPaths) ? mediaPaths : [];
+		const mediaPathsList = mediaPaths;
 		for (let i = 0; i < mediaPathsList.length; i++) {
 			try {
 				const url = await getSignedUrl(mediaPathsList[i], 'media');
@@ -312,6 +327,7 @@ export async function POST(req: NextRequest) {
 					ownerId: userId,
 					estimatedWeightKg: estimatedWeightKg ?? null,
 					estimatedNewPriceUsd: estimatedNewPriceUsd ?? null,
+					isValueVisible: isValueVisible ?? false,
 				},
 				include: {
 					owner: {
@@ -336,24 +352,35 @@ export async function POST(req: NextRequest) {
 		});
 
 		// Generate signed URL for the response
-		const signedImageUrl = await getSignedUrl(item.imagePath, 'items');
+		let signedImageUrl = '';
+		try {
+			signedImageUrl = await getSignedUrl(item.imagePath, 'items');
+		} catch (err) {
+			console.error(`Failed to get signed URL for new item ${item.id}:`, err);
+		}
 
-		// Fire-and-forget: Generate multimodal embedding in the background (NON-BLOCKING)
-		// This allows the response to return immediately while embedding is generated
-		// Embedding combines the main image + text metadata (name, description, categories, tags)
+		// Generate embedding after response — after() guarantees execution on Vercel serverless
 		if (imageUrl) {
-			generateAndStoreEmbedding(item.id, imageUrl, {
-				name: item.name,
-				description: item.description,
-				categories: categories || [],
-				tags: tags || [],
-			}).catch(err => console.error('Background embedding generation failed:', err));
+			const capturedItem = item;
+			after(() => {
+				generateAndStoreEmbedding(capturedItem.id, imageUrl, {
+					name: capturedItem.name,
+					description: capturedItem.description,
+					categories: categories || [],
+					tags: tags || [],
+				}).catch(err => console.error('Background embedding generation failed:', err));
+			});
 		}
 
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([
 			signedImageUrl, // Main image is first
-			...(item.mediaPaths || []).map(path => getSignedUrl(path, 'media')),
+			...(item.mediaPaths || []).map(path =>
+				getSignedUrl(path, 'media').catch(err => {
+					console.error(`Failed to get media URL for item ${item.id}:`, err);
+					return '';
+				}),
+			),
 		]);
 
 		return NextResponse.json(

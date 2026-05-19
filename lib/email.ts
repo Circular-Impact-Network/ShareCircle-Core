@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { IrisMail } from 'irismail/server';
 import type { OtpPurpose } from './otp';
 
@@ -58,8 +59,8 @@ function wrapEmailHtml(title: string, preview: string, content: string) {
 let mailInstance: InstanceType<typeof IrisMail> | null = null;
 
 function getMail(): InstanceType<typeof IrisMail> | null {
-	// Skip email sending during E2E tests
-	if (process.env.E2E_AUTO_VERIFY === 'true' || process.env.SKIP_EMAIL === 'true') {
+	const isTest = process.env.NODE_ENV !== 'production' && process.env.E2E_AUTO_VERIFY === 'true';
+	if (isTest || process.env.SKIP_EMAIL === 'true') {
 		return null;
 	}
 	if (mailInstance) return mailInstance;
@@ -125,11 +126,7 @@ export async function sendOTPEmail(to: string, otp: string, purpose: OtpPurpose)
 
 	const client = getMail();
 	if (!client) {
-		if (process.env.E2E_AUTO_VERIFY === 'true') {
-			console.log(`[E2E Test Mode] Skipping OTP email to ${to} (OTP: ${otp})`);
-		} else {
-			console.warn('Email sending disabled - GMAIL_USER/GMAIL_APP_PASSWORD not set or SKIP_EMAIL=true');
-		}
+		console.log(`[Dev/Test] Skipping OTP email to ${to} (OTP: ${otp})`);
 		return;
 	}
 	await client.sendMail({
@@ -181,11 +178,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
 
 	const client = getMail();
 	if (!client) {
-		if (process.env.E2E_AUTO_VERIFY === 'true') {
-			console.log(`[E2E Test Mode] Skipping password reset email to ${to} (token: ${resetToken})`);
-		} else {
-			console.warn('Email sending disabled - GMAIL_USER/GMAIL_APP_PASSWORD not set or SKIP_EMAIL=true');
-		}
+		console.log(`[Dev/Test] Skipping password reset email to ${to}`);
 		return;
 	}
 	await client.sendMail({
@@ -201,7 +194,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
  * @returns 6-digit string
  */
 export function generateOTP(): string {
-	return Math.floor(100000 + Math.random() * 900000).toString();
+	return randomInt(100000, 1000000).toString();
 }
 
 /**

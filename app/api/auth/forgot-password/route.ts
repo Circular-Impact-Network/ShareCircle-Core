@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
 import { generateResetToken, sendPasswordResetEmail } from '@/lib/email';
@@ -51,8 +52,9 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ message: successMessage }, { status: 200 });
 		}
 
-		// Generate reset token
+		// Generate reset token — store hashed, send plaintext in email
 		const resetToken = generateResetToken();
+		const hashedToken = createHash('sha256').update(resetToken).digest('hex');
 		const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
 		// Delete any existing reset tokens for this email
@@ -62,16 +64,16 @@ export async function POST(req: NextRequest) {
 			},
 		});
 
-		// Store reset token
+		// Store hashed token only — plaintext never touches the DB
 		await prisma.verificationToken.create({
 			data: {
 				identifier: `reset:${normalizedEmail}`,
-				token: resetToken,
+				token: hashedToken,
 				expires: tokenExpiry,
 			},
 		});
 
-		// Send password reset email
+		// Send password reset email with plaintext token (used in the URL)
 		try {
 			await sendPasswordResetEmail(normalizedEmail, resetToken);
 		} catch (emailError) {

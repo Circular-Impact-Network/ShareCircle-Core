@@ -10,8 +10,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 
 const MONTHS = [
-	'January', 'February', 'March', 'April', 'May', 'June',
-	'July', 'August', 'September', 'October', 'November', 'December',
+	'January',
+	'February',
+	'March',
+	'April',
+	'May',
+	'June',
+	'July',
+	'August',
+	'September',
+	'October',
+	'November',
+	'December',
 ];
 
 function MonthYearCaption({ calendarMonth }: MonthCaptionProps) {
@@ -21,7 +31,7 @@ function MonthYearCaption({ calendarMonth }: MonthCaptionProps) {
 	const currentYear = date.getFullYear();
 
 	const startYear = dayPickerProps.startMonth?.getFullYear() ?? 1900;
-	const endYear = dayPickerProps.endMonth?.getFullYear() ?? (new Date().getFullYear() + 5);
+	const endYear = dayPickerProps.endMonth?.getFullYear() ?? new Date().getFullYear() + 5;
 	const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 
 	return (
@@ -43,7 +53,9 @@ function MonthYearCaption({ calendarMonth }: MonthCaptionProps) {
 					className="appearance-none bg-transparent cursor-pointer outline-none hover:text-primary transition-colors"
 				>
 					{MONTHS.map((m, i) => (
-						<option key={i} value={i}>{m}</option>
+						<option key={i} value={i}>
+							{m}
+						</option>
 					))}
 				</select>
 				<select
@@ -52,7 +64,9 @@ function MonthYearCaption({ calendarMonth }: MonthCaptionProps) {
 					className="appearance-none bg-transparent cursor-pointer outline-none hover:text-primary transition-colors"
 				>
 					{years.map(y => (
-						<option key={y} value={y}>{y}</option>
+						<option key={y} value={y}>
+							{y}
+						</option>
 					))}
 				</select>
 			</div>

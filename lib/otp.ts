@@ -8,7 +8,11 @@ export type OtpPurpose =
 	| 'phone_login'
 	| 'phone_update';
 
-const OTP_SECRET = process.env.NEXTAUTH_SECRET || 'sharecircle-otp';
+const getOtpSecret = () => {
+	const secret = process.env.NEXTAUTH_SECRET;
+	if (!secret) throw new Error('NEXTAUTH_SECRET is required');
+	return secret;
+};
 
 export function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
@@ -33,7 +37,7 @@ export function getOtpIdentifier(target: string, purpose: OtpPurpose): string {
 
 export function hashOtp(otp: string, target: string, purpose: OtpPurpose): string {
 	const normalizedTarget = isPhonePurpose(purpose) ? normalizePhoneE164(target) : normalizeEmail(target);
-	const value = `${otp}:${normalizedTarget}:${purpose}:${OTP_SECRET}`;
+	const value = `${otp}:${normalizedTarget}:${purpose}:${getOtpSecret()}`;
 	return crypto.createHash('sha256').update(value).digest('hex');
 }
 

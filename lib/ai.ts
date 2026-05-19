@@ -67,6 +67,7 @@ export type ItemValidation = z.infer<typeof itemValidationSchema>;
 export async function validateItemInImage(imageUrl: string, userDescription: string): Promise<ItemValidation> {
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
+		maxRetries: 2,
 		schema: itemValidationSchema,
 		messages: [
 			{
@@ -139,6 +140,7 @@ async function validateListingMatchInImage(imageUrl: string, listing: ListingFie
 
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
+		maxRetries: 2,
 		schema: itemValidationSchema,
 		messages: [
 			{
@@ -188,12 +190,27 @@ export async function validateListingAgainstImages(
 	imageEntries: { url: string; label: string }[],
 	listing: ListingFields,
 ): Promise<ValidateListingResult> {
-	const failures: ValidateListingFailure[] = [];
+	// Run all image validations in parallel — each is an independent Gemini call
+	const results = await Promise.allSettled(
+		imageEntries.map(({ url, label }, i) =>
+			validateListingMatchInImage(url, listing).then(validation => ({ i, label, validation })),
+		),
+	);
 
-	for (let i = 0; i < imageEntries.length; i++) {
-		const { url, label } = imageEntries[i];
-		try {
-			const validation = await validateListingMatchInImage(url, listing);
+	const failures: ValidateListingFailure[] = [];
+	for (const result of results) {
+		if (result.status === 'rejected') {
+			const err = result.reason;
+			failures.push({
+				imageIndex: -1,
+				imageLabel: 'Unknown',
+				reason:
+					err instanceof Error
+						? err.message
+						: 'Could not validate this media (may be video or unsupported format).',
+			});
+		} else {
+			const { i, label, validation } = result.value;
 			if (!validation.isValid) {
 				failures.push({
 					imageIndex: i,
@@ -202,15 +219,6 @@ export async function validateListingAgainstImages(
 					detectedItems: validation.detectedItems,
 				});
 			}
-		} catch (err) {
-			failures.push({
-				imageIndex: i,
-				imageLabel: label,
-				reason:
-					err instanceof Error
-						? err.message
-						: 'Could not validate this media (may be video or unsupported format).',
-			});
 		}
 	}
 
@@ -283,6 +291,7 @@ Focus on items that match "${options.userHint}" and prioritize accuracy based on
 
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
+		maxRetries: 2,
 		schema: itemAnalysisSchema,
 		messages: [
 			{
@@ -310,6 +319,7 @@ Focus on items that match "${options.userHint}" and prioritize accuracy based on
 export async function detectItems(imageUrl: string): Promise<ItemDetection> {
 	const result = await generateObject({
 		model: google('gemini-2.5-flash'),
+		maxRetries: 2,
 		schema: itemDetectionSchema,
 		messages: [
 			{
@@ -350,10 +360,8 @@ If no shareable items are visible, return an empty array.`,
 
 import { VoyageAIClient } from 'voyageai';
 
-// Initialize Voyage AI client
-const voyageClient = new VoyageAIClient({
-	apiKey: process.env.VOYAGE_API_KEY,
-});
+let _voyageClient: VoyageAIClient | null = null;
+const getVoyageClient = () => (_voyageClient ??= new VoyageAIClient({ apiKey: process.env.VOYAGE_API_KEY }));
 
 /**
  * Build an enriched text string from item metadata for embedding generation.
@@ -386,7 +394,7 @@ export function buildEnrichedText(metadata: {
  */
 export async function generateDocumentEmbedding(imageUrl: string, text: string): Promise<number[]> {
 	try {
-		const result = await voyageClient.multimodalEmbed({
+		const result = await getVoyageClient().multimodalEmbed({
 			inputs: [
 				{
 					content: [
@@ -418,7 +426,7 @@ export async function generateDocumentEmbedding(imageUrl: string, text: string):
  */
 export async function generateImageEmbedding(imageUrl: string): Promise<number[]> {
 	try {
-		const result = await voyageClient.multimodalEmbed({
+		const result = await getVoyageClient().multimodalEmbed({
 			inputs: [
 				{
 					content: [{ type: 'image_url', imageUrl: imageUrl }],
@@ -446,7 +454,7 @@ export async function generateImageEmbedding(imageUrl: string): Promise<number[]
  */
 export async function generateTextEmbedding(text: string): Promise<number[]> {
 	try {
-		const result = await voyageClient.multimodalEmbed({
+		const result = await getVoyageClient().multimodalEmbed({
 			inputs: [
 				{
 					content: [{ type: 'text', text }],
@@ -477,7 +485,7 @@ export async function generateTextEmbedding(text: string): Promise<number[]> {
  */
 export async function generateMultimodalEmbedding(imageUrl: string, text: string): Promise<number[]> {
 	try {
-		const result = await voyageClient.multimodalEmbed({
+		const result = await getVoyageClient().multimodalEmbed({
 			inputs: [
 				{
 					content: [
