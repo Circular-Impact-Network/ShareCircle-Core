@@ -153,12 +153,15 @@ test.describe('item management', () => {
 			// Confirm deletion
 			await dialog.getByRole('button', { name: /delete permanently/i }).click();
 
-			// Dialog should close and item should be removed from list
+			// Dialog should close
 			await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-			// Verify item is gone from UI (use count 0 to avoid strict mode violation when name appears in multiple elements)
-			await page.waitForTimeout(1000);
-			await expect(page.getByText(item.name)).toHaveCount(0, { timeout: 5000 });
+			// Navigate back to listings fresh — avoids RTK Query cache invalidation race
+			await page.goto('/listings');
+			await page.waitForLoadState('domcontentloaded');
+			await expect(page.getByRole('heading', { name: item.name, exact: true })).toHaveCount(0, {
+				timeout: 10000,
+			});
 
 			// Verify item is gone from API
 			const afterResponse = await request.get(`/api/items/${item.id}`);

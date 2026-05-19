@@ -19,7 +19,8 @@ test.describe('item requests', () => {
 		// Verify request appears in the UI
 		// /requests redirects to /notifications?tab=item-requests
 		await page.goto('/notifications?tab=item-requests');
-		await page.waitForLoadState('domcontentloaded');
+		// Wait for filter buttons to be visible (confirms React hydrated) before clicking
+		await expect(page.getByRole('button', { name: 'From Others', exact: true })).toBeVisible({ timeout: 15000 });
 		// Click "My Requests" filter pill to show own requests (default shows "From Others" only)
 		await page.getByRole('button', { name: 'My Requests', exact: true }).click();
 		await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 15000 });
