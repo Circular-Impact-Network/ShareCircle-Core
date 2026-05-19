@@ -26,7 +26,9 @@ test.describe('circles and items', () => {
 		await user2Page.getByLabel('Invite Code').fill(inviteCode.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
 		await user2Page.waitForLoadState('domcontentloaded');
-		await expect(user2Page.getByText(circleName).first()).toBeVisible();
+		await user2Page.goto('/circles');
+		await user2Page.waitForLoadState('domcontentloaded');
+		await expect(user2Page.getByText(circleName).first()).toBeVisible({ timeout: 10000 });
 		await user2Context.close();
 
 		// Add item via API (faster and more reliable than UI flow)

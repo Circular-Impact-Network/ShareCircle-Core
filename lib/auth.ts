@@ -93,11 +93,16 @@ export const authOptions: NextAuthOptions = {
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
 					const normalizedEmail = normalizeEmail(credentials.email);
-					const user = await prisma.user.findUnique({
-						where: {
-							email: normalizedEmail,
-						},
-					});
+					let user = null;
+					for (let attempt = 0; attempt < 3; attempt++) {
+						try {
+							user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+							break;
+						} catch (err) {
+							if (attempt === 2) throw err;
+							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+						}
+					}
 
 					if (!user || !user.hashed_password) {
 						return null;
@@ -255,7 +260,13 @@ export const authOptions: NextAuthOptions = {
 						}
 					}
 				}
-				token.emailVerified = dbUser?.emailVerified || null;
+				if (dbUser !== null) {
+					token.emailVerified = dbUser.emailVerified;
+				} else if (trigger === 'signIn') {
+					// authorize() already verified email — don't null it out if DB is transiently unreachable
+					token.emailVerified = (token.emailVerified as Date | null) ?? new Date();
+				}
+				// else: leave token.emailVerified unchanged (don't null out a cached value)
 			}
 
 			return token;
