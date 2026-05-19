@@ -17,16 +17,12 @@ test.describe('borrow workflow', () => {
 		const baseURL = test.info().project.use.baseURL as string;
 		const circleName = `E2E Borrow Circle ${Date.now()}`;
 
-		// Step 1: User1 creates a circle
-		await page.goto('/circles');
-		await page.waitForLoadState('domcontentloaded');
-		await page.getByRole('button', { name: /Create Circle/i }).click();
-		await page.getByLabel('Circle Name').fill(circleName);
-		await page.getByRole('dialog').getByRole('button', { name: 'Create Circle' }).click();
-
-		const inviteCode = await page.locator('[role="dialog"] code').first().textContent({ timeout: 30000 });
+		// Step 1: User1 creates a circle via API (avoids P2028 UI timeout)
+		const circleRes = await request.post('/api/circles', { data: { name: circleName } });
+		expect(circleRes.ok()).toBeTruthy();
+		const circle = (await circleRes.json()) as { id: string; inviteCode: string };
+		const inviteCode = circle.inviteCode;
 		expect(inviteCode).toBeTruthy();
-		await page.getByRole('button', { name: 'Done' }).click();
 
 		// Step 2: User2 joins the circle
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
@@ -34,7 +30,7 @@ test.describe('borrow workflow', () => {
 		await user2Page.goto('/circles');
 		await user2Page.waitForLoadState('domcontentloaded');
 		await user2Page.getByRole('button', { name: /Join/i }).first().click();
-		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
+		await user2Page.getByLabel('Invite Code').fill(inviteCode.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
 		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible();

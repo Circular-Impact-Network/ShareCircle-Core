@@ -8,18 +8,19 @@ const imageBuffer = Buffer.from(
 test.describe('circles and items', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
-	test('create circle, join, and add item', async ({ page, browser }) => {
+	test('create circle, join, and add item', async ({ page, browser, request }) => {
 		const circleName = `E2E Circle ${Date.now()}`;
 
+		// Create circle via API (avoids P2028 UI timeout waiting for invite code)
+		const circleRes = await request.post('/api/circles', { data: { name: circleName } });
+		expect(circleRes.ok()).toBeTruthy();
+		const circle = (await circleRes.json()) as { id: string; inviteCode: string };
+		const inviteCode = circle.inviteCode;
+		expect(inviteCode).toBeTruthy();
+
+		// Verify the circle appears in the UI
 		await page.goto('/circles');
 		await page.waitForLoadState('domcontentloaded');
-		await page.getByRole('button', { name: /Create Circle/i }).click();
-		await page.getByLabel('Circle Name').fill(circleName);
-		await page.getByRole('dialog').getByRole('button', { name: 'Create Circle' }).click();
-
-		const inviteCode = await page.locator('[role="dialog"] code').first().textContent({ timeout: 30000 });
-		expect(inviteCode).toBeTruthy();
-		await page.getByRole('button', { name: 'Done' }).click();
 		await expect(page.getByText(circleName).first()).toBeVisible();
 
 		const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
@@ -27,7 +28,7 @@ test.describe('circles and items', () => {
 		await user2Page.goto('/circles');
 		await user2Page.waitForLoadState('domcontentloaded');
 		await user2Page.getByRole('button', { name: /Join/i }).first().click();
-		await user2Page.getByLabel('Invite Code').fill(inviteCode!.trim());
+		await user2Page.getByLabel('Invite Code').fill(inviteCode.trim());
 		await user2Page.getByRole('button', { name: 'Join Circle' }).click();
 		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible();

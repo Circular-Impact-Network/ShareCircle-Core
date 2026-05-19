@@ -131,21 +131,13 @@ test.describe('item management', () => {
 			await page.goto('/listings');
 			await page.waitForLoadState('networkidle');
 
-			// Find the item's delete button and click it
-			const deleteButton = page
-				.locator('[data-testid="item-card"]')
-				.filter({ hasText: item.name })
-				.getByRole('button', { name: /delete/i })
-				.first();
-
-			// If specific testid not found, look for any delete button near item name text
-			const itemCard = page.locator('text=' + item.name).first();
-			if (await itemCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-				// Find the delete button in the actions area (3 levels up = CardContent)
-				const cardContainer = itemCard.locator('..').locator('..').locator('..');
-				await cardContainer.getByRole('button', { name: /delete/i }).click();
-			} else if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-				await deleteButton.click();
+			// Find the item's heading in the card, go up to CardContent, then find Delete button
+			// h3 → div.flex → div.space-y-2 → CardContent (which also contains the action buttons)
+			const itemHeading = page.getByRole('heading', { name: item.name }).first();
+			const isHeadingVisible = await itemHeading.isVisible({ timeout: 5000 }).catch(() => false);
+			if (isHeadingVisible) {
+				const cardContent = itemHeading.locator('..').locator('..').locator('..');
+				await cardContent.getByRole('button', { name: /^Delete$/i }).click();
 			} else {
 				// Clean up and skip if item not visible in UI (e.g. no signed URL)
 				await api.deleteItem(item.id);

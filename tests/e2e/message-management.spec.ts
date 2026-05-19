@@ -202,7 +202,11 @@ test.describe('message management', () => {
 			expect(response.ok()).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
-			// Navigate directly to thread
+			// Navigate to messages list first to establish browser history
+			await page.goto('/messages');
+			await page.waitForLoadState('domcontentloaded');
+
+			// Then navigate to thread (so browser back goes to /messages)
 			await page.goto(`/messages/${thread.id}`);
 			await page.waitForLoadState('domcontentloaded');
 

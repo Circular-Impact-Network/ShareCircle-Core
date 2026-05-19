@@ -301,6 +301,7 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 				/>
 				<Button
 					size="icon"
+					aria-label="Send"
 					className="h-9 w-9 rounded-xl"
 					onClick={handleSendClick}
 					disabled={disabled || isUploading || (!value.trim() && attachments.length === 0)}

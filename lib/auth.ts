@@ -236,12 +236,25 @@ export const authOptions: NextAuthOptions = {
 				token.image = user.image;
 			}
 
-			// Fetch emailVerified status from database on sign-in and update
+			// Fetch emailVerified from DB on sign-in, update, or when not yet cached in token
 			if (trigger === 'signIn' || trigger === 'update' || !token.emailVerified) {
-				const dbUser = await prisma.user.findUnique({
-					where: { id: token.id as string },
-					select: { emailVerified: true },
-				});
+				// Retry up to 3 times to handle transient Prisma Accelerate connection errors
+				let dbUser: { emailVerified: Date | null } | null = null;
+				for (let attempt = 0; attempt < 3; attempt++) {
+					try {
+						dbUser = await prisma.user.findUnique({
+							where: { id: token.id as string },
+							select: { emailVerified: true },
+						});
+						break;
+					} catch (err) {
+						if (attempt === 2) {
+							console.error('JWT callback: failed to fetch emailVerified after retries:', err);
+						} else {
+							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+						}
+					}
+				}
 				token.emailVerified = dbUser?.emailVerified || null;
 			}
 

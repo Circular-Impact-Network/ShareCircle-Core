@@ -181,29 +181,45 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Create circle and add creator as ADMIN member in a transaction
-		const circle = await prisma.$transaction(async tx => {
-			const newCircle = await tx.circle.create({
-				data: {
-					name: name.trim(),
-					description: description?.trim() || null,
-					inviteCode,
-					inviteExpiresAt: getInviteExpiryDate(),
-					createdById: userId,
-				},
-			});
+		// Retry on P2028 (Prisma Accelerate transaction timeout under connection pool pressure)
+		let circle: Awaited<ReturnType<typeof prisma.circle.create>>;
+		let txAttempt = 0;
+		while (true) {
+			try {
+				circle = await prisma.$transaction(async tx => {
+					const newCircle = await tx.circle.create({
+						data: {
+							name: name.trim(),
+							description: description?.trim() || null,
+							inviteCode,
+							inviteExpiresAt: getInviteExpiryDate(),
+							createdById: userId,
+						},
+					});
 
-			// Add creator as ADMIN member
-			await tx.circleMember.create({
-				data: {
-					circleId: newCircle.id,
-					userId: userId,
-					role: MemberRole.ADMIN,
-					joinType: JoinType.CREATED,
-				},
-			});
+					// Add creator as ADMIN member
+					await tx.circleMember.create({
+						data: {
+							circleId: newCircle.id,
+							userId: userId,
+							role: MemberRole.ADMIN,
+							joinType: JoinType.CREATED,
+						},
+					});
 
-			return newCircle;
-		});
+					return newCircle;
+				});
+				break;
+			} catch (err) {
+				const code = (err as { code?: string })?.code;
+				if (code === 'P2028' && txAttempt < 2) {
+					txAttempt++;
+					await new Promise(r => setTimeout(r, 300 * txAttempt));
+					continue;
+				}
+				throw err;
+			}
+		}
 
 		// Fetch the complete circle data with creator info
 		const createdCircle = await prisma.circle.findUnique({

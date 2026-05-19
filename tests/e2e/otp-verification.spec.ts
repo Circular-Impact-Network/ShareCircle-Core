@@ -49,7 +49,7 @@ test.describe('OTP email verification', () => {
 			await page.goto('/signup');
 			await page.waitForLoadState('domcontentloaded');
 
-			await page.getByPlaceholder(/name/i).fill(`OTP Test User ${ts}`);
+			await page.getByPlaceholder('John Doe').fill(`OTP Test User ${ts}`);
 			await page.getByPlaceholder('you@example.com').fill(email);
 			await page.getByPlaceholder('••••••••').fill(password);
 
