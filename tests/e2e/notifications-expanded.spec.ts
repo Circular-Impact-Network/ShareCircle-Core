@@ -9,7 +9,7 @@ test.describe('Notifications page', () => {
 
 		await expect(page.getByRole('tab', { name: /Alerts/i })).toBeVisible();
 		await expect(page.getByRole('tab', { name: /Borrow Requests/i })).toBeVisible();
-		await expect(page.getByRole('tab', { name: /Item Requests/i })).toBeVisible();
+		await expect(page.getByRole('tab', { name: /Requested Items/i })).toBeVisible();
 	});
 
 	test('switches between tabs via URL', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Notifications page', () => {
 
 		// The "Mark all read" button should be visible (or the page shows empty state)
 		const markAllButton = page.getByRole('button', { name: /Mark all read/i });
-		const emptyState = page.getByText(/No notifications/i);
+		const emptyState = page.getByText(/No alerts yet/i);
 
 		const eitherVisible = await Promise.race([
 			markAllButton.waitFor({ state: 'visible', timeout: 3000 }).then(() => 'button'),
@@ -52,7 +52,7 @@ test.describe('Notifications page', () => {
 		await page.goto('/notifications?tab=item-requests');
 		await page.waitForLoadState('networkidle');
 
-		const createButton = page.getByRole('button', { name: /Create Request/i });
+		const createButton = page.getByRole('button', { name: /New.*Request|Request/i }).first();
 		await expect(createButton).toBeVisible();
 	});
 });

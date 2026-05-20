@@ -8,7 +8,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { MAX_MEDIA_ATTACHMENTS, getUploadValidationError, prepareImageForUpload } from '@/lib/media';
@@ -301,6 +301,7 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 				/>
 				<Button
 					size="icon"
+					aria-label="Send"
 					className="h-9 w-9 rounded-xl"
 					onClick={handleSendClick}
 					disabled={disabled || isUploading || (!value.trim() && attachments.length === 0)}

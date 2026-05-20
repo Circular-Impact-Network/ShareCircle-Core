@@ -32,9 +32,9 @@ import {
 	BorrowQueueEntry,
 	FullTransaction,
 } from '@/lib/redux/api/borrowApi';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 type TabType = 'active' | 'pending' | 'queue' | 'history';
 

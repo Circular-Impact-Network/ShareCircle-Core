@@ -4,6 +4,18 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
+import { z } from 'zod';
+
+const updateCircleSchema = z.object({
+	name: z
+		.string()
+		.trim()
+		.min(1, 'Invalid circle name')
+		.max(100, 'Circle name must be less than 100 characters')
+		.optional(),
+	description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullish(),
+	avatarUrl: z.string().url('Invalid avatar URL').nullish(),
+});
 
 // GET /api/circles/[id] - Get circle details with members
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -119,8 +131,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		const { id } = await params;
 		const userId = session.user.id;
-		const body = await req.json();
-		const { name, description, avatarUrl } = body;
+		const parsedBody = updateCircleSchema.safeParse(await req.json());
+		if (!parsedBody.success) {
+			return NextResponse.json(
+				{ error: parsedBody.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
+		}
+		const { name, description, avatarUrl } = parsedBody.data;
 
 		// Check if user is an admin of this circle
 		const membership = await prisma.circleMember.findUnique({
@@ -134,15 +152,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 		if (!membership || membership.leftAt || membership.role !== MemberRole.ADMIN) {
 			return NextResponse.json({ error: 'Only admins can update circle details' }, { status: 403 });
-		}
-
-		// Validate input
-		if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
-			return NextResponse.json({ error: 'Invalid circle name' }, { status: 400 });
-		}
-
-		if (name && name.trim().length > 100) {
-			return NextResponse.json({ error: 'Circle name must be less than 100 characters' }, { status: 400 });
 		}
 
 		const updatedCircle = await prisma.circle.update({

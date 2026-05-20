@@ -179,8 +179,9 @@ function LoginContent() {
 			setIsLoading(false);
 
 			// Redirect to callbackUrl if present, otherwise dashboard
-			router.push(callbackUrl);
-			router.refresh();
+			// Use location.href for a full reload so the session cookie is
+			// picked up immediately by the middleware without a race condition.
+			window.location.href = callbackUrl;
 		} catch {
 			setError('Login failed. Please try again.');
 			setIsLoading(false);
@@ -340,8 +341,7 @@ function LoginContent() {
 				window.localStorage.setItem('sc:lastLoginMethod', loginMethod === 'email' ? 'email_otp' : 'phone_otp');
 				setLastLoginMethod(loginMethod === 'email' ? 'email_otp' : 'phone_otp');
 			}
-			router.push(callbackUrl);
-			router.refresh();
+			window.location.href = callbackUrl;
 		} catch {
 			setError('Login failed. Please try again.');
 			setIsOtpVerifying(false);

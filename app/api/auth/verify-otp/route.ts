@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { generateResetToken } from '@/lib/email';
@@ -36,10 +37,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const expected = hashOtp(code, normalizedEmail, otpPurpose);
-		const matches =
-			verificationToken.token.length <= 8
-				? verificationToken.token === code
-				: timingSafeEqualHex(verificationToken.token, expected);
+		const matches = timingSafeEqualHex(verificationToken.token, expected);
 		if (!matches) {
 			return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
 		}
@@ -90,16 +88,18 @@ export async function POST(req: NextRequest) {
 
 		if (otpPurpose === 'password_reset') {
 			const resetToken = generateResetToken();
+			const hashedToken = createHash('sha256').update(resetToken).digest('hex');
 			const tokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
 			await prisma.verificationToken.deleteMany({
 				where: { identifier: `reset:${normalizedEmail}` },
 			});
 
+			// Store hashed token — plaintext is returned to client for use in the reset URL
 			await prisma.verificationToken.create({
 				data: {
 					identifier: `reset:${normalizedEmail}`,
-					token: resetToken,
+					token: hashedToken,
 					expires: tokenExpiry,
 				},
 			});

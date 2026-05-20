@@ -10,7 +10,7 @@ import { useGetAllItemsQuery } from '@/lib/redux/api/itemsApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 export function AllListingsPage() {
 	const router = useRouter();

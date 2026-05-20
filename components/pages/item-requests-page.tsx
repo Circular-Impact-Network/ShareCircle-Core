@@ -30,10 +30,10 @@ import {
 } from '@/lib/redux/api/borrowApi';
 
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 type TabType = 'all' | 'mine';
 
@@ -74,9 +74,7 @@ function RequestCard({
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2 mb-1">
 							<p className="text-sm font-medium">{request.title}</p>
-							{!isOpen && (
-								<Badge variant={isFulfilled ? 'secondary' : 'outline'}>{request.status}</Badge>
-							)}
+							{!isOpen && <Badge variant={isFulfilled ? 'secondary' : 'outline'}>{request.status}</Badge>}
 						</div>
 						{request.description && (
 							<p className="text-sm text-muted-foreground line-clamp-2 mb-2">{request.description}</p>

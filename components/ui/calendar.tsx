@@ -47,7 +47,10 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
 					'[&:has([aria-selected].outside)]:bg-accent/50',
 					'[&:has([aria-selected].range_end)]:rounded-r-md',
 				),
-				day_button: cn(buttonVariants({ variant: 'ghost' }), 'size-8 p-0 font-normal aria-selected:opacity-100'),
+				day_button: cn(
+					buttonVariants({ variant: 'ghost' }),
+					'size-8 p-0 font-normal aria-selected:opacity-100',
+				),
 				// Day state modifiers — v9 SelectionState + DayFlag keys
 				selected:
 					'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',

@@ -41,7 +41,10 @@ export function PageTabsTrigger({ className, children, badge, ...props }: PageTa
 			<span className="inline-flex min-w-0 items-center gap-1.5">
 				{children}
 				{badge === undefined || badge === null ? null : (
-					<Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px] sm:h-5 sm:min-w-[20px] sm:px-1.5 sm:text-[11px]">
+					<Badge
+						variant="secondary"
+						className="h-4 min-w-[16px] px-1 text-[10px] sm:h-5 sm:min-w-[20px] sm:px-1.5 sm:text-[11px]"
+					>
 						{badge}
 					</Badge>
 				)}

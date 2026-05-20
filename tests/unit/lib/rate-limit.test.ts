@@ -103,7 +103,7 @@ describe('Rate Limiting', () => {
 			expect(identifier).toBe('user:user-123');
 		});
 
-		it('falls back to x-forwarded-for header', () => {
+		it('falls back to x-forwarded-for header (uses rightmost IP to prevent spoofing)', () => {
 			const request = new Request('https://example.com/api/test', {
 				headers: {
 					'x-forwarded-for': '192.168.1.1, 10.0.0.1',
@@ -111,7 +111,7 @@ describe('Rate Limiting', () => {
 			});
 
 			const identifier = getClientIdentifier(request);
-			expect(identifier).toBe('ip:192.168.1.1');
+			expect(identifier).toBe('ip:10.0.0.1');
 		});
 
 		it('falls back to x-real-ip header', () => {

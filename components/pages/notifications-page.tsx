@@ -52,8 +52,8 @@ import {
 	useRespondToItemRequestMutation,
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
-import { useToast } from '@/hooks/use-toast';
-import { useProgressivePagination } from '@/hooks/use-progressive-pagination';
+import { useToast } from '@/hooks/useToast';
+import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { AlertCard } from '@/components/cards/alert-card';
 import { BorrowRequestCard } from '@/components/cards/borrow-request-card';
@@ -448,104 +448,100 @@ export function NotificationsPage() {
 										<span className="hidden sm:inline">New </span>Request
 									</Button>
 								</DialogTrigger>
-										<DialogContent>
-											<DialogHeader>
-												<DialogTitle>Request an Item</DialogTitle>
-												<DialogDescription>
-													Let your circles know what you&apos;re looking for
-												</DialogDescription>
-											</DialogHeader>
-											<div className="space-y-4 py-4">
-												<Input
-													placeholder="What are you looking for?"
-													value={requestTitle}
-													onChange={e => setRequestTitle(e.target.value)}
-												/>
-												<Textarea
-													placeholder="Add details (optional)"
-													value={requestDescription}
-													onChange={e => setRequestDescription(e.target.value)}
-													rows={3}
-												/>
-												<div className="space-y-2">
-													<p className="text-sm text-muted-foreground">
-														Share this request with circles *
-													</p>
-													{circles.length > 1 && (
-														<Button
-															variant="outline"
-															type="button"
-															onClick={toggleSelectAllCircles}
-														>
-															{allCirclesSelected
-																? 'Deselect All Circles'
-																: 'Select All Circles'}
-														</Button>
-													)}
-													<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
-														{circles.map(circle => {
-															const isSelected = requestCircleIds.includes(circle.id);
-															return (
-																<button
-																	key={circle.id}
-																	type="button"
-																	onClick={() => toggleCircleSelection(circle.id)}
-																	className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
-																		isSelected ? 'bg-primary/10' : 'hover:bg-muted'
-																	}`}
-																>
-																	<div
-																		className={`h-4 w-4 rounded border flex items-center justify-center ${
-																			isSelected
-																				? 'border-primary bg-primary text-primary-foreground'
-																				: 'border-muted-foreground'
-																		}`}
-																	>
-																		{isSelected && <Check className="h-3 w-3" />}
-																	</div>
-																	<span>{circle.name}</span>
-																</button>
-															);
-														})}
-													</div>
-												</div>
-											</div>
-											<DialogFooter>
-												<Button variant="outline" onClick={() => setShowCreateModal(false)}>
-													Cancel
-												</Button>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Request an Item</DialogTitle>
+										<DialogDescription>
+											Let your circles know what you&apos;re looking for
+										</DialogDescription>
+									</DialogHeader>
+									<div className="space-y-4 py-4">
+										<Input
+											placeholder="What are you looking for?"
+											value={requestTitle}
+											onChange={e => setRequestTitle(e.target.value)}
+										/>
+										<Textarea
+											placeholder="Add details (optional)"
+											value={requestDescription}
+											onChange={e => setRequestDescription(e.target.value)}
+											rows={3}
+										/>
+										<div className="space-y-2">
+											<p className="text-sm text-muted-foreground">
+												Share this request with circles *
+											</p>
+											{circles.length > 1 && (
 												<Button
-													onClick={handleCreate}
-													disabled={
-														isCreating ||
-														!requestTitle.trim() ||
-														requestCircleIds.length === 0
-													}
+													variant="outline"
+													type="button"
+													onClick={toggleSelectAllCircles}
 												>
-													{isCreating ? (
-														<Loader2 className="h-4 w-4 animate-spin mr-2" />
-													) : (
-														<Send className="h-4 w-4 mr-2" />
-													)}
-													Create Request
+													{allCirclesSelected ? 'Deselect All Circles' : 'Select All Circles'}
 												</Button>
-											</DialogFooter>
-										</DialogContent>
-									</Dialog>
-							</div>
-						)}
-						{activeTab === 'alerts' && alerts.length > 0 && (
-							<div className="flex justify-end gap-2">
-								<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-									<CheckCheck className="h-4 w-4" />
-									<span className="ml-1 hidden sm:inline">Mark all read</span>
-								</Button>
-								<Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClearAll}>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</div>
-						)}
-					</PageStickyHeader>
+											)}
+											<div className="app-scrollbar app-scrollbar-thin flex max-h-44 flex-col gap-2 overflow-auto rounded-md border p-2">
+												{circles.map(circle => {
+													const isSelected = requestCircleIds.includes(circle.id);
+													return (
+														<button
+															key={circle.id}
+															type="button"
+															onClick={() => toggleCircleSelection(circle.id)}
+															className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+																isSelected ? 'bg-primary/10' : 'hover:bg-muted'
+															}`}
+														>
+															<div
+																className={`h-4 w-4 rounded border flex items-center justify-center ${
+																	isSelected
+																		? 'border-primary bg-primary text-primary-foreground'
+																		: 'border-muted-foreground'
+																}`}
+															>
+																{isSelected && <Check className="h-3 w-3" />}
+															</div>
+															<span>{circle.name}</span>
+														</button>
+													);
+												})}
+											</div>
+										</div>
+									</div>
+									<DialogFooter>
+										<Button variant="outline" onClick={() => setShowCreateModal(false)}>
+											Cancel
+										</Button>
+										<Button
+											onClick={handleCreate}
+											disabled={
+												isCreating || !requestTitle.trim() || requestCircleIds.length === 0
+											}
+										>
+											{isCreating ? (
+												<Loader2 className="h-4 w-4 animate-spin mr-2" />
+											) : (
+												<Send className="h-4 w-4 mr-2" />
+											)}
+											Create Request
+										</Button>
+									</DialogFooter>
+								</DialogContent>
+							</Dialog>
+						</div>
+					)}
+					{activeTab === 'alerts' && alerts.length > 0 && (
+						<div className="flex justify-end gap-2">
+							<Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+								<CheckCheck className="h-4 w-4" />
+								<span className="ml-1 hidden sm:inline">Mark all read</span>
+							</Button>
+							<Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClearAll}>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</div>
+					)}
+				</PageStickyHeader>
 
 				{/* Alerts Tab */}
 				<PageTabsContent value="alerts" className="space-y-3">

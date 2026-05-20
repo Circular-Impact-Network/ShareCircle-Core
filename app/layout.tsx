@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 import { ThemeProvider } from './providers';
+import { PWAInstallGuard } from '@/components/providers/pwa-install-guard';
 import { Plus_Jakarta_Sans, Poppins } from 'next/font/google';
 
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' });
@@ -53,7 +54,7 @@ export const metadata: Metadata = {
 			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
 		images: [
 			{
-				url: '/share-circle-logo.png',
+				url: '/logo_new.png',
 				width: 1200,
 				height: 630,
 				alt: 'ShareCircle - Community Item Sharing',
@@ -65,7 +66,7 @@ export const metadata: Metadata = {
 		title: 'ShareCircle - Share Items with Your Community',
 		description:
 			'Share, lend, and borrow items with trusted circles. Build community, save money, and reduce waste.',
-		images: ['/share-circle-logo.png'],
+		images: ['/logo_new.png'],
 		creator: '@sharecircle',
 	},
 	robots: {
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		<html lang="en" suppressHydrationWarning>
 			<body className={`${plusJakartaSans.variable} ${poppins.variable} font-sans`}>
 				<ThemeProvider>{children}</ThemeProvider>
+				<PWAInstallGuard />
 			</body>
 		</html>
 	);

@@ -17,7 +17,7 @@ export default function AuthSplitLayout({ leftTitle, leftDescription, rightHeade
 				<div className="max-w-md">
 					<div className="flex items-center gap-3 mb-8">
 						<Image
-							src="/share-circle-logo.png"
+							src="/logo_new_removeBg.png"
 							alt="ShareCircle"
 							width={200}
 							height={80}
@@ -34,7 +34,7 @@ export default function AuthSplitLayout({ leftTitle, leftDescription, rightHeade
 				<div className="w-full max-w-md">
 					<div className="lg:hidden flex justify-center mb-6">
 						<Image
-							src="/share-circle-logo.png"
+							src="/logo_new_removeBg.png"
 							alt="ShareCircle"
 							width={160}
 							height={48}

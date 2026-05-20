@@ -34,9 +34,7 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 			{/* Thread list */}
 			<div className="app-scrollbar flex-1 overflow-auto bg-muted/20 pb-bottom-nav md:pb-0">
 				{threads.length === 0 ? (
-					<div className="px-4 py-12 text-center text-sm text-muted-foreground">
-						No conversations yet.
-					</div>
+					<div className="px-4 py-12 text-center text-sm text-muted-foreground">No conversations yet.</div>
 				) : (
 					threads.map(thread => {
 						const otherUser = thread.participants[0];
@@ -62,7 +60,10 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 								{/* Avatar with online-like size */}
 								<div className="relative shrink-0">
 									<Avatar className="h-12 w-12">
-										<AvatarImage src={otherUser?.image || undefined} alt={otherUser?.name || 'User'} />
+										<AvatarImage
+											src={otherUser?.image || undefined}
+											alt={otherUser?.name || 'User'}
+										/>
 										<AvatarFallback className="bg-primary text-primary-foreground font-medium">
 											{otherUser?.name?.[0]?.toUpperCase() || '?'}
 										</AvatarFallback>
@@ -77,20 +78,43 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 								{/* Content */}
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center justify-between gap-2">
-										<p className={cn('truncate text-sm', hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90')}>
-											{otherUser?.name ?? <span className="inline-block h-4 w-24 animate-pulse rounded bg-muted" />}
+										<p
+											className={cn(
+												'truncate text-sm',
+												hasUnread
+													? 'font-semibold text-foreground'
+													: 'font-medium text-foreground/90',
+											)}
+										>
+											{otherUser?.name ?? (
+												<span className="inline-block h-4 w-24 animate-pulse rounded bg-muted" />
+											)}
 										</p>
 										<div className="flex shrink-0 items-center gap-1.5">
 											{isMuted && <BellOff className="h-3 w-3 text-muted-foreground/60" />}
 											{thread.lastMessageAt && (
-												<span className={cn('text-[11px]', hasUnread ? 'font-medium text-primary' : 'text-muted-foreground')}>
-													{formatDistanceToNow(new Date(thread.lastMessageAt), { addSuffix: false })}
+												<span
+													className={cn(
+														'text-[11px]',
+														hasUnread
+															? 'font-medium text-primary'
+															: 'text-muted-foreground',
+													)}
+												>
+													{formatDistanceToNow(new Date(thread.lastMessageAt), {
+														addSuffix: false,
+													})}
 												</span>
 											)}
 										</div>
 									</div>
 									<div className="mt-0.5 flex items-center justify-between gap-2">
-										<p className={cn('truncate text-xs', hasUnread ? 'font-medium text-foreground/80' : 'text-muted-foreground')}>
+										<p
+											className={cn(
+												'truncate text-xs',
+												hasUnread ? 'font-medium text-foreground/80' : 'text-muted-foreground',
+											)}
+										>
 											{thread.lastMessage?.body || 'Start a conversation'}
 										</p>
 										{hasUnread && (

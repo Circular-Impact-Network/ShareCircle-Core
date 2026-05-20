@@ -19,7 +19,7 @@ import {
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 

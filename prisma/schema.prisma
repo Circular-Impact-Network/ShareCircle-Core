@@ -298,6 +298,7 @@ model Conversation {
   messages      Message[]
 
   @@index([createdById])
+  @@index([lastMessageAt])
   @@map("conversations")
 }
 
@@ -574,6 +575,18 @@ model UserNotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_notification_preferences")
+}
+
+// Non-production only: stores plaintext OTPs for e2e test retrieval.
+// Rows are written only when NODE_ENV !== 'production' and email matches e2e+*@example.com.
+model TestOtp {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("test_otps")
 }
 
 model Feedback {

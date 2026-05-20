@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
-import { generateTextEmbedding, generateImageEmbedding, generateMultimodalEmbedding } from '@/lib/ai';
+import { generateTextEmbedding, generateImageEmbedding, generateDocumentEmbedding } from '@/lib/ai';
+import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
+
+export const maxDuration = 60;
 
 interface SearchResult {
 	id: string;
@@ -38,6 +42,13 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
+
+		const identifier = getClientIdentifier(req, userId);
+		const rateLimitResult = checkRateLimit(identifier, 'items-search', RATE_LIMITS.ai);
+		if (!rateLimitResult.success) {
+			return rateLimitResponse(rateLimitResult);
+		}
+
 		const body: SearchRequestBody = await req.json();
 		const {
 			query,
@@ -62,16 +73,7 @@ export async function POST(req: NextRequest) {
 		// Get user's circles if not specified
 		let searchCircleIds = circleIds;
 		if (!searchCircleIds || searchCircleIds.length === 0) {
-			const userCircles = await prisma.circleMember.findMany({
-				where: {
-					userId,
-					leftAt: null,
-				},
-				select: {
-					circleId: true,
-				},
-			});
-			searchCircleIds = userCircles.map(m => m.circleId);
+			searchCircleIds = await getUserCircleIds(userId);
 		} else {
 			// Verify user is a member of specified circles
 			const userCircles = await prisma.circleMember.findMany({
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
 		try {
 			if (imageUrl && query) {
 				// Combined search: image + text refinement
-				embedding = await generateMultimodalEmbedding(imageUrl, query);
+				embedding = await generateDocumentEmbedding(imageUrl, query);
 			} else if (imageUrl) {
 				// Image-only search
 				embedding = await generateImageEmbedding(imageUrl);

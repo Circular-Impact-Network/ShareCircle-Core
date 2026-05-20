@@ -188,7 +188,8 @@ export class TestAPI {
 			throw new Error(`Failed to create borrow request: ${response.status()}`);
 		}
 
-		return response.json();
+		const json = (await response.json()) as { borrowRequest?: { id: string } };
+		return json.borrowRequest ?? (json as { id: string });
 	}
 
 	async approveBorrowRequest(id: string): Promise<unknown> {

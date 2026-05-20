@@ -57,13 +57,13 @@ describe('ChatHeader', () => {
 	it('displays typing indicator when user is typing', () => {
 		render(<ChatHeader {...defaultProps} isTyping={true} />);
 
-		expect(screen.getByText('typing...')).toBeInTheDocument();
+		expect(screen.getByText('typing…')).toBeInTheDocument();
 	});
 
 	it('prioritizes typing over online status', () => {
 		render(<ChatHeader {...defaultProps} isOnline={true} isTyping={true} />);
 
-		expect(screen.getByText('typing...')).toBeInTheDocument();
+		expect(screen.getByText('typing…')).toBeInTheDocument();
 		expect(screen.queryByText('online')).not.toBeInTheDocument();
 	});
 

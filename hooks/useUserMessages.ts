@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
+import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
 import type { ChatMessage } from '@/components/chat/types';
 
 type UseUserMessagesOptions = {
@@ -58,7 +58,7 @@ export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions
 			.subscribe();
 
 		return () => {
-			channel.unsubscribe();
+			supabase.removeChannel(channel);
 		};
 	}, [userId]); // Only re-subscribe when userId changes
 }

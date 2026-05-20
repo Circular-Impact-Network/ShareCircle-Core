@@ -52,7 +52,8 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 	const [submitted, setSubmitted] = useState(false);
 
 	const isMessageRequired = (rating > 0 && rating <= 3) || category === 'Bug';
-	const canSubmit = rating > 0 && category !== null && (!isMessageRequired || message.trim().length > 0) && !isSubmitting;
+	const canSubmit =
+		rating > 0 && category !== null && (!isMessageRequired || message.trim().length > 0) && !isSubmitting;
 
 	const reset = () => {
 		setRating(0);
@@ -239,8 +240,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 							{/* Screenshot Upload */}
 							<div className="space-y-2">
 								<p className="text-sm font-medium">
-									Screenshots{' '}
-									<span className="font-normal text-muted-foreground">(optional)</span>
+									Screenshots <span className="font-normal text-muted-foreground">(optional)</span>
 								</p>
 								<input
 									ref={fileInputRef}
@@ -286,7 +286,9 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 							<div className="flex items-center justify-between gap-3">
 								<p className="text-sm text-foreground">OK to follow up with you about this?</p>
 								<div className="flex items-center gap-2 shrink-0">
-									<span className="text-xs text-muted-foreground">{followUpConsent ? 'Yes' : 'No'}</span>
+									<span className="text-xs text-muted-foreground">
+										{followUpConsent ? 'Yes' : 'No'}
+									</span>
 									<Switch checked={followUpConsent} onCheckedChange={setFollowUpConsent} />
 								</div>
 							</div>

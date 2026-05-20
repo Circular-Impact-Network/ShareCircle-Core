@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
@@ -467,7 +467,9 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 									step="1"
 									value={estimatedNewPriceUsd ?? ''}
 									onChange={e =>
-										setEstimatedNewPriceUsd(e.target.value === '' ? null : parseFloat(e.target.value))
+										setEstimatedNewPriceUsd(
+											e.target.value === '' ? null : parseFloat(e.target.value),
+										)
 									}
 									placeholder="e.g. 120"
 								/>

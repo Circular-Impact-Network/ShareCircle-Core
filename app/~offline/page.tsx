@@ -6,7 +6,7 @@ export default function OfflinePage() {
 		<div className="flex min-h-[100dvh] items-center justify-center bg-background px-6 py-12">
 			<div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-lg">
 				{/* Local static asset */}
-				<img src="/share-circle-logo-no-name.png" alt="ShareCircle" className="mx-auto mb-5 h-14 w-14" />
+				<img src="/logo_new_removeBg.png" alt="ShareCircle" className="mx-auto mb-5 h-14 w-14" />
 				<h1 className="text-2xl font-semibold text-foreground">You&apos;re offline</h1>
 				<p className="mt-3 text-sm leading-6 text-muted-foreground">
 					ShareCircle is still available in a limited mode. Reconnect to send messages, upload photos, or

@@ -7,15 +7,12 @@ test.describe('Browse page pagination', () => {
 		await page.goto('/browse');
 		await page.waitForLoadState('networkidle');
 
-		// Page should load with items or show empty state
-		const items = page.locator('[data-testid="item-card"]');
+		// Page should load with items grid or show empty state
+		const itemsGrid = page.locator('[data-testid="items-grid"]');
 		const emptyState = page.getByText(/No items yet/i);
 
 		const eitherVisible = await Promise.race([
-			items
-				.first()
-				.waitFor({ state: 'visible', timeout: 5000 })
-				.then(() => 'items'),
+			itemsGrid.waitFor({ state: 'visible', timeout: 5000 }).then(() => 'items'),
 			emptyState.waitFor({ state: 'visible', timeout: 5000 }).then(() => 'empty'),
 		]).catch(() => 'neither');
 
@@ -30,8 +27,8 @@ test.describe('Browse page pagination', () => {
 		const categorySelect = page.getByRole('combobox');
 		if (await categorySelect.isVisible()) {
 			await categorySelect.click();
-			// Should show "All Categories" option
-			await expect(page.getByText('All Categories')).toBeVisible();
+			// Should show "All Categories" option (use first() to avoid strict mode with dropdown list)
+			await expect(page.getByText('All Categories').first()).toBeVisible();
 		}
 	});
 

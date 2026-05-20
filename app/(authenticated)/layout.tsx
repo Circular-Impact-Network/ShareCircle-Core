@@ -13,17 +13,14 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 	const router = useRouter();
 	const pathname = usePathname();
 	const { data: session, status } = useSession();
-	const [mounted, setMounted] = useState(false);
+	const [mounted, setMounted] = useState(() => typeof window !== 'undefined');
 
 	// Sync user data from session to Redux
 	useUserSync();
 
 	useEffect(() => {
-		// Use setTimeout to avoid calling setState synchronously in effect
-		const timer = setTimeout(() => {
-			setMounted(true);
-		}, 0);
-		return () => clearTimeout(timer);
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		setMounted(true);
 	}, []);
 
 	useEffect(() => {
@@ -45,7 +42,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 			<div className="flex min-h-[100dvh] items-center justify-center bg-background">
 				{/* Local static asset; <img> avoids next/image in loading shell */}
 				<div className="rounded-full bg-white p-3 shadow-md animate-pulse">
-					<img src="/share-circle-icon-square.png" alt="ShareCircle" className="h-12 w-12 object-contain" />
+					<img src="/logo_new_removeBg.png" alt="ShareCircle" className="h-12 w-12 object-contain" />
 				</div>
 			</div>
 		);

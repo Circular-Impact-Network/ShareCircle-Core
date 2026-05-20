@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
-const VALID_CATEGORIES = ["Bug", "Feature idea", "General", "What's working"] as const;
+const VALID_CATEGORIES = ['Bug', 'Feature idea', 'General', "What's working"] as const;
 
 export async function POST(req: NextRequest) {
 	try {
@@ -20,8 +20,17 @@ export async function POST(req: NextRequest) {
 		}
 
 		const body = await req.json();
-		const { rating, category, message, currentPage, deviceType, appVersion, followUpConsent, taskContext, attachmentPath } =
-			body;
+		const {
+			rating,
+			category,
+			message,
+			currentPage,
+			deviceType,
+			appVersion,
+			followUpConsent,
+			taskContext,
+			attachmentPath,
+		} = body;
 
 		if (typeof rating !== 'number' || rating < 1 || rating > 5) {
 			return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });

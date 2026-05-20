@@ -56,7 +56,7 @@ import {
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
 import { ItemDetailSkeleton } from '@/components/ui/skeletons';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 interface ItemDetailPageProps {
 	itemId: string;
@@ -266,7 +266,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const handleDelete = async () => {
 		if (!item) return;
 		try {
-			await deleteItem(item.id).unwrap();
+			await deleteItem({ id: item.id, circleIds: item.circles.map(c => c.id) }).unwrap();
 			toast({ title: 'Item deleted', description: `${item.name} has been permanently deleted.` });
 			router.push('/listings');
 		} catch (error) {
@@ -437,13 +437,12 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					)}
 
 					{/* Price — owner always sees it; others only if isValueVisible */}
-					{item.estimatedNewPriceUsd != null &&
-						(item.isOwner || item.isValueVisible) && (
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<DollarSign className="h-4 w-4 flex-shrink-0" />
-								<span>Est. retail value: ${item.estimatedNewPriceUsd?.toLocaleString()}</span>
-							</div>
-						)}
+					{item.estimatedNewPriceUsd != null && (item.isOwner || item.isValueVisible) && (
+						<div className="flex items-center gap-2 text-sm text-muted-foreground">
+							<DollarSign className="h-4 w-4 flex-shrink-0" />
+							<span>Est. retail value: ${item.estimatedNewPriceUsd?.toLocaleString()}</span>
+						</div>
+					)}
 
 					{/* Shared in Circles */}
 					{item.circles && item.circles.length > 0 && (
@@ -555,8 +554,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 									disabled={isUpdatingItem}
 								/>
 							)}
-							<label htmlFor="value-visibility" className="text-sm text-muted-foreground cursor-pointer select-none">
-								{item.isValueVisible ? 'Price & weight visible to borrowers' : 'Price & weight hidden from borrowers'}
+							<label
+								htmlFor="value-visibility"
+								className="text-sm text-muted-foreground cursor-pointer select-none"
+							>
+								{item.isValueVisible
+									? 'Price & weight visible to borrowers'
+									: 'Price & weight hidden from borrowers'}
 							</label>
 						</div>
 					)}
@@ -707,7 +711,9 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								<DatePicker
 									value={desiredTo}
 									onChange={date => date && setDesiredTo(date)}
-									disabled={{ before: desiredFrom ? startOfDay(desiredFrom) : startOfDay(new Date()) }}
+									disabled={{
+										before: desiredFrom ? startOfDay(desiredFrom) : startOfDay(new Date()),
+									}}
 									placeholder="Pick a date"
 								/>
 							</div>

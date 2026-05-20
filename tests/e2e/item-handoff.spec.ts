@@ -81,10 +81,7 @@ test.describe('item deletion with active borrows', () => {
 		await user2Context.close();
 	});
 
-	test('can delete item when borrow request was only cancelled (no transaction)', async ({
-		request,
-		browser,
-	}) => {
+	test('can delete item when borrow request was only cancelled (no transaction)', async ({ request, browser }) => {
 		const user1Api = new TestAPI(request);
 
 		const circle = await user1Api.createCircle({ name: `Cancelled Borrow Circle ${Date.now()}` });
@@ -279,10 +276,7 @@ test.describe('invalid transitions are rejected', () => {
 		await user2Context.close();
 	});
 
-	test('receive returns 400 when transaction is ACTIVE (handoff not confirmed)', async ({
-		request,
-		browser,
-	}) => {
+	test('receive returns 400 when transaction is ACTIVE (handoff not confirmed)', async ({ request, browser }) => {
 		const user1Api = new TestAPI(request);
 
 		const circle = await user1Api.createCircle({ name: `Invalid Receive Circle ${Date.now()}` });

@@ -70,10 +70,7 @@ function parseMessageContent(text: string, highlight?: string, isOwn?: boolean):
 					href={href}
 					target="_blank"
 					rel="noopener noreferrer"
-					className={cn(
-						'underline underline-offset-2 break-all',
-						isOwn ? 'text-blue-200' : 'text-blue-500',
-					)}
+					className={cn('underline underline-offset-2 break-all', isOwn ? 'text-blue-200' : 'text-blue-500')}
 					onClick={e => e.stopPropagation()}
 				>
 					{part}

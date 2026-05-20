@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getUserCircleIds } from '@/app/api/_utils';
 import { BorrowRequestStatus, BorrowQueueStatus, NotificationType } from '@prisma/client';
+import { z } from 'zod';
+
+const createBorrowRequestSchema = z.object({
+	itemId: z.string().min(1, 'Item ID is required'),
+	message: z.string().max(500, 'Message must be 500 characters or fewer').optional(),
+	desiredFrom: z.string().min(1, 'Start date is required'),
+	desiredTo: z.string().min(1, 'End date is required'),
+	joinQueue: z.boolean().optional().default(false),
+});
 import { queueNotification } from '@/lib/notify';
 import { getSignedUrl } from '@/lib/supabase';
 
@@ -92,7 +102,7 @@ export async function GET(req: NextRequest) {
 				...request,
 				item: {
 					...request.item,
-					imageUrl: await getSignedUrl(request.item.imagePath, 'items'),
+					imageUrl: await getSignedUrl(request.item.imagePath, 'items').catch(() => ''),
 				},
 			})),
 		);
@@ -114,20 +124,17 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
-		const body = await req.json();
-		const { itemId, message, desiredFrom, desiredTo, joinQueue } = body;
-
-		// Validate required fields
-		if (!itemId) {
-			return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
+		const parsed = createBorrowRequestSchema.safeParse(await req.json());
+		if (!parsed.success) {
+			return NextResponse.json(
+				{ error: parsed.error.errors[0]?.message ?? 'Invalid request body' },
+				{ status: 400 },
+			);
 		}
-
-		if (!desiredFrom || !desiredTo) {
-			return NextResponse.json({ error: 'Desired dates are required' }, { status: 400 });
-		}
+		const { itemId, message, desiredFrom, desiredTo, joinQueue } = parsed.data;
 
 		// Fetch item and user circles in parallel (independent queries)
-		const [item, userCircles] = await Promise.all([
+		const [item, userCircleIds] = await Promise.all([
 			prisma.item.findUnique({
 				where: { id: itemId },
 				include: {
@@ -144,15 +151,7 @@ export async function POST(req: NextRequest) {
 					},
 				},
 			}),
-			prisma.circleMember.findMany({
-				where: {
-					userId,
-					leftAt: null,
-				},
-				select: {
-					circleId: true,
-				},
-			}),
+			getUserCircleIds(userId),
 		]);
 
 		if (!item) {
@@ -165,7 +164,6 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Verify user is in at least one circle where the item is shared
-		const userCircleIds = userCircles.map(c => c.circleId);
 		const itemCircleIds = item.circles.map(c => c.circleId);
 		const hasAccess = itemCircleIds.some(cId => userCircleIds.includes(cId));
 
@@ -266,7 +264,7 @@ export async function POST(req: NextRequest) {
 						...queueEntry,
 						item: {
 							...queueEntry.item,
-							imageUrl: await getSignedUrl(queueEntry.item.imagePath, 'items'),
+							imageUrl: await getSignedUrl(queueEntry.item.imagePath, 'items').catch(() => ''),
 						},
 					},
 				},
@@ -343,7 +341,7 @@ export async function POST(req: NextRequest) {
 					...borrowRequest,
 					item: {
 						...borrowRequest.item,
-						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items'),
+						imageUrl: await getSignedUrl(borrowRequest.item.imagePath, 'items').catch(() => ''),
 					},
 				},
 			},

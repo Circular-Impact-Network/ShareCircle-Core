@@ -15,13 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, Users } from 'lucide-react';
-import { useJoinCircleMutation } from '@/lib/redux/api/circlesApi';
-
-interface CircleMemberPreview {
-	id: string;
-	name: string | null;
-	image: string | null;
-}
+import { useJoinCircleMutation, type MemberPreview } from '@/lib/redux/api/circlesApi';
 
 interface Circle {
 	id: string;
@@ -39,7 +33,7 @@ interface Circle {
 	};
 	membersCount: number;
 	userRole: 'ADMIN' | 'MEMBER' | null;
-	memberPreviews: CircleMemberPreview[];
+	memberPreviews: MemberPreview[];
 }
 
 interface JoinCircleModalProps {

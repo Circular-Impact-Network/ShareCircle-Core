@@ -4,30 +4,8 @@ import { compare } from 'bcryptjs';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
-import { RATE_LIMITS } from './rate-limit';
 import { getOtpIdentifier, hashOtp, normalizeEmail, timingSafeEqualHex } from './otp';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from './phone';
-
-// Simple in-memory rate limit check for auth (can't use request headers in authorize)
-const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-function checkAuthRateLimit(identifier: string): { allowed: boolean; retryAfter?: number } {
-	const now = Date.now();
-	const windowMs = RATE_LIMITS.auth.windowSeconds * 1000;
-	const record = authRateLimitStore.get(identifier);
-
-	if (!record || now > record.resetTime) {
-		authRateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
-		return { allowed: true };
-	}
-
-	if (record.count >= RATE_LIMITS.auth.maxRequests) {
-		return { allowed: false, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
-	}
-
-	record.count += 1;
-	return { allowed: true };
-}
 
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma),
@@ -53,13 +31,6 @@ export const authOptions: NextAuthOptions = {
 				code: { label: 'Code', type: 'text' }, // For OTP if we implement it later
 			},
 			async authorize(credentials) {
-				// Rate limit check for login attempts
-				const identifier = credentials?.email || credentials?.phone || 'unknown';
-				const rateLimit = checkAuthRateLimit(`login:${identifier}`);
-				if (!rateLimit.allowed) {
-					throw new Error(`Too many login attempts. Please try again in ${rateLimit.retryAfter} seconds.`);
-				}
-
 				// Email + OTP login
 				if (credentials?.email && credentials?.code) {
 					const normalizedEmail = normalizeEmail(credentials.email);
@@ -85,10 +56,7 @@ export const authOptions: NextAuthOptions = {
 					}
 
 					const expected = hashOtp(credentials.code, normalizedEmail, 'login_otp');
-					const matches =
-						verificationToken.token.length <= 8
-							? verificationToken.token === credentials.code
-							: timingSafeEqualHex(verificationToken.token, expected);
+					const matches = timingSafeEqualHex(verificationToken.token, expected);
 					if (!matches) {
 						throw new Error('Invalid code. Please try again.');
 					}
@@ -125,11 +93,16 @@ export const authOptions: NextAuthOptions = {
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
 					const normalizedEmail = normalizeEmail(credentials.email);
-					const user = await prisma.user.findUnique({
-						where: {
-							email: normalizedEmail,
-						},
-					});
+					let user = null;
+					for (let attempt = 0; attempt < 3; attempt++) {
+						try {
+							user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+							break;
+						} catch (err) {
+							if (attempt === 2) throw err;
+							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+						}
+					}
 
 					if (!user || !user.hashed_password) {
 						return null;
@@ -268,13 +241,32 @@ export const authOptions: NextAuthOptions = {
 				token.image = user.image;
 			}
 
-			// Fetch emailVerified status from database on sign-in and update
+			// Fetch emailVerified from DB on sign-in, update, or when not yet cached in token
 			if (trigger === 'signIn' || trigger === 'update' || !token.emailVerified) {
-				const dbUser = await prisma.user.findUnique({
-					where: { id: token.id as string },
-					select: { emailVerified: true },
-				});
-				token.emailVerified = dbUser?.emailVerified || null;
+				// Retry up to 3 times to handle transient Prisma Accelerate connection errors
+				let dbUser: { emailVerified: Date | null } | null = null;
+				for (let attempt = 0; attempt < 3; attempt++) {
+					try {
+						dbUser = await prisma.user.findUnique({
+							where: { id: token.id as string },
+							select: { emailVerified: true },
+						});
+						break;
+					} catch (err) {
+						if (attempt === 2) {
+							console.error('JWT callback: failed to fetch emailVerified after retries:', err);
+						} else {
+							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
+						}
+					}
+				}
+				if (dbUser !== null) {
+					token.emailVerified = dbUser.emailVerified;
+				} else if (trigger === 'signIn') {
+					// authorize() already verified email — don't null it out if DB is transiently unreachable
+					token.emailVerified = (token.emailVerified as Date | null) ?? new Date();
+				}
+				// else: leave token.emailVerified unchanged (don't null out a cached value)
 			}
 
 			return token;

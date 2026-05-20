@@ -87,6 +87,28 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid push subscription payload' }, { status: 400 });
 		}
 
+		// Validate the endpoint is an HTTPS URL from a known push service, not a private/internal address
+		try {
+			const parsed = new URL(endpoint);
+			if (parsed.protocol !== 'https:') {
+				return NextResponse.json({ error: 'Invalid push subscription endpoint' }, { status: 400 });
+			}
+			// Block RFC 1918 private IP ranges and localhost
+			const host = parsed.hostname;
+			if (
+				host === 'localhost' ||
+				host === '127.0.0.1' ||
+				host.startsWith('10.') ||
+				host.startsWith('192.168.') ||
+				/^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+				host === '::1'
+			) {
+				return NextResponse.json({ error: 'Invalid push subscription endpoint' }, { status: 400 });
+			}
+		} catch {
+			return NextResponse.json({ error: 'Invalid push subscription endpoint' }, { status: 400 });
+		}
+
 		await prisma.pushSubscription.upsert({
 			where: { endpoint },
 			update: {

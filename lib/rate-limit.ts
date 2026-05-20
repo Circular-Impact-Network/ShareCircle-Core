@@ -93,16 +93,19 @@ export function getClientIdentifier(request: Request, userId?: string): string {
 		return `user:${userId}`;
 	}
 
-	// Try to get IP from headers (for behind proxies like Vercel)
-	const forwardedFor = request.headers.get('x-forwarded-for');
-	if (forwardedFor) {
-		// Take the first IP if multiple are present
-		return `ip:${forwardedFor.split(',')[0].trim()}`;
-	}
-
+	// On Vercel, x-real-ip is set by the platform and cannot be spoofed by clients.
+	// Prefer it over x-forwarded-for, where the first entry is client-controlled.
 	const realIp = request.headers.get('x-real-ip');
 	if (realIp) {
 		return `ip:${realIp}`;
+	}
+
+	// Fall back to the last (rightmost) IP in x-forwarded-for, which is added by the
+	// last trusted proxy and cannot be spoofed by the original client.
+	const forwardedFor = request.headers.get('x-forwarded-for');
+	if (forwardedFor) {
+		const ips = forwardedFor.split(',').map(s => s.trim());
+		return `ip:${ips[ips.length - 1]}`;
 	}
 
 	// Fallback - this shouldn't happen in production
@@ -146,5 +149,10 @@ export const RATE_LIMITS = {
 	api: {
 		maxRequests: 100,
 		windowSeconds: 60, // 100 requests per minute
+	},
+	// File upload endpoints
+	upload: {
+		maxRequests: 30,
+		windowSeconds: 60, // 30 uploads per minute
 	},
 } as const;

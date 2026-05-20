@@ -84,7 +84,10 @@ describe('POST /api/borrow-requests/[id]/handoff', () => {
 		vi.mocked(prisma.borrowRequest.findUnique).mockResolvedValue(
 			makeBorrowRequest(BorrowTransactionStatus.ACTIVE) as never,
 		);
-		vi.mocked(prisma.borrowTransaction.update).mockResolvedValue({ id: 'tx-1', status: 'LENDER_CONFIRMED' } as never);
+		vi.mocked(prisma.borrowTransaction.update).mockResolvedValue({
+			id: 'tx-1',
+			status: 'LENDER_CONFIRMED',
+		} as never);
 
 		const res = await handoffPOST(makeRequest('req-1'), { params: makeParams('req-1') });
 		expect(res.status).toBe(200);

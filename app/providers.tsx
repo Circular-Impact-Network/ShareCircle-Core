@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useLayoutEffect, useState } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from '@/components/ui/toaster';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -17,7 +17,9 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-	const [theme, setTheme] = useState('light');
+	const [theme, setTheme] = useState<string>(() =>
+		typeof window !== 'undefined' ? (localStorage.getItem('sharecircle_theme') ?? 'light') : 'light',
+	);
 
 	const updateTheme = (newTheme: string) => {
 		const htmlElement = document.documentElement;
@@ -28,15 +30,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 		}
 	};
 
-	useEffect(() => {
-		const savedTheme = localStorage.getItem('sharecircle_theme') || 'light';
-		// Use setTimeout to avoid calling setState synchronously in effect
-		const timer = setTimeout(() => {
-			setTheme(savedTheme);
-			updateTheme(savedTheme);
-		}, 0);
-		return () => clearTimeout(timer);
-	}, []);
+	useLayoutEffect(() => {
+		updateTheme(theme);
+	}, [theme]);
 
 	const toggleTheme = () => {
 		const newTheme = theme === 'light' ? 'dark' : 'light';

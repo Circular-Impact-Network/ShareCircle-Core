@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { canUsersChat, getUserIdOrResponse } from './_utils';
+import { canUsersChat, canUsersChatBatch, getUserIdOrResponse } from './_utils';
 
 // GET /api/messages/threads - list conversations
 export async function GET(req: NextRequest) {
@@ -112,15 +112,9 @@ export async function GET(req: NextRequest) {
 			})
 			.filter(Boolean) as string[];
 
-		// Batch check canUsersChat - only check unique user IDs
+		// Batch check canUsersChat - 2 DB queries total regardless of conversation count
 		const uniqueOtherUserIds = [...new Set(otherUserIds)];
-		const canChatResults = await Promise.all(
-			uniqueOtherUserIds.map(async otherId => ({
-				userId: otherId,
-				canChat: await canUsersChat(userId, otherId),
-			})),
-		);
-		const canChatMap = new Map(canChatResults.map(r => [r.userId, r.canChat]));
+		const canChatMap = await canUsersChatBatch(userId, uniqueOtherUserIds);
 
 		// Build final results
 		const results = filteredConversations.map(conversation => {

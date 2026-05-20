@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { MemberRole } from '@prisma/client';
+import { MemberRole, NotificationType } from '@prisma/client';
 import { queueNotification } from '@/lib/notify';
 
 // DELETE /api/circles/[id]/items/[itemId]
 // Circle admin removes an item listing from their circle (does not delete the item).
-export async function DELETE(
-	req: NextRequest,
-	{ params }: { params: Promise<{ id: string; itemId: string }> },
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
 	try {
 		const session = await getServerSession(authOptions);
 		if (!session?.user?.id) {
@@ -56,7 +53,7 @@ export async function DELETE(
 
 			queueNotification({
 				userId: ownerId,
-				type: 'ITEM_REMOVED_FROM_CIRCLE',
+				type: NotificationType.ITEM_REMOVED_FROM_CIRCLE,
 				entityId: itemId,
 				title: 'Item removed from circle',
 				body,

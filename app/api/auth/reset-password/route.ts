@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
@@ -36,10 +37,13 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
+		// Hash the incoming token to compare against stored hash
+		const hashedToken = createHash('sha256').update(token).digest('hex');
+
 		// Find the verification token
 		const verificationToken = await prisma.verificationToken.findFirst({
 			where: {
-				token,
+				token: hashedToken,
 				identifier: { startsWith: 'reset:' },
 			},
 		});

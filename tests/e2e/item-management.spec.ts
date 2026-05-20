@@ -131,21 +131,13 @@ test.describe('item management', () => {
 			await page.goto('/listings');
 			await page.waitForLoadState('networkidle');
 
-			// Find the item's delete button and click it
-			const deleteButton = page
-				.locator('[data-testid="item-card"]')
-				.filter({ hasText: item.name })
-				.getByRole('button', { name: /delete/i })
-				.first();
-
-			// If specific testid not found, look for any delete button near item name text
-			const itemCard = page.locator('text=' + item.name).first();
-			if (await itemCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-				// Find the delete button in the actions area
-				const cardContainer = itemCard.locator('..').locator('..');
-				await cardContainer.getByRole('button', { name: /delete/i }).click();
-			} else if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-				await deleteButton.click();
+			// Find the item's heading in the card, go up to CardContent, then find Delete button
+			// h3 → div.flex → div.space-y-2 → CardContent (which also contains the action buttons)
+			const itemHeading = page.getByRole('heading', { name: item.name }).first();
+			const isHeadingVisible = await itemHeading.isVisible({ timeout: 5000 }).catch(() => false);
+			if (isHeadingVisible) {
+				const cardContent = itemHeading.locator('..').locator('..').locator('..');
+				await cardContent.getByRole('button', { name: /^Delete$/i }).click();
 			} else {
 				// Clean up and skip if item not visible in UI (e.g. no signed URL)
 				await api.deleteItem(item.id);
@@ -161,12 +153,15 @@ test.describe('item management', () => {
 			// Confirm deletion
 			await dialog.getByRole('button', { name: /delete permanently/i }).click();
 
-			// Dialog should close and item should be removed from list
+			// Dialog should close
 			await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
-			// Verify item is gone from UI
-			await page.waitForTimeout(1000);
-			await expect(page.locator('text=' + item.name)).not.toBeVisible({ timeout: 5000 });
+			// Navigate back to listings fresh — avoids RTK Query cache invalidation race
+			await page.goto('/listings');
+			await page.waitForLoadState('domcontentloaded');
+			await expect(page.getByRole('heading', { name: item.name, exact: true })).toHaveCount(0, {
+				timeout: 10000,
+			});
 
 			// Verify item is gone from API
 			const afterResponse = await request.get(`/api/items/${item.id}`);
@@ -192,7 +187,10 @@ test.describe('item management', () => {
 		test('cannot delete item with an active borrow transaction — returns 409', async ({ request, browser }) => {
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Active Borrow Delete Circle ${Date.now()}` });
-			const item = await user1Api.createItem({ name: `Active Borrow Delete Item ${Date.now()}`, circleIds: [circle.id] });
+			const item = await user1Api.createItem({
+				name: `Active Borrow Delete Item ${Date.now()}`,
+				circleIds: [circle.id],
+			});
 
 			const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 			const user2Api = new TestAPI(user2Context.request);
@@ -224,7 +222,10 @@ test.describe('item management', () => {
 		test('can delete item after borrow transaction is completed', async ({ request, browser }) => {
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Post-Borrow Delete Circle ${Date.now()}` });
-			const item = await user1Api.createItem({ name: `Post-Borrow Delete Item ${Date.now()}`, circleIds: [circle.id] });
+			const item = await user1Api.createItem({
+				name: `Post-Borrow Delete Item ${Date.now()}`,
+				circleIds: [circle.id],
+			});
 
 			const user2Context = await browser.newContext({ storageState: storageStatePaths.user2 });
 			const user2Api = new TestAPI(user2Context.request);

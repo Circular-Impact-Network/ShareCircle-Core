@@ -1,21 +1,21 @@
 import { useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseClient';
+import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
 import type { ChatMessage, MessageReceipt } from '@/components/chat/types';
 
 type RealtimeChatOptions = {
 	conversationId: string | null;
 	currentUserId: string | null;
 	onMessage: (message: ChatMessage) => void;
-	onReceipt: (receipt: MessageReceipt) => void;
+	onReceipts: (receipts: MessageReceipt[]) => void;
 };
 
-export function useRealtimeChat({ conversationId, currentUserId, onMessage, onReceipt }: RealtimeChatOptions) {
+export function useRealtimeChat({ conversationId, currentUserId, onMessage, onReceipts }: RealtimeChatOptions) {
 	const channelRef = useRef<RealtimeChannel | null>(null);
 
 	// Use refs to store callbacks to avoid re-subscription when callbacks change
 	const onMessageRef = useRef(onMessage);
-	const onReceiptRef = useRef(onReceipt);
+	const onReceiptsRef = useRef(onReceipts);
 	const currentUserIdRef = useRef(currentUserId);
 
 	// Update refs when values change
@@ -24,8 +24,8 @@ export function useRealtimeChat({ conversationId, currentUserId, onMessage, onRe
 	}, [onMessage]);
 
 	useEffect(() => {
-		onReceiptRef.current = onReceipt;
-	}, [onReceipt]);
+		onReceiptsRef.current = onReceipts;
+	}, [onReceipts]);
 
 	useEffect(() => {
 		currentUserIdRef.current = currentUserId;
@@ -49,13 +49,13 @@ export function useRealtimeChat({ conversationId, currentUserId, onMessage, onRe
 				onMessageRef.current(message);
 			})
 			.on('broadcast', { event: 'receipt_update' }, payload => {
-				const receipt = payload.payload as MessageReceipt;
-				onReceiptRef.current(receipt);
+				const { receipts } = payload.payload as { receipts: MessageReceipt[] };
+				onReceiptsRef.current(receipts);
 			})
 			.subscribe();
 
 		return () => {
-			channel.unsubscribe();
+			supabase.removeChannel(channel);
 		};
 	}, [conversationId]); // Only re-subscribe when conversationId changes
 }

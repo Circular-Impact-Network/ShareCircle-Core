@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		const hashedPassword = body.password ? await bcrypt.hash(body.password, 12) : undefined;
-		const isAutoVerified = process.env.E2E_AUTO_VERIFY === 'true';
+		const isAutoVerified = process.env.NODE_ENV !== 'production' && process.env.E2E_AUTO_VERIFY === 'true';
 		const emailVerified = normalizedEmail && isAutoVerified ? new Date() : undefined;
 		const phoneVerified = phoneE164 && isAutoVerified ? new Date() : undefined;
 
@@ -154,14 +154,24 @@ export async function POST(req: NextRequest) {
 					{ status: 502 },
 				);
 			}
-		} else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-			try {
-				await sendOTPEmail(normalizedEmail, otp, 'email_verification');
-			} catch (emailError) {
-				console.error('Failed to send OTP email:', emailError);
-			}
 		} else {
-			console.warn('GMAIL credentials not configured - OTP email not sent');
+			// Persist OTP for e2e test retrieval — allowed in dev or when TEST_CLEANUP_SECRET is set (CI prod build)
+			if (
+				(process.env.NODE_ENV !== 'production' || !!process.env.TEST_CLEANUP_SECRET) &&
+				/^e2e\+.+@example\.com$/i.test(normalizedEmail)
+			) {
+				await prisma.testOtp.create({ data: { email: normalizedEmail, otp } });
+			}
+
+			if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+				try {
+					await sendOTPEmail(normalizedEmail, otp, 'email_verification');
+				} catch (emailError) {
+					console.error('Failed to send OTP email:', emailError);
+				}
+			} else {
+				console.warn('GMAIL credentials not configured - OTP email not sent');
+			}
 		}
 
 		return NextResponse.json(
