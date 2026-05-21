@@ -21,3 +21,24 @@ export const contextRefSchema = z.object({
 	title: z.string().min(1).max(200),
 	imageUrl: z.string().max(2048).optional(),
 });
+
+// ---------- URL <-> ContextRef helpers (used by client navigation) ----------
+
+// Builds the `?context=` query param used to pre-attach an item or item-request
+// reference to a new chat thread. Pair with parseContextRefParam on the server
+// to decode.
+export function buildContextRefParam(ref: ContextRef): string {
+	return `context=${encodeURIComponent(JSON.stringify(ref))}`;
+}
+
+// Decodes a `?context=` query param value back into a ContextRef. Returns null
+// on any parse / validation failure so the caller can fall through gracefully.
+export function parseContextRefParam(raw: string | undefined): ContextRef | null {
+	if (!raw) return null;
+	try {
+		const parsed = contextRefSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
