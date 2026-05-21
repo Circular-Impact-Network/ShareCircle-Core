@@ -331,6 +331,7 @@ model Message {
   clientId       String?     @map("client_id")
   body           String      @db.Text
   messageType    MessageType @default(TEXT) @map("message_type")
+  contextRef     Json?       @map("context_ref")
   createdAt      DateTime    @default(now()) @map("created_at")
   editedAt       DateTime?   @map("edited_at")
 
