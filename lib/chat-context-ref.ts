@@ -42,3 +42,44 @@ export function parseContextRefParam(raw: string | undefined): ContextRef | null
 		return null;
 	}
 }
+
+// ---------- Server-side resolution ----------
+
+// Returns the canonical ContextRef to persist on a message, or null if the
+// reference does not exist or the sender cannot see it.
+//
+// Authorization rule: the sender must share at least one circle with the
+// referenced item / item-request. This prevents leaking the title of items
+// the sender cannot themselves see.
+export async function resolveContextRef(userId: string, ref: ContextRef | null | undefined): Promise<ContextRef | null> {
+	if (!ref) return null;
+
+	const memberships = await prisma.circleMember.findMany({
+		where: { userId, leftAt: null },
+		select: { circleId: true },
+	});
+	const userCircleIds = memberships.map(m => m.circleId);
+	if (userCircleIds.length === 0) return null;
+
+	if (ref.type === 'item') {
+		const item = await prisma.item.findFirst({
+			where: {
+				id: ref.id,
+				OR: [{ ownerId: userId }, { circles: { some: { circleId: { in: userCircleIds } } } }],
+			},
+			select: { id: true, name: true },
+		});
+		if (!item) return null;
+		return { type: 'item', id: item.id, title: item.name };
+	}
+
+	const itemRequest = await prisma.itemRequest.findFirst({
+		where: {
+			id: ref.id,
+			OR: [{ requesterId: userId }, { circles: { some: { circleId: { in: userCircleIds } } } }],
+		},
+		select: { id: true, title: true },
+	});
+	if (!itemRequest) return null;
+	return { type: 'item-request', id: itemRequest.id, title: itemRequest.title };
+}
