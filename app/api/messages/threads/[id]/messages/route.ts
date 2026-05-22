@@ -5,6 +5,7 @@ import { runAfterNewChatMessagePersisted } from '@/lib/chat-message-side-effects
 import { supabaseAdmin } from '@/lib/supabase';
 import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
+import { contextRefSchema, resolveContextRef } from '@/lib/chat-context-ref';
 import { z } from 'zod';
 
 const sendMessageSchema = z
@@ -22,6 +23,7 @@ const sendMessageSchema = z
 			.max(10, 'Maximum 10 attachments per message')
 			.optional()
 			.default([]),
+		contextRef: contextRefSchema.optional().nullable(),
 	})
 	.refine(data => (data.body?.trim().length ?? 0) > 0 || data.attachments.length > 0, {
 		message: 'Message body or attachment is required',
@@ -196,8 +198,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 				{ status: 400 },
 			);
 		}
-		const { body: rawBody, clientId, attachments } = parsedBody.data;
+		const { body: rawBody, clientId, attachments, contextRef: clientContextRef } = parsedBody.data;
 		const messageBody = rawBody.trim();
+
+		// Re-derive the contextRef from the DB so clients cannot spoof titles or
+		// attach references to entities they cannot themselves see (sender must
+		// share a circle with the referenced item / item-request).
+		const resolvedContextRef = await resolveContextRef(userId, clientContextRef ?? null);
 
 		const conversation = await prisma.conversation.findUnique({
 			where: { id },
@@ -263,6 +270,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 					senderId: userId,
 					body: messageBody,
 					clientId,
+					contextRef: resolvedContextRef ?? undefined,
 				},
 				include: {
 					sender: { select: { id: true, name: true, image: true } },
