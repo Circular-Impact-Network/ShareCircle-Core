@@ -19,6 +19,13 @@ export type MessageAttachment = {
 	metadata?: Record<string, unknown> | null;
 };
 
+// ContextRef is the canonical shape attached to a chat message. The single
+// source of truth (with Zod schema + server-side resolver) is in
+// lib/chat-context-ref.ts — re-exported here so existing chat-type imports
+// keep working.
+import type { ContextRef } from '@/lib/chat-context-ref';
+export type { ContextRef };
+
 export type ChatMessage = {
 	id: string;
 	conversationId?: string;
@@ -29,6 +36,7 @@ export type ChatMessage = {
 	sender: ChatUser;
 	receipts: MessageReceipt[];
 	attachments: MessageAttachment[];
+	contextRef?: ContextRef | null;
 	clientId?: string;
 	localStatus?: 'sending' | 'failed';
 };
