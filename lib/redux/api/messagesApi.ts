@@ -68,6 +68,31 @@ export const messagesApi = createApi({
 			}),
 			invalidatesTags: ['Threads'],
 		}),
+
+		setThreadMute: builder.mutation<void, { threadId: string; durationMinutes: number }>({
+			query: ({ threadId, durationMinutes }) => ({
+				url: `/threads/${threadId}/mute`,
+				method: 'POST',
+				body: { durationMinutes },
+			}),
+			invalidatesTags: ['Threads'],
+		}),
+
+		deleteThread: builder.mutation<void, { threadId: string }>({
+			query: ({ threadId }) => ({
+				url: `/threads/${threadId}/delete`,
+				method: 'PATCH',
+			}),
+			invalidatesTags: ['Threads', 'UnreadCount'],
+		}),
+
+		markThreadRead: builder.mutation<void, { threadId: string }>({
+			query: ({ threadId }) => ({
+				url: `/threads/${threadId}/read`,
+				method: 'POST',
+			}),
+			invalidatesTags: ['UnreadCount'],
+		}),
 	}),
 });
 
