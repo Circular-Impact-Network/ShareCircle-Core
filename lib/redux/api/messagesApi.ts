@@ -48,6 +48,26 @@ export const messagesApi = createApi({
 			},
 			providesTags: ['Threads'],
 		}),
+
+		// ---------- Thread state mutations (idempotent, simple shape) ----------
+
+		togglePinThread: builder.mutation<void, { threadId: string; pinned: boolean }>({
+			query: ({ threadId, pinned }) => ({
+				url: `/threads/${threadId}/pin`,
+				method: 'PATCH',
+				body: { pinned },
+			}),
+			invalidatesTags: ['Threads'],
+		}),
+
+		setThreadArchived: builder.mutation<void, { threadId: string; archived: boolean }>({
+			query: ({ threadId, archived }) => ({
+				url: `/threads/${threadId}/archive`,
+				method: 'POST',
+				body: { archived },
+			}),
+			invalidatesTags: ['Threads'],
+		}),
 	}),
 });
 
