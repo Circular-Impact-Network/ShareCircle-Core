@@ -96,4 +96,13 @@ export const messagesApi = createApi({
 	}),
 });
 
-export const { useGetUnreadMessageCountQuery, useGetRecentThreadsQuery, useCreateThreadMutation } = messagesApi;
+export const {
+	useGetUnreadMessageCountQuery,
+	useGetRecentThreadsQuery,
+	useCreateThreadMutation,
+	useTogglePinThreadMutation,
+	useSetThreadArchivedMutation,
+	useSetThreadMuteMutation,
+	useDeleteThreadMutation,
+	useMarkThreadReadMutation,
+} = messagesApi;
