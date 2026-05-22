@@ -1,9 +1,21 @@
-import { NotificationType } from '@prisma/client';
+import { NotificationType, type AttachmentType, type Prisma } from '@prisma/client';
 import { queueNotification } from '@/lib/notify';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { ContextRef } from '@/lib/chat-context-ref';
 
 type MessageSender = { name: string | null };
 
+type PersistedAttachment = {
+	id: string;
+	type: AttachmentType;
+	url: string;
+	metadata?: unknown;
+};
+
+// Note on contextRef typing: Prisma surfaces JSON columns as Prisma.JsonValue.
+// We persist only ContextRef-shaped objects (validated via contextRefSchema +
+// resolveContextRef on write), so we narrow back to ContextRef | null when
+// building the broadcast payload below.
 type PersistedChatMessage = {
 	id: string;
 	body: string | null;
@@ -12,7 +24,8 @@ type PersistedChatMessage = {
 	conversationId: string;
 	senderId: string;
 	sender: MessageSender;
-	attachments: unknown[];
+	attachments: PersistedAttachment[];
+	contextRef?: Prisma.JsonValue | null;
 };
 
 type MessageReceiptRow = {
@@ -50,6 +63,7 @@ export async function runAfterNewChatMessagePersisted(options: {
 		sender: createdMessage.sender,
 		receipts,
 		attachments: createdMessage.attachments,
+		contextRef: (createdMessage.contextRef ?? null) as ContextRef | null,
 	};
 
 	try {
