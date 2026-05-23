@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { ChatMessage, ChatUser } from '@/components/chat/types';
+import type { ChatMessage, ChatUser, ContextRef } from '@/components/chat/types';
 
 type SendPayload = {
 	attachments?: { type: 'IMAGE'; path: string; url: string }[];
@@ -12,15 +12,22 @@ type UseChatSendOptions = {
 	currentUser: ChatUser | null;
 	getMessageInput: () => string;
 	clearMessageInput: () => void;
+	pendingContextRef: ContextRef | null;
+	clearPendingContextRef: () => void;
 	setMessages: (updater: (prev: ChatMessage[]) => ChatMessage[]) => void;
 	onAfterSend?: () => void;
 };
 
+// Encapsulates the optimistic send + retry flow used by ChatContainer.
+// The local state machine (sending → sent | failed → retry) lives here so the
+// container doesn't have to inline it.
 export function useChatSend({
 	threadId,
 	currentUser,
 	getMessageInput,
 	clearMessageInput,
+	pendingContextRef,
+	clearPendingContextRef,
 	setMessages,
 	onAfterSend,
 }: UseChatSendOptions) {
@@ -50,6 +57,8 @@ export function useChatSend({
 			if (!body && attachments.length === 0) return;
 
 			const clientId = crypto.randomUUID();
+			const contextRefToSend = pendingContextRef;
+
 			const optimistic: ChatMessage = {
 				id: `local-${clientId}`,
 				conversationId: threadId,
@@ -64,18 +73,65 @@ export function useChatSend({
 					url: attachment.url,
 					metadata: { path: attachment.path },
 				})),
+				contextRef: contextRefToSend ?? null,
 				clientId,
 				localStatus: 'sending',
 			};
 
 			setMessages(prev => [...prev, optimistic]);
 			clearMessageInput();
+			if (contextRefToSend) clearPendingContextRef();
 
 			try {
 				const response = await fetch(`/api/messages/threads/${threadId}/messages`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ body: optimistic.body, clientId, attachments }),
+					body: JSON.stringify({
+						body: optimistic.body,
+						clientId,
+						attachments,
+						contextRef: contextRefToSend ?? undefined,
+					}),
+				});
+
+				if (!response.ok) {
+					markFailed(clientId);
+					return;
+				}
+
+				const saved = (await response.json()) as ChatMessage;
+				replaceWithSaved(clientId, saved);
+				onAfterSend?.();
+			} catch {
+				markFailed(clientId);
+			}
+		},
+		[
+			threadId,
+			currentUser,
+			getMessageInput,
+			clearMessageInput,
+			pendingContextRef,
+			clearPendingContextRef,
+			setMessages,
+			markFailed,
+			replaceWithSaved,
+			onAfterSend,
+		],
+	);
+
+	const retry = useCallback(
+		async (message: ChatMessage) => {
+			if (!threadId || !message.clientId) return;
+			const clientId = message.clientId;
+			setMessages(prev =>
+				prev.map(item => (item.clientId === clientId ? { ...item, localStatus: 'sending' } : item)),
+			);
+			try {
+				const response = await fetch(`/api/messages/threads/${threadId}/retry`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ body: message.body, clientId }),
 				});
 				if (!response.ok) {
 					markFailed(clientId);
@@ -88,8 +144,8 @@ export function useChatSend({
 				markFailed(clientId);
 			}
 		},
-		[threadId, currentUser, getMessageInput, clearMessageInput, setMessages, markFailed, replaceWithSaved, onAfterSend],
+		[threadId, setMessages, markFailed, replaceWithSaved, onAfterSend],
 	);
 
-	return { send, retry: async () => {} };
+	return { send, retry };
 }
