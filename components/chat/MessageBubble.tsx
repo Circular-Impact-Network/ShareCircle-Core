@@ -1,8 +1,10 @@
 // Renders message body, image attachments, and delivery receipts
 import { memo } from 'react';
 import type React from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertCircle, Check, CheckCheck, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ContextRefChip } from './ContextRefChip';
 import type { ChatMessage } from './types';
 
 type MessageBubbleProps = {
@@ -20,6 +22,7 @@ function arePropsEqual(prevProps: MessageBubbleProps, nextProps: MessageBubblePr
 		prevProps.message.localStatus === nextProps.message.localStatus &&
 		prevProps.message.attachments === nextProps.message.attachments &&
 		prevProps.message.receipts === nextProps.message.receipts &&
+		prevProps.message.contextRef === nextProps.message.contextRef &&
 		prevProps.isOwn === nextProps.isOwn &&
 		prevProps.highlight === nextProps.highlight
 	);
@@ -85,11 +88,22 @@ function parseMessageContent(text: string, highlight?: string, isOwn?: boolean):
 }
 
 export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRetry, highlight }: MessageBubbleProps) {
+	const router = useRouter();
 	const state = getDeliveryState(message);
 	const showRetry = state === 'failed';
 	const hasText = Boolean(message.body?.trim());
 	const hasAttachments = message.attachments.length > 0;
-	const imageOnly = hasAttachments && !hasText;
+	const hasContextRef = Boolean(message.contextRef);
+	const imageOnly = hasAttachments && !hasText && !hasContextRef;
+
+	const handleContextClick = () => {
+		if (!message.contextRef) return;
+		if (message.contextRef.type === 'item') {
+			router.push(`/items/${message.contextRef.id}`);
+		} else {
+			router.push('/notifications?tab=item-requests');
+		}
+	};
 
 	return (
 		<div className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
@@ -107,6 +121,13 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 							),
 				)}
 			>
+				{message.contextRef && (
+					<ContextRefChip
+						contextRef={message.contextRef}
+						variant={isOwn ? 'bubble-own' : 'bubble-other'}
+						onClick={handleContextClick}
+					/>
+				)}
 				{hasAttachments && (
 					<div
 						className={cn(
