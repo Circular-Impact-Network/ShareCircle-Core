@@ -6,13 +6,15 @@ import { useSession } from 'next-auth/react';
 import { ChatContainer } from './ChatContainer';
 import { GlobalPresenceProvider } from '@/hooks/useGlobalPresence';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import type { ContextRef } from './types';
 
 type ChatThreadPageProps = {
 	threadId: string;
 	initialDraft?: string | null;
+	initialContextRef?: ContextRef | null;
 };
 
-export function ChatThreadPage({ threadId, initialDraft = null }: ChatThreadPageProps) {
+export function ChatThreadPage({ threadId, initialDraft = null, initialContextRef = null }: ChatThreadPageProps) {
 	const router = useRouter();
 	const { data: session } = useSession();
 	const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -29,6 +31,7 @@ export function ChatThreadPage({ threadId, initialDraft = null }: ChatThreadPage
 			<ChatContainer
 				initialThreadId={threadId}
 				initialMessageDraft={initialDraft}
+				initialContextRef={initialContextRef}
 				hideList={!isDesktop}
 				fullBleed
 			/>
