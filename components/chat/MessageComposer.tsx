@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { MAX_MEDIA_ATTACHMENTS, getUploadValidationError, prepareImageForUpload } from '@/lib/media';
+import { ContextRefChip } from './ContextRefChip';
+import type { ContextRef } from './types';
 
 type MessageComposerProps = {
 	value: string;
@@ -19,11 +21,21 @@ type MessageComposerProps = {
 	onSend: (payload?: { attachments: { type: 'IMAGE'; path: string; url: string }[] }) => void;
 	onTyping?: () => void;
 	disabled?: boolean;
+	contextRef?: ContextRef | null;
+	onClearContextRef?: () => void;
 };
 
 const DEFAULT_EMOJI = ['😀', '😂', '😍', '😎', '👍', '🙏', '🔥', '🎉', '❤️', '🥳'];
 
-export function MessageComposer({ value, onChange, onSend, onTyping, disabled }: MessageComposerProps) {
+export function MessageComposer({
+	value,
+	onChange,
+	onSend,
+	onTyping,
+	disabled,
+	contextRef,
+	onClearContextRef,
+}: MessageComposerProps) {
 	const emojis = useMemo(() => DEFAULT_EMOJI, []);
 	const { toast } = useToast();
 	const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -184,6 +196,9 @@ export function MessageComposer({ value, onChange, onSend, onTyping, disabled }:
 
 	return (
 		<div className="border-t border-border/70 bg-card/95 px-4 py-3">
+			{contextRef && (
+				<ContextRefChip contextRef={contextRef} variant="composer" onClear={onClearContextRef} />
+			)}
 			{attachments.length > 0 && (
 				<div className="mb-3 space-y-2">
 					<div className="app-scrollbar app-scrollbar-thin flex gap-2 overflow-x-auto pb-1">
