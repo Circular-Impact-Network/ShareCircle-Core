@@ -179,89 +179,18 @@ export function ChatContainer({
 		setActiveId(threadId);
 	};
 
-	const handleSend = async (payload?: { attachments: { type: 'IMAGE'; path: string; url: string }[] }) => {
-		if (!activeId || !currentUser) return;
-		const body = messageInput.trim();
-		const attachments = payload?.attachments || [];
-		if (!body && attachments.length === 0) return;
-		const clientId = crypto.randomUUID();
-		const optimistic: ChatMessage = {
-			id: `local-${clientId}`,
-			conversationId: activeId,
-			senderId: currentUser.id,
-			body,
-			createdAt: new Date().toISOString(),
-			sender: currentUser,
-			receipts: [],
-			attachments: attachments.map((attachment, index) => ({
-				id: `local-attachment-${clientId}-${index}`,
-				type: attachment.type,
-				url: attachment.url,
-				metadata: { path: attachment.path },
-			})),
-			clientId,
-			localStatus: 'sending',
-		};
-
-		setMessages(prev => [...prev, optimistic]);
-		setMessageInput('');
-
-		try {
-			const response = await fetch(`/api/messages/threads/${activeId}/messages`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ body: optimistic.body, clientId, attachments }),
-			});
-
-			if (!response.ok) {
-				setMessages(prev =>
-					prev.map(message =>
-						message.clientId === clientId ? { ...message, localStatus: 'failed' } : message,
-					),
-				);
-				return;
-			}
-
-			const saved = (await response.json()) as ChatMessage;
-			setMessages(prev =>
-				prev.map(message => (message.clientId === clientId ? { ...saved, localStatus: undefined } : message)),
-			);
-			fetchThreads();
-		} catch {
-			setMessages(prev =>
-				prev.map(message => (message.clientId === clientId ? { ...message, localStatus: 'failed' } : message)),
-			);
-		}
-	};
-
-	const handleRetry = async (message: ChatMessage) => {
-		if (!activeId || !message.clientId) return;
-		setMessages(prev =>
-			prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'sending' } : item)),
-		);
-		try {
-			const response = await fetch(`/api/messages/threads/${activeId}/retry`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ body: message.body, clientId: message.clientId }),
-			});
-			if (!response.ok) {
-				setMessages(prev =>
-					prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'failed' } : item)),
-				);
-				return;
-			}
-			const saved = (await response.json()) as ChatMessage;
-			setMessages(prev =>
-				prev.map(item => (item.clientId === message.clientId ? { ...saved, localStatus: undefined } : item)),
-			);
-			fetchThreads();
-		} catch {
-			setMessages(prev =>
-				prev.map(item => (item.clientId === message.clientId ? { ...item, localStatus: 'failed' } : item)),
-			);
-		}
-	};
+	// Optimistic send + retry encapsulated in a hook so the container doesn't
+	// have to inline the local state machine.
+	const { send: handleSend, retry: handleRetry } = useChatSend({
+		threadId: activeId,
+		currentUser,
+		getMessageInput: () => messageInput,
+		clearMessageInput: () => setMessageInput(''),
+		pendingContextRef,
+		clearPendingContextRef: () => setPendingContextRef(null),
+		setMessages,
+		onAfterSend: fetchThreads,
+	});
 
 	const handleToggleSearch = () => {
 		setIsMessageSearchOpen(prev => {
@@ -273,20 +202,12 @@ export function ChatContainer({
 	};
 
 	const handleTogglePin = async (threadId: string, pinned: boolean) => {
-		await fetch(`/api/messages/threads/${threadId}/pin`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ pinned }),
-		});
+		await togglePinThread({ threadId, pinned });
 		fetchThreads();
 	};
 
 	const handleArchive = async (threadId: string, archived: boolean) => {
-		await fetch(`/api/messages/threads/${threadId}/archive`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ archived }),
-		});
+		await setThreadArchived({ threadId, archived });
 		if (activeId === threadId) {
 			setActiveId(null);
 			setMessages([]);
@@ -295,16 +216,12 @@ export function ChatContainer({
 	};
 
 	const handleMute = async (threadId: string, muted: boolean) => {
-		await fetch(`/api/messages/threads/${threadId}/mute`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ durationMinutes: muted ? 60 * 24 * 365 : 0 }),
-		});
+		await setThreadMute({ threadId, durationMinutes: muted ? MUTE_DURATION_MINUTES : 0 });
 		fetchThreads();
 	};
 
 	const handleDelete = async (threadId: string) => {
-		await fetch(`/api/messages/threads/${threadId}/delete`, { method: 'PATCH' });
+		await deleteThread({ threadId });
 		if (activeId === threadId) {
 			setActiveId(null);
 			setMessages([]);
