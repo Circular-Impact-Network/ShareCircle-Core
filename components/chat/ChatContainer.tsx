@@ -256,11 +256,11 @@ export function ChatContainer({
 			});
 			// Mark as read and refresh thread list
 			if (activeId) {
-				fetch(`/api/messages/threads/${activeId}/read`, { method: 'POST' });
+				void markThreadRead({ threadId: activeId });
 			}
 			fetchThreads();
 		},
-		[activeId, fetchThreads],
+		[activeId, fetchThreads, markThreadRead],
 	);
 
 	const handleRealtimeReceipts = useCallback((incoming: MessageReceipt[]) => {
@@ -324,6 +324,7 @@ export function ChatContainer({
 		isArchived: Boolean(activeThread?.archivedAt),
 		isSearchOpen: isMessageSearchOpen,
 		searchValue: messageSearch,
+		isLoading: Boolean(activeId && !activeUser),
 		onTogglePin: () => activeThread && handleTogglePin(activeThread.id, !activeThread.pinnedAt),
 		onToggleMute: () =>
 			activeThread &&
@@ -357,6 +358,8 @@ export function ChatContainer({
 				onSend={handleSend}
 				onTyping={sendTyping}
 				disabled={!canMessage}
+				contextRef={pendingContextRef}
+				onClearContextRef={() => setPendingContextRef(null)}
 			/>
 		</>
 	) : (
