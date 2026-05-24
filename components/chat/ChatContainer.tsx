@@ -136,7 +136,7 @@ export function ChatContainer({
 				setIsLoadingMessages(false);
 			}
 		},
-		[fetchThreads],
+		[fetchThreads, markThreadRead],
 	);
 
 	useEffect(() => {
@@ -161,6 +161,13 @@ export function ChatContainer({
 		setMessageInput(initialMessageDraft);
 		setHasAppliedInitialDraft(true);
 	}, [initialMessageDraft, hasAppliedInitialDraft, initialThreadId, activeId]);
+
+	// Drop the pending context if the user navigates to a different thread before sending.
+	useEffect(() => {
+		if (initialThreadId && activeId && activeId !== initialThreadId) {
+			setPendingContextRef(null);
+		}
+	}, [activeId, initialThreadId]);
 
 	const handleSelectThread = (threadId: string) => {
 		if (!isDesktop && !showListOnly) {
