@@ -81,6 +81,13 @@ export function ChatContainer({
 	// Conversation-specific typing indicators
 	const { typingUserIds, sendTyping } = useTypingIndicator(activeId, currentUser);
 
+	// Thread-state mutations (canonical chat surface lives in messagesApi)
+	const [togglePinThread] = useTogglePinThreadMutation();
+	const [setThreadArchived] = useSetThreadArchivedMutation();
+	const [setThreadMute] = useSetThreadMuteMutation();
+	const [deleteThread] = useDeleteThreadMutation();
+	const [markThreadRead] = useMarkThreadReadMutation();
+
 	const fetchThreads = useCallback(async () => {
 		setIsLoadingThreads(true);
 		try {
@@ -116,7 +123,7 @@ export function ChatContainer({
 				setNextCursor(data.nextCursor ?? null);
 				const incoming = data.messages as ChatMessage[];
 				setMessages(prev => (append ? [...incoming, ...prev] : incoming));
-				await fetch(`/api/messages/threads/${threadId}/read`, { method: 'POST' });
+				void markThreadRead({ threadId });
 				setThreads(prev =>
 					prev.map(thread =>
 						thread.id === threadId
