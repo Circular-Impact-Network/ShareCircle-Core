@@ -19,6 +19,7 @@ type ChatHeaderProps = {
 	isArchived: boolean;
 	isSearchOpen: boolean;
 	searchValue: string;
+	isLoading?: boolean;
 	onBack?: () => void;
 	onTogglePin: () => void;
 	onToggleMute: () => void;
@@ -38,6 +39,7 @@ export function ChatHeader({
 	isArchived,
 	isSearchOpen,
 	searchValue,
+	isLoading = false,
 	onBack,
 	onTogglePin,
 	onToggleMute,
@@ -47,6 +49,7 @@ export function ChatHeader({
 	onSearchChange,
 	onNewItem,
 }: ChatHeaderProps) {
+	const showSkeleton = isLoading && !user;
 	return (
 		<div className="flex-shrink-0 border-b border-border/70 bg-card/95 px-3 py-2.5">
 			<div className="flex items-center gap-2">
@@ -66,26 +69,42 @@ export function ChatHeader({
 
 				{/* User info */}
 				<div className="flex min-w-0 flex-1 items-center gap-2.5">
-					<Avatar className="h-9 w-9 shrink-0">
-						<AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
-						<AvatarFallback className="bg-primary text-primary-foreground text-sm">
-							{user?.name?.[0]?.toUpperCase() || '?'}
-						</AvatarFallback>
-					</Avatar>
-					<div className="min-w-0 flex-1">
-						<p className="truncate text-sm font-semibold leading-tight text-foreground">
-							{user?.name || 'Unknown'}
-						</p>
-						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-							<span
-								className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-									isTyping ? 'bg-amber-500' : isOnline ? 'bg-emerald-500' : 'bg-muted-foreground/40'
-								}`}
-							/>
-							<span>{isTyping ? 'typing…' : isOnline ? 'online' : 'offline'}</span>
-							{isArchived && <span>· Archived</span>}
-						</div>
-					</div>
+					{showSkeleton ? (
+						<>
+							<div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-muted" />
+							<div className="min-w-0 flex-1 space-y-1.5">
+								<div className="h-3.5 w-32 animate-pulse rounded bg-muted" />
+								<div className="h-2.5 w-20 animate-pulse rounded bg-muted/70" />
+							</div>
+						</>
+					) : (
+						<>
+							<Avatar className="h-9 w-9 shrink-0">
+								<AvatarImage src={user?.image || undefined} alt={user?.name || 'User'} />
+								<AvatarFallback className="bg-primary text-primary-foreground text-sm">
+									{user?.name?.[0]?.toUpperCase() || '?'}
+								</AvatarFallback>
+							</Avatar>
+							<div className="min-w-0 flex-1">
+								<p className="truncate text-sm font-semibold leading-tight text-foreground">
+									{user?.name || 'Unknown'}
+								</p>
+								<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+									<span
+										className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+											isTyping
+												? 'bg-amber-500'
+												: isOnline
+													? 'bg-emerald-500'
+													: 'bg-muted-foreground/40'
+										}`}
+									/>
+									<span>{isTyping ? 'typing…' : isOnline ? 'online' : 'offline'}</span>
+									{isArchived && <span>· Archived</span>}
+								</div>
+							</div>
+						</>
+					)}
 				</div>
 
 				{/* Actions */}
