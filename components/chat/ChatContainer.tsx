@@ -14,22 +14,33 @@ import { useTypingIndicator } from '@/hooks/usePresence';
 import { useGlobalPresence } from '@/hooks/useGlobalPresence';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
 import { useUserMessages } from '@/hooks/useUserMessages';
+import { useChatSend } from '@/hooks/useChatSend';
 import { AddItemModal } from '@/components/modals/add-item-modal';
-import type { ChatMessage, ChatThread as ChatThreadType, ChatUser, MessageReceipt } from './types';
+import {
+	useTogglePinThreadMutation,
+	useSetThreadArchivedMutation,
+	useSetThreadMuteMutation,
+	useDeleteThreadMutation,
+	useMarkThreadReadMutation,
+} from '@/lib/redux/api/messagesApi';
+import type { ChatMessage, ChatThread as ChatThreadType, ChatUser, ContextRef, MessageReceipt } from './types';
 
 type ChatContainerProps = {
 	initialThreadId?: string | null;
 	initialMessageDraft?: string | null;
+	initialContextRef?: ContextRef | null;
 	showListOnly?: boolean;
 	hideList?: boolean;
 	fullBleed?: boolean;
 };
 
 const PAGE_SIZE = 30;
+const MUTE_DURATION_MINUTES = 60 * 24 * 365; // 1 year — effectively "muted indefinitely"
 
 export function ChatContainer({
 	initialThreadId = null,
 	initialMessageDraft = null,
+	initialContextRef = null,
 	showListOnly = false,
 	hideList = false,
 	fullBleed = false,
@@ -60,6 +71,7 @@ export function ChatContainer({
 	const [canMessage, setCanMessage] = useState(true);
 	const [hasAppliedInitialDraft, setHasAppliedInitialDraft] = useState(false);
 	const [showAddItem, setShowAddItem] = useState(false);
+	const [pendingContextRef, setPendingContextRef] = useState<ContextRef | null>(initialContextRef);
 
 	const activeThread = threads.find(thread => thread.id === activeId) || null;
 	const activeUser = activeThread?.participants[0] || null;
