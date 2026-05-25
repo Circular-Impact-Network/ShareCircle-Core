@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
+import { openDirectChat } from '@/lib/chat-navigation';
 
 type TabType = 'all' | 'mine';
 
@@ -226,19 +227,11 @@ export function ItemRequestsPage() {
 	const handleFulfill = async (requestId: string, requesterId: string, requestTitleText: string) => {
 		setStartingChatForRequestId(requestId);
 		try {
-			const threadResponse = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId: requesterId }),
+			await openDirectChat(router, {
+				otherUserId: requesterId,
+				contextRef: { type: 'item-request', id: requestId, title: requestTitleText },
+				draft: `I have this item and can help with your request: "${requestTitleText}".`,
 			});
-			if (!threadResponse.ok) {
-				const errorData = await threadResponse.json().catch(() => ({}));
-				throw new Error(errorData.error || 'Failed to start conversation');
-			}
-
-			const thread = await threadResponse.json();
-			const draft = `I have this item and can help with your request: "${requestTitleText}".`;
-			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
 		} catch (error) {
 			console.error('Start fulfillment chat error:', error);
 			toast({
