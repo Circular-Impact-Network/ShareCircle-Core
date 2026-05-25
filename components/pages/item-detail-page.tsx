@@ -57,6 +57,7 @@ import {
 import { PageShell } from '@/components/ui/page';
 import { ItemDetailSkeleton } from '@/components/ui/skeletons';
 import { useToast } from '@/hooks/useToast';
+import { openDirectChat } from '@/lib/chat-navigation';
 
 interface ItemDetailPageProps {
 	itemId: string;
@@ -145,17 +146,10 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 		if (!item?.owner?.id || item.isOwner) return;
 		setIsStartingChat(true);
 		try {
-			const response = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId: item.owner.id }),
+			await openDirectChat(router, {
+				otherUserId: item.owner.id,
+				contextRef: { type: 'item', id: item.id, title: item.name },
 			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to start chat');
-			}
-			const data = await response.json();
-			router.push(`/messages/${data.id}`);
 		} catch (error) {
 			console.error('Start chat error:', error);
 			toast({
