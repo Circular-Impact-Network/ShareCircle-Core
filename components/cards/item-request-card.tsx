@@ -7,25 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import type { ItemRequest } from '@/lib/redux/api/borrowApi';
-
-function getStatusLabel(status: string) {
-	switch (status) {
-		case 'OPEN':
-			return 'Open';
-		case 'FULFILLED':
-			return 'Fulfilled';
-		case 'CANCELLED':
-			return 'Closed';
-		default:
-			return status;
-	}
-}
+import { getItemRequestPresentation } from '@/lib/borrow-ui';
 
 export function ItemRequestCard({
 	request,
 	onRespond,
 	onIgnore,
 	onClose,
+	onChat,
 	isMyRequest,
 	isResponding,
 	isClosing,
@@ -34,6 +23,7 @@ export function ItemRequestCard({
 	onRespond?: (requestId: string, requesterId: string, requestTitle: string) => void;
 	onIgnore?: (requestId: string) => void;
 	onClose?: (requestId: string) => void;
+	onChat?: (requesterId: string, requestId: string, requestTitle: string) => void;
 	isMyRequest: boolean;
 	isResponding?: boolean;
 	isClosing?: boolean;
@@ -60,16 +50,19 @@ export function ItemRequestCard({
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2 mb-1">
 							<p className="text-sm font-medium">{request.title}</p>
-							<Badge
-								variant={isOpen ? 'default' : request.status === 'FULFILLED' ? 'secondary' : 'outline'}
-							>
-								{getStatusLabel(request.status)}
-							</Badge>
+							{!isOpen &&
+								(() => {
+									const p = getItemRequestPresentation(request.status);
+									return <Badge variant={p.tone === 'secondary' ? 'secondary' : 'outline'}>{p.label}</Badge>;
+								})()}
 							{request.isResponded && (
-								<Badge variant="secondary" className="gap-1 text-green-700 bg-green-100">
-									<CheckCircle className="h-3 w-3" />
-									Responded
-								</Badge>
+								<span
+									aria-label="Responded"
+									title="Responded"
+									className="inline-flex items-center justify-center rounded-full bg-green-100 p-0.5 text-green-700"
+								>
+									<CheckCircle className="h-3.5 w-3.5" />
+								</span>
 							)}
 						</div>
 						{request.description && (
@@ -125,6 +118,21 @@ export function ItemRequestCard({
 										Ignore
 									</Button>
 								)}
+							</div>
+						)}
+
+						{/* Persistent chat affordance after the user has responded */}
+						{!isMyRequest && request.isResponded && onChat && (
+							<div className="mt-3 flex flex-wrap gap-2">
+								<Button
+									size="sm"
+									variant="outline"
+									className="gap-2"
+									onClick={() => onChat(request.requester.id, request.id, request.title)}
+								>
+									<MessageCircle className="h-4 w-4" />
+									Chat
+								</Button>
 							</div>
 						)}
 
