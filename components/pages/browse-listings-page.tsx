@@ -22,6 +22,7 @@ import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/useToast';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { openDirectChat } from '@/lib/chat-navigation';
 
 export function BrowseListingsPage() {
 	const router = useRouter();
@@ -250,21 +251,14 @@ export function BrowseListingsPage() {
 		}
 	}, [queryFromUrl, router]);
 
-	async function handleStartChat(ownerId: string) {
+	async function handleStartChat(ownerId: string, itemContext?: { id: string; name: string }) {
 		if (!ownerId) return;
 		setStartingChatId(ownerId);
 		try {
-			const response = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId: ownerId }),
+			await openDirectChat(router, {
+				otherUserId: ownerId,
+				contextRef: itemContext ? { type: 'item', id: itemContext.id, title: itemContext.name } : null,
 			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to start chat');
-			}
-			const data = await response.json();
-			router.push(`/messages/${data.id}`);
 		} catch (error) {
 			console.error('Start chat error:', error);
 			toast({
@@ -543,7 +537,9 @@ export function BrowseListingsPage() {
 													variant="outline"
 													size="sm"
 													className="gap-2"
-													onClick={() => handleStartChat(item.owner.id)}
+													onClick={() =>
+														handleStartChat(item.owner.id, { id: item.id, name: item.name })
+													}
 													disabled={startingChatId === item.owner.id}
 												>
 													{startingChatId === item.owner.id ? (
