@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
+import { EMPTY_OTP, OtpInput } from '@/components/auth/OtpInput';
 import {
 	PHONE_COUNTRIES,
 	SupportedPhoneCountry,
@@ -29,11 +30,10 @@ function LoginContent() {
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [loginFlow, setLoginFlow] = useState<'password' | 'otp'>('password');
-	const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+	const [otpCode, setOtpCode] = useState<string[]>(EMPTY_OTP);
 	const [otpCooldown, setOtpCooldown] = useState(0);
 	const [isOtpSending, setIsOtpSending] = useState(false);
 	const [isOtpVerifying, setIsOtpVerifying] = useState(false);
-	const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 	const [phoneNumber, setPhoneNumber] = useState('');
 	const [country, setCountry] = useState<SupportedPhoneCountry>('IN');
 	const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
@@ -76,11 +76,8 @@ function LoginContent() {
 		}
 	}, [otpCooldown]);
 
-	useEffect(() => {
-		if (loginFlow === 'otp') {
-			otpInputRefs.current[0]?.focus();
-		}
-	}, [loginFlow]);
+	// Focus the first OTP cell whenever the OTP flow becomes visible — handled
+	// inside OtpInput via the autoFocus prop derived from loginFlow.
 
 	useEffect(() => {
 		if (emailParam) {
@@ -118,7 +115,7 @@ function LoginContent() {
 		}
 		if (nextMode !== 'login') {
 			setLoginFlow('password');
-			setOtpCode(['', '', '', '', '', '']);
+			setOtpCode(EMPTY_OTP);
 			setOtpCooldown(0);
 		}
 
@@ -250,38 +247,11 @@ function LoginContent() {
 					: 'A login code has been sent to your phone.',
 			);
 			setOtpCooldown(60);
-			setOtpCode(['', '', '', '', '', '']);
-			otpInputRefs.current[0]?.focus();
+			setOtpCode(EMPTY_OTP);
 		} catch {
 			setError('Failed to send login code. Please try again.');
 		} finally {
 			setIsOtpSending(false);
-		}
-	};
-
-	const handleOtpInputChange = (index: number, value: string) => {
-		if (!/^\d*$/.test(value)) return;
-		const next = [...otpCode];
-		next[index] = value.slice(-1);
-		setOtpCode(next);
-		setError('');
-
-		if (value && index < 5) {
-			otpInputRefs.current[index + 1]?.focus();
-		}
-	};
-
-	const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
-			otpInputRefs.current[index - 1]?.focus();
-		}
-	};
-
-	const handleOtpPaste = (e: React.ClipboardEvent) => {
-		e.preventDefault();
-		const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-		if (pasted.length === 6) {
-			setOtpCode(pasted.split(''));
 		}
 	};
 
@@ -637,7 +607,7 @@ function LoginContent() {
 							setLoginFlow(loginFlow === 'password' ? 'otp' : 'password');
 							setError('');
 							setSuccessMessage('');
-							setOtpCode(['', '', '', '', '', '']);
+							setOtpCode(EMPTY_OTP);
 							setOtpCooldown(0);
 						}}
 						className="text-primary font-medium hover:underline"
@@ -697,7 +667,7 @@ function LoginContent() {
 								setLoginMethod(value as 'email' | 'phone');
 								setError('');
 								setSuccessMessage('');
-								setOtpCode(['', '', '', '', '', '']);
+								setOtpCode(EMPTY_OTP);
 							}}
 							className="w-full"
 						>
@@ -765,24 +735,15 @@ function LoginContent() {
 								{otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Send code'}
 							</button>
 						</div>
-						<div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
-							{otpCode.map((digit, index) => (
-								<Input
-									key={index}
-									ref={el => {
-										otpInputRefs.current[index] = el;
-									}}
-									type="text"
-									inputMode="numeric"
-									maxLength={1}
-									value={digit}
-									onChange={e => handleOtpInputChange(index, e.target.value)}
-									onKeyDown={e => handleOtpKeyDown(index, e)}
-									className="w-10 h-12 text-center text-lg font-semibold"
-									disabled={isOtpVerifying}
-								/>
-							))}
-						</div>
+						<OtpInput
+							value={otpCode}
+							onChange={next => {
+								setOtpCode(next);
+								setError('');
+							}}
+							disabled={isOtpVerifying}
+							autoFocus={loginFlow === 'otp'}
+						/>
 						<Button
 							type="button"
 							className="w-full bg-primary hover:bg-primary/90 text-lg h-11"
