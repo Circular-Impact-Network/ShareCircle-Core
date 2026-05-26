@@ -176,8 +176,10 @@ test.describe('Activity → Requests sub-tab', () => {
 		await expect(closeBtn).toBeVisible();
 		await closeBtn.click();
 
-		await expect(card).toHaveAttribute('data-status', 'CANCELLED', { timeout: 10000 });
-		await expect(card.getByText('Closed').first()).toBeVisible();
+		// Under fully-parallel e2e load the PATCH + RTK refetch round-trip can exceed
+		// 10s, so align with the 15s waits used elsewhere in this file.
+		await expect(card).toHaveAttribute('data-status', 'CANCELLED', { timeout: 20000 });
+		await expect(card.getByText('Closed').first()).toBeVisible({ timeout: 10000 });
 		await expect(card).toHaveClass(/opacity-60/);
 	});
 });
