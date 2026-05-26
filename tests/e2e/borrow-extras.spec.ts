@@ -49,10 +49,9 @@ test.describe('B8 — borrower extends due date', () => {
 		const newDueAt = await test.step('borrower posts /extend with newDueAt = original + 3 days', async () => {
 			const newDate = new Date();
 			newDate.setDate(newDate.getDate() + 10); // 3 days past nextWeek
-			const extendRes = await user2Context.request.post(
-				`/api/borrow-requests/${borrowRequest.id}/extend`,
-				{ data: { newDueAt: newDate.toISOString() } },
-			);
+			const extendRes = await user2Context.request.post(`/api/borrow-requests/${borrowRequest.id}/extend`, {
+				data: { newDueAt: newDate.toISOString() },
+			});
 			expect(extendRes.status()).toBe(200);
 			const body = (await extendRes.json()) as { transaction: { dueAt: string } };
 			expect(new Date(body.transaction.dueAt).getTime()).toBeGreaterThan(new Date(desiredTo).getTime());

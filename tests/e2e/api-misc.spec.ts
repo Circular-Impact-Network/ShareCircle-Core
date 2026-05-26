@@ -149,7 +149,10 @@ test.describe('J46 — rate limit auth signup', () => {
 		// recycle. Soft-skip if no 429 is observed — the rate-limit unit tests cover the
 		// actual logic in detail.
 		if (!statuses.some(s => s === 429)) {
-			test.skip(true, `No 429 in 6 rapid signup attempts (statuses: ${statuses.join(',')}); rate-limit map likely was reset by retry runner`);
+			test.skip(
+				true,
+				`No 429 in 6 rapid signup attempts (statuses: ${statuses.join(',')}); rate-limit map likely was reset by retry runner`,
+			);
 		}
 
 		await anonContext.close();

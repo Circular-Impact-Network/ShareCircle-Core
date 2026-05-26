@@ -196,9 +196,7 @@ export function MessageComposer({
 
 	return (
 		<div className="border-t border-border/70 bg-card/95 px-4 py-3">
-			{contextRef && (
-				<ContextRefChip contextRef={contextRef} variant="composer" onClear={onClearContextRef} />
-			)}
+			{contextRef && <ContextRefChip contextRef={contextRef} variant="composer" onClear={onClearContextRef} />}
 			{attachments.length > 0 && (
 				<div className="mb-3 space-y-2">
 					<div className="app-scrollbar app-scrollbar-thin flex gap-2 overflow-x-auto pb-1">

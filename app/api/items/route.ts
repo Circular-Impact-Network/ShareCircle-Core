@@ -184,38 +184,35 @@ export async function GET(req: NextRequest) {
 
 		const itemsWithUrls = paginatedItems.map(item => {
 			const imageUrl = itemUrlMap.get(item.imagePath) ?? '';
-			const mediaUrls = [
-				imageUrl,
-				...(item.mediaPaths || []).map(p => mediaUrlMap.get(p) ?? ''),
-			];
+			const mediaUrls = [imageUrl, ...(item.mediaPaths || []).map(p => mediaUrlMap.get(p) ?? '')];
 			return {
-					id: item.id,
-					name: item.name,
-					description: item.description,
-					imageUrl,
-					imagePath: item.imagePath,
-					mediaUrls,
-					mediaPaths: item.mediaPaths,
-					categories: item.categories,
-					tags: item.tags,
-					createdAt: item.createdAt,
-					updatedAt: item.updatedAt,
-					archivedAt: item.archivedAt,
-					owner: item.owner,
-					// Only show circles the user is a member of (not all circles the item is shared in)
-					circles: item.circles
-						.filter(c => userCircleIds.includes(c.circleId))
-						.map(c => ({
-							id: c.circle.id,
-							name: c.circle.name,
-						})),
-					isOwner: item.ownerId === userId,
-					isAvailable: item.isAvailable,
-					estimatedWeightKg: item.estimatedWeightKg,
-					estimatedNewPriceUsd: item.estimatedNewPriceUsd,
-					isValueVisible: item.isValueVisible,
-				};
-			});
+				id: item.id,
+				name: item.name,
+				description: item.description,
+				imageUrl,
+				imagePath: item.imagePath,
+				mediaUrls,
+				mediaPaths: item.mediaPaths,
+				categories: item.categories,
+				tags: item.tags,
+				createdAt: item.createdAt,
+				updatedAt: item.updatedAt,
+				archivedAt: item.archivedAt,
+				owner: item.owner,
+				// Only show circles the user is a member of (not all circles the item is shared in)
+				circles: item.circles
+					.filter(c => userCircleIds.includes(c.circleId))
+					.map(c => ({
+						id: c.circle.id,
+						name: c.circle.name,
+					})),
+				isOwner: item.ownerId === userId,
+				isAvailable: item.isAvailable,
+				estimatedWeightKg: item.estimatedWeightKg,
+				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+				isValueVisible: item.isValueVisible,
+			};
+		});
 
 		// When limit param is present, return paginated response format
 		// Otherwise return flat array for backward compatibility

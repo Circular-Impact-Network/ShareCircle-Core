@@ -52,7 +52,9 @@ async function ensureSharedCircleThread(
 ): Promise<string> {
 	// Create a circle as the caller, have the other user join via their own request context,
 	// then open a DM thread. This guarantees the canUsersChat gate is satisfied.
-	const circle = await api.createCircle({ name: `Msg Feature Circle ${Date.now()}-${Math.random().toString(36).slice(2, 6)}` });
+	const circle = await api.createCircle({
+		name: `Msg Feature Circle ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+	});
 	const otherCtx = await browser.newContext({ storageState: otherUserStoragePath });
 	const otherApi = new TestAPI(otherCtx.request);
 	await otherApi.joinCircle(circle.inviteCode).catch(() => undefined);
@@ -182,7 +184,10 @@ test.describe('messaging features', () => {
 					},
 				});
 				if (!uploadResponse.ok()) {
-					test.skip(true, `Image upload failed (${uploadResponse.status()}); likely Supabase storage not configured in test env`);
+					test.skip(
+						true,
+						`Image upload failed (${uploadResponse.status()}); likely Supabase storage not configured in test env`,
+					);
 					return;
 				}
 				const payload = (await uploadResponse.json()) as { path: string; url: string };
@@ -258,11 +263,7 @@ test.describe('messaging features', () => {
 			const threadId = await ensureSharedCircleThread(api, users.user2.id, storageStatePaths.user2, browser);
 
 			const unique = `tagsearch${Date.now()}`;
-			const distinctBodies = [
-				`alpha ${Date.now()}`,
-				`bravo ${unique}`,
-				`charlie ${Date.now()}`,
-			];
+			const distinctBodies = [`alpha ${Date.now()}`, `bravo ${unique}`, `charlie ${Date.now()}`];
 
 			await test.step('send 3 distinct messages', async () => {
 				for (const text of distinctBodies) {
@@ -314,7 +315,10 @@ test.describe('messaging features', () => {
 					data: { otherUserId: users.user2.id },
 				});
 				if (!threadResponse.ok()) {
-					test.skip(true, `Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`);
+					test.skip(
+						true,
+						`Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`,
+					);
 					return;
 				}
 				const thread = (await threadResponse.json()) as { id: string };
@@ -395,7 +399,10 @@ test.describe('messaging features', () => {
 					data: { otherUserId: users.user2.id },
 				});
 				if (!threadResponse.ok()) {
-					test.skip(true, `Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`);
+					test.skip(
+						true,
+						`Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`,
+					);
 					return;
 				}
 				const thread = (await threadResponse.json()) as { id: string };

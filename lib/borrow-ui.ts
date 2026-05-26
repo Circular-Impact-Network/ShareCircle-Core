@@ -4,7 +4,12 @@
 // place so cards and pages don't re-derive these case-by-case. Pure presentation
 // — no DOM. Callers wrap the result in their own <Badge /> element.
 
-import type { BorrowRequestStatus, BorrowQueueStatus, BorrowTransactionStatus, ItemRequestStatus } from '@prisma/client';
+import type {
+	BorrowRequestStatus,
+	BorrowQueueStatus,
+	BorrowTransactionStatus,
+	ItemRequestStatus,
+} from '@prisma/client';
 
 export type BadgeTone =
 	| 'default'
@@ -92,9 +97,10 @@ export const TONE_CLASSES: Record<BadgeTone, string> = {
 
 // Convenience: render-ready props for shadcn <Badge>. Custom tones map to
 // variant=default + className overrides; standard variants pass through.
-export function toBadgeProps(
-	presentation: StatusPresentation,
-): { variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string } {
+export function toBadgeProps(presentation: StatusPresentation): {
+	variant: 'default' | 'secondary' | 'destructive' | 'outline';
+	className?: string;
+} {
 	switch (presentation.tone) {
 		case 'info':
 		case 'warn':

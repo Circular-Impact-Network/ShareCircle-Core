@@ -46,8 +46,7 @@ test.describe('D25 — push subscription CRUD', () => {
 			endpoint,
 			expirationTime: null,
 			keys: {
-				p256dh:
-					'BNbI8gJK6sSr8L4xrTHj0xY3GfMxRZ0jM1xQ1jKxJv8WJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0',
+				p256dh: 'BNbI8gJK6sSr8L4xrTHj0xY3GfMxRZ0jM1xQ1jKxJv8WJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0XJxQv0',
 				auth: 'aBcDeFgHiJkLmNoPqRsTuV',
 			},
 		};
@@ -141,9 +140,7 @@ test.describe('D26 — notification preference suppression', () => {
 
 		await test.step('GET notifications — there must be no BORROW_REQUEST_RECEIVED for this item', async () => {
 			const notifs = await getRecentNotifications(request);
-			const matching = notifs.filter(
-				n => n.type === 'BORROW_REQUEST_RECEIVED' && n.metadata?.itemId === item.id,
-			);
+			const matching = notifs.filter(n => n.type === 'BORROW_REQUEST_RECEIVED' && n.metadata?.itemId === item.id);
 			expect(matching).toHaveLength(0);
 		});
 

@@ -15,9 +15,7 @@ import { test, expect, storageStatePaths } from './fixtures';
 import { TestAPI } from './helpers/test-data';
 
 test.describe('item-request → chat (cross-user)', () => {
-	test('Respond opens chat with context; first message carries contextRef, second does not', async ({
-		browser,
-	}) => {
+	test('Respond opens chat with context; first message carries contextRef, second does not', async ({ browser }) => {
 		const user1Ctx = await browser.newContext({ storageState: storageStatePaths.user1 });
 		const user1Page = await user1Ctx.newPage();
 		const user1Api = new TestAPI(user1Page.request);

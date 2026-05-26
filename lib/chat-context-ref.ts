@@ -51,7 +51,10 @@ export function parseContextRefParam(raw: string | undefined): ContextRef | null
 // Authorization rule: the sender must share at least one circle with the
 // referenced item / item-request. This prevents leaking the title of items
 // the sender cannot themselves see.
-export async function resolveContextRef(userId: string, ref: ContextRef | null | undefined): Promise<ContextRef | null> {
+export async function resolveContextRef(
+	userId: string,
+	ref: ContextRef | null | undefined,
+): Promise<ContextRef | null> {
 	if (!ref) return null;
 
 	const memberships = await prisma.circleMember.findMany({

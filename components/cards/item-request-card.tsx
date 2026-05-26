@@ -53,7 +53,11 @@ export function ItemRequestCard({
 							{!isOpen &&
 								(() => {
 									const p = getItemRequestPresentation(request.status);
-									return <Badge variant={p.tone === 'secondary' ? 'secondary' : 'outline'}>{p.label}</Badge>;
+									return (
+										<Badge variant={p.tone === 'secondary' ? 'secondary' : 'outline'}>
+											{p.label}
+										</Badge>
+									);
 								})()}
 							{request.isResponded && (
 								<span

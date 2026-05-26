@@ -84,7 +84,9 @@ export async function POST(req: NextRequest) {
 
 		if (!validTypes.includes(file.type)) {
 			const allowedTypes =
-				bucket === 'media' ? 'JPEG, PNG, GIF, WebP, HEIC, MP4, WebM, or QuickTime' : 'JPEG, PNG, GIF, WebP, or HEIC';
+				bucket === 'media'
+					? 'JPEG, PNG, GIF, WebP, HEIC, MP4, WebM, or QuickTime'
+					: 'JPEG, PNG, GIF, WebP, or HEIC';
 			return NextResponse.json(
 				{ error: `Invalid file type. Only ${allowedTypes} are allowed.` },
 				{ status: 400 },

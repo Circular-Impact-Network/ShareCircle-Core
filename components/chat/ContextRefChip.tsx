@@ -64,7 +64,11 @@ export function ContextRefChip({ contextRef, variant, onClick, onClear }: Contex
 		</>
 	);
 
-	const testIdValue = isComposer ? 'context-ref-chip-composer' : isOwn ? 'context-ref-chip-own' : 'context-ref-chip-other';
+	const testIdValue = isComposer
+		? 'context-ref-chip-composer'
+		: isOwn
+			? 'context-ref-chip-own'
+			: 'context-ref-chip-other';
 
 	if (isClickable) {
 		return (
@@ -74,5 +78,9 @@ export function ContextRefChip({ contextRef, variant, onClick, onClear }: Contex
 		);
 	}
 
-	return <div className={containerClasses} data-testid={testIdValue}>{body}</div>;
+	return (
+		<div className={containerClasses} data-testid={testIdValue}>
+			{body}
+		</div>
+	);
 }
