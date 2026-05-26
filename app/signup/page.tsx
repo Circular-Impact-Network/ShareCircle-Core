@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
+import { EMPTY_OTP, OtpInput } from '@/components/auth/OtpInput';
 import {
 	PHONE_COUNTRIES,
 	SupportedPhoneCountry,
@@ -51,8 +52,7 @@ function SignupContent() {
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [isResending, setIsResending] = useState(false);
 	const [resendCooldown, setResendCooldown] = useState(0);
-	const [code, setCode] = useState(['', '', '', '', '', '']);
-	const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+	const [code, setCode] = useState<string[]>(EMPTY_OTP);
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const callbackUrl = searchParams.get('callbackUrl') || '/home';
@@ -75,11 +75,7 @@ function SignupContent() {
 		}
 	}, [resendCooldown]);
 
-	useEffect(() => {
-		if (mode === 'verify') {
-			inputRefs.current[0]?.focus();
-		}
-	}, [mode]);
+	// OTP cell auto-focus is handled inside OtpInput via the autoFocus prop.
 
 	useEffect(() => {
 		if (mode === 'signup') {
@@ -87,7 +83,7 @@ function SignupContent() {
 			setIsVerifying(false);
 			setIsResending(false);
 			setResendCooldown(0);
-			setCode(['', '', '', '', '', '']);
+			setCode(EMPTY_OTP);
 		}
 	}, [mode]);
 
@@ -307,41 +303,6 @@ function SignupContent() {
 		);
 	};
 
-	const handleInputChange = (index: number, value: string) => {
-		if (!/^\d*$/.test(value)) return;
-		const newCode = [...code];
-		newCode[index] = value.slice(-1);
-		setCode(newCode);
-		setError('');
-
-		if (value && index < 5) {
-			inputRefs.current[index + 1]?.focus();
-		}
-
-		if (value && index === 5) {
-			const fullCode = newCode.join('');
-			if (fullCode.length === 6) {
-				handleVerify(fullCode);
-			}
-		}
-	};
-
-	const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Backspace' && !code[index] && index > 0) {
-			inputRefs.current[index - 1]?.focus();
-		}
-	};
-
-	const handlePaste = (e: React.ClipboardEvent) => {
-		e.preventDefault();
-		const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-		if (pastedData.length === 6) {
-			const newCode = pastedData.split('');
-			setCode(newCode);
-			handleVerify(pastedData);
-		}
-	};
-
 	const handleVerify = async (verificationCode?: string) => {
 		const codeToVerify = verificationCode || code.join('');
 		if (codeToVerify.length !== 6) {
@@ -462,8 +423,7 @@ function SignupContent() {
 				setError(data.error || 'Failed to resend code');
 			} else {
 				setResendCooldown(60);
-				setCode(['', '', '', '', '', '']);
-				inputRefs.current[0]?.focus();
+				setCode(EMPTY_OTP);
 				setSuccessMessage('A new verification code has been sent.');
 			}
 		} catch {
@@ -526,24 +486,16 @@ function SignupContent() {
 				<>
 					<div className="mb-6">
 						<label className="block text-sm font-medium mb-3">Enter verification code</label>
-						<div className="flex gap-2 sm:gap-3 justify-center" onPaste={handlePaste}>
-							{code.map((digit, index) => (
-								<Input
-									key={index}
-									ref={el => {
-										inputRefs.current[index] = el;
-									}}
-									type="text"
-									inputMode="numeric"
-									maxLength={1}
-									value={digit}
-									onChange={e => handleInputChange(index, e.target.value)}
-									onKeyDown={e => handleKeyDown(index, e)}
-									className="w-12 h-14 text-center text-2xl font-bold"
-									disabled={isVerifying}
-								/>
-							))}
-						</div>
+						<OtpInput
+							value={code}
+							onChange={next => {
+								setCode(next);
+								setError('');
+							}}
+							disabled={isVerifying}
+							autoFocus={mode === 'verify'}
+							onComplete={fullCode => handleVerify(fullCode)}
+						/>
 					</div>
 
 					<div className="max-w-xs mx-auto">
