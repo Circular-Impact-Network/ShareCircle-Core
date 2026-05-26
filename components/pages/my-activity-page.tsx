@@ -477,6 +477,9 @@ export function MyActivityPage() {
 	const visibleBorrowedHistory = useProgressivePagination({ items: borrowedHistory, pageSize: 8 });
 	const visibleLentHistory = useProgressivePagination({ items: lentHistory, pageSize: 8 });
 
+	const openMyItemRequests = myItemRequests.filter(r => r.status === 'OPEN');
+	const visibleMyItemRequests = useProgressivePagination({ items: myItemRequests, pageSize: 8 });
+
 	const isLoading = requestsLoading || borrowerTxLoading || ownerTxLoading || queueLoading;
 
 	return (
@@ -508,6 +511,14 @@ export function MyActivityPage() {
 						>
 							<Users className="h-4 w-4 shrink-0" />
 							Queue
+						</PageTabsTrigger>
+						<PageTabsTrigger
+							value="requests"
+							className="gap-1.5"
+							badge={openMyItemRequests.length > 0 ? openMyItemRequests.length : undefined}
+						>
+							<Package className="h-4 w-4 shrink-0" />
+							Requests
 						</PageTabsTrigger>
 						<PageTabsTrigger value="history" className="gap-1.5">
 							<History className="h-4 w-4 shrink-0" />
@@ -654,6 +665,45 @@ export function MyActivityPage() {
 								onLoadMore={visibleQueueEntries.loadMore}
 								enabled={activeTab === 'queue'}
 								label="Loading more queue items"
+							/>
+						</>
+					)}
+				</PageTabsContent>
+
+				{/* Requests Tab - My item requests */}
+				<PageTabsContent value="requests" className="space-y-3">
+					{itemRequestsLoading ? (
+						<RequestCardListSkeleton count={3} />
+					) : myItemRequests.length === 0 ? (
+						<Card className="border-dashed">
+							<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+								<div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+									<Package className="h-7 w-7 text-muted-foreground" />
+								</div>
+								<div>
+									<p className="font-medium">No item requests yet</p>
+									<p className="text-sm text-muted-foreground">
+										Requests you create will appear here so you can track and close them
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<>
+							{visibleMyItemRequests.visibleItems.map(request => (
+								<ItemRequestCard
+									key={request.id}
+									request={request}
+									onClose={handleCloseItemRequest}
+									isMyRequest
+									isClosing={closingRequestId === request.id}
+								/>
+							))}
+							<InfiniteScrollSentinel
+								hasMore={visibleMyItemRequests.hasMore}
+								onLoadMore={visibleMyItemRequests.loadMore}
+								enabled={activeTab === 'requests'}
+								label="Loading more requests"
 							/>
 						</>
 					)}
