@@ -10,14 +10,17 @@ const globalForPrisma = globalThis as unknown as {
 
 // Default Prisma connection_limit is num_physical_cpus * 2 + 1 (≈5 on CI runners).
 // Under fully-parallel e2e load, that exhausts the pool and surfaces as P2024 timeouts.
-// Bump the default to 15 unless the URL already pins it explicitly.
+// Bump defaults unless the URL already pins them explicitly.
 function getDatabaseUrl(): string | undefined {
 	const raw = process.env.DATABASE_URL;
 	if (!raw) return undefined;
 	try {
 		const url = new URL(raw);
 		if (!url.searchParams.has('connection_limit')) {
-			url.searchParams.set('connection_limit', '15');
+			url.searchParams.set('connection_limit', '25');
+		}
+		if (!url.searchParams.has('pool_timeout')) {
+			url.searchParams.set('pool_timeout', '20');
 		}
 		return url.toString();
 	} catch {
@@ -30,6 +33,12 @@ export const prisma =
 	new PrismaClient({
 		log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 		datasourceUrl: getDatabaseUrl(),
+		// Multi-step transactions (e.g. send-message) blow the 5s default under contention
+		// and surface as P2028. 20s leaves headroom without masking real deadlocks.
+		transactionOptions: {
+			maxWait: 10000,
+			timeout: 20000,
+		},
 	});
 
 if (process.env.NODE_ENV !== 'production') {
