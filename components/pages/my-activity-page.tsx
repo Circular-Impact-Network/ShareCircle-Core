@@ -28,6 +28,8 @@ import {
 	useConfirmReturnMutation,
 	useConfirmHandoffMutation,
 	useConfirmReceiptMutation,
+	useGetItemRequestsQuery,
+	useUpdateItemRequestMutation,
 	BorrowRequest,
 	BorrowQueueEntry,
 	FullTransaction,
@@ -35,34 +37,19 @@ import {
 import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
+import { ItemRequestCard } from '@/components/cards/item-request-card';
+import { getAnyBorrowStatusPresentation, toBadgeProps } from '@/lib/borrow-ui';
 
-type TabType = 'active' | 'pending' | 'queue' | 'history';
+type TabType = 'active' | 'pending' | 'queue' | 'history' | 'requests';
 
 function getStatusBadge(status: string) {
-	switch (status) {
-		case 'PENDING':
-			return <Badge variant="secondary">Pending Approval</Badge>;
-		case 'APPROVED':
-			return <Badge variant="default">Approved</Badge>;
-		case 'DECLINED':
-			return <Badge variant="destructive">Declined</Badge>;
-		case 'ACTIVE':
-			return <Badge className="bg-blue-500 hover:bg-blue-500">Borrow Approved</Badge>;
-		case 'LENDER_CONFIRMED':
-			return <Badge className="bg-amber-500 hover:bg-amber-500">Item Handed Off</Badge>;
-		case 'BORROWER_CONFIRMED':
-			return <Badge className="bg-green-500 hover:bg-green-500">Item Received</Badge>;
-		case 'RETURN_PENDING':
-			return <Badge variant="secondary">Return Pending</Badge>;
-		case 'COMPLETED':
-			return <Badge variant="outline">Returned</Badge>;
-		case 'WAITING':
-			return <Badge variant="secondary">In Queue</Badge>;
-		case 'READY':
-			return <Badge className="bg-green-500 hover:bg-green-500">Ready to Request</Badge>;
-		default:
-			return <Badge variant="outline">{status}</Badge>;
-	}
+	const presentation = getAnyBorrowStatusPresentation(status);
+	const { variant, className } = toBadgeProps(presentation);
+	return (
+		<Badge variant={variant} className={className}>
+			{presentation.label}
+		</Badge>
+	);
 }
 
 // Active transaction card (currently borrowed/lent)
@@ -377,12 +364,29 @@ export function MyActivityPage() {
 	const { data: queueEntries = [], isLoading: queueLoading } = useGetQueueEntriesQuery({
 		myEntries: true,
 	});
+	const { data: myItemRequests = [], isLoading: itemRequestsLoading } = useGetItemRequestsQuery({
+		myRequests: true,
+	});
 
 	// Mutations
 	const [markAsReturned] = useMarkAsReturnedMutation();
 	const [confirmReturn] = useConfirmReturnMutation();
 	const [confirmHandoff] = useConfirmHandoffMutation();
 	const [confirmReceipt] = useConfirmReceiptMutation();
+	const [updateItemRequest] = useUpdateItemRequestMutation();
+	const [closingRequestId, setClosingRequestId] = useState<string | null>(null);
+
+	const handleCloseItemRequest = async (requestId: string) => {
+		setClosingRequestId(requestId);
+		try {
+			await updateItemRequest({ id: requestId, status: 'CANCELLED' }).unwrap();
+			toast({ title: 'Request closed' });
+		} catch {
+			toast({ title: 'Failed to close request', variant: 'destructive' });
+		} finally {
+			setClosingRequestId(null);
+		}
+	};
 
 	const handleConfirmReturn = async (requestId: string) => {
 		setProcessingId(requestId);
