@@ -150,14 +150,21 @@ export function NotificationsPage() {
 	const [markAsRead] = useMarkAsReadMutation();
 	const [markAllAsRead] = useMarkAllAsReadMutation();
 	const [clearNotifications] = useClearNotificationsMutation();
-	const [updateBorrowRequest] = useUpdateBorrowRequestMutation();
-	const [confirmReturn] = useConfirmReturnMutation();
-	const [confirmHandoff] = useConfirmHandoffMutation();
-	const [confirmReceipt] = useConfirmReceiptMutation();
 	const [createItemRequest, { isLoading: isCreating }] = useCreateItemRequestMutation();
-	const [updateItemRequest] = useUpdateItemRequestMutation();
-	const [ignoreItemRequest] = useIgnoreItemRequestMutation();
-	const [respondToItemRequest] = useRespondToItemRequestMutation();
+
+	// Action handlers extracted into hooks so this page stays composition-only.
+	const {
+		processingId,
+		completedActions,
+		handleApprove,
+		handleDecline,
+		handleConfirmReturn,
+		handleConfirmHandoff,
+		handleConfirmReceipt,
+	} = useBorrowNotificationActions({ refetchRequests });
+
+	const { respondingRequestId, handleRespond, handleOpenChat, handleIgnore, handleCloseRequest } =
+		useItemRequestNotificationActions({ router });
 
 	// Alert handlers
 	const handleMarkRead = async (id: string) => {
@@ -216,131 +223,6 @@ export function NotificationsPage() {
 				if (metadata?.path && typeof metadata.path === 'string') {
 					router.push(metadata.path);
 				}
-		}
-	};
-
-	// Borrow request handlers
-	const handleApprove = async (id: string) => {
-		setProcessingId(id);
-		try {
-			await updateBorrowRequest({ id, action: 'approve' }).unwrap();
-			toast({ title: 'Request approved!' });
-			await refetchRequests();
-			setProcessingId(null);
-		} catch (err) {
-			console.error('Approve request error:', err);
-			const errorMessage =
-				err && typeof err === 'object' && 'data' in err
-					? (err as { data?: { error?: string } }).data?.error || 'Failed to approve request'
-					: 'Failed to approve request';
-			toast({ title: 'Failed to approve request', description: errorMessage, variant: 'destructive' });
-			setProcessingId(null);
-		}
-	};
-
-	const handleDecline = async (id: string) => {
-		setProcessingId(id);
-		try {
-			await updateBorrowRequest({ id, action: 'decline' }).unwrap();
-			toast({ title: 'Request declined' });
-			await refetchRequests();
-			setProcessingId(null);
-		} catch (err) {
-			console.error('Decline request error:', err);
-			const errorMessage =
-				err && typeof err === 'object' && 'data' in err
-					? (err.data as { error?: string })?.error || 'Failed to decline request'
-					: 'Failed to decline request';
-			toast({ title: 'Failed to decline request', description: errorMessage, variant: 'destructive' });
-			setProcessingId(null);
-		}
-	};
-
-	const handleConfirmReturn = async (id: string) => {
-		setProcessingId(id);
-		try {
-			await confirmReturn(id).unwrap();
-			setCompletedActions(prev => new Map(prev).set(id, 'Return confirmed'));
-			toast({ title: 'Return confirmed!' });
-		} catch {
-			toast({ title: 'Failed to confirm return', variant: 'destructive' });
-		} finally {
-			setProcessingId(null);
-		}
-	};
-
-	const handleConfirmHandoff = async (id: string) => {
-		setProcessingId(id);
-		try {
-			await confirmHandoff(id).unwrap();
-			toast({ title: 'Handoff confirmed! Borrower has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm handoff', variant: 'destructive' });
-		} finally {
-			setProcessingId(null);
-		}
-	};
-
-	const handleConfirmReceipt = async (id: string) => {
-		setProcessingId(id);
-		try {
-			await confirmReceipt(id).unwrap();
-			setCompletedActions(prev => new Map(prev).set(id, 'Item marked as received'));
-			toast({ title: 'Receipt confirmed!', description: 'Lender has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm receipt', variant: 'destructive' });
-		} finally {
-			setProcessingId(null);
-		}
-	};
-
-	// Item request handlers
-	const handleRespond = async (requestId: string, requesterId: string, requestTitleText: string) => {
-		setRespondingRequestId(requestId);
-		try {
-			// Mark as responded
-			await respondToItemRequest(requestId).unwrap();
-
-			// Start chat
-			const threadResponse = await fetch('/api/messages/threads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ otherUserId: requesterId }),
-			});
-			if (!threadResponse.ok) {
-				const errorData = await threadResponse.json().catch(() => ({}));
-				throw new Error(errorData.error || 'Failed to start conversation');
-			}
-			const thread = await threadResponse.json();
-			const draft = `I have this item and can help with your request: "${requestTitleText}".`;
-			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
-		} catch (error) {
-			console.error('Respond to item request error:', error);
-			toast({
-				title: 'Unable to respond',
-				description: error instanceof Error ? error.message : 'Please try again.',
-				variant: 'destructive',
-			});
-		} finally {
-			setRespondingRequestId(null);
-		}
-	};
-
-	const handleIgnore = async (requestId: string) => {
-		try {
-			await ignoreItemRequest(requestId).unwrap();
-			toast({ title: 'Request ignored' });
-		} catch {
-			toast({ title: 'Failed to ignore request', variant: 'destructive' });
-		}
-	};
-
-	const handleCloseRequest = async (requestId: string) => {
-		try {
-			await updateItemRequest({ id: requestId, status: 'CANCELLED' }).unwrap();
-			toast({ title: 'Request closed' });
-		} catch {
-			toast({ title: 'Failed to close request', variant: 'destructive' });
 		}
 	};
 
