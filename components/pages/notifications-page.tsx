@@ -41,19 +41,14 @@ import {
 } from '@/lib/redux/api/notificationsApi';
 import {
 	useGetBorrowRequestsQuery,
-	useUpdateBorrowRequestMutation,
-	useConfirmReturnMutation,
-	useConfirmHandoffMutation,
-	useConfirmReceiptMutation,
 	useGetItemRequestsQuery,
 	useCreateItemRequestMutation,
-	useUpdateItemRequestMutation,
-	useIgnoreItemRequestMutation,
-	useRespondToItemRequestMutation,
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/useToast';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
+import { useBorrowNotificationActions } from '@/hooks/useBorrowNotificationActions';
+import { useItemRequestNotificationActions } from '@/hooks/useItemRequestNotificationActions';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { AlertCard } from '@/components/cards/alert-card';
 import { BorrowRequestCard } from '@/components/cards/borrow-request-card';
@@ -69,22 +64,20 @@ export function NotificationsPage() {
 	// Read tab from URL
 	const tabFromUrl = searchParams.get('tab') as TabType | null;
 	const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl || 'alerts');
-	const [processingId, setProcessingId] = useState<string | null>(null);
 	const [alertsLimit, setAlertsLimit] = useState(20);
 	const [itemFilter, setItemFilter] = useState<ItemRequestFilterValue>('from-others');
-	// Track borrowRequestIds where action was completed this session
-	const [completedActions, setCompletedActions] = useState<Map<string, string>>(new Map());
 
 	// Item request create modal state
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [requestTitle, setRequestTitle] = useState('');
 	const [requestDescription, setRequestDescription] = useState('');
 	const [requestCircleIds, setRequestCircleIds] = useState<string[]>([]);
-	const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
 
-	// Update tab when URL changes
+	// Sync tab when URL changes (deep-links from notifications) — legitimate
+	// effect, the rule below over-fires for URL-driven state.
 	useEffect(() => {
 		if (tabFromUrl && ['alerts', 'borrow-requests', 'item-requests'].includes(tabFromUrl)) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect
 			setActiveTab(tabFromUrl);
 		}
 	}, [tabFromUrl]);
