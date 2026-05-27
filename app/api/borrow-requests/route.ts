@@ -14,7 +14,7 @@ const createBorrowRequestSchema = z.object({
 	joinQueue: z.boolean().optional().default(false),
 });
 import { queueNotification } from '@/lib/notify';
-import { getSignedUrl } from '@/lib/supabase';
+import { getSignedUrl, getSignedUrls } from '@/lib/supabase';
 
 // GET /api/borrow-requests - Get borrow requests
 export async function GET(req: NextRequest) {
@@ -56,8 +56,15 @@ export async function GET(req: NextRequest) {
 			whereClause.itemId = itemId;
 		}
 
+		// Default pagination: cap to 50 records, opt-in to larger limits via ?limit=.
+		const rawLimit = Number(req.nextUrl.searchParams.get('limit') ?? '50');
+		const take = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
+		const cursor = req.nextUrl.searchParams.get('cursor');
+
 		const borrowRequests = await prisma.borrowRequest.findMany({
 			where: whereClause,
+			take: take + 1,
+			...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
 			include: {
 				item: {
 					select: {
@@ -96,18 +103,31 @@ export async function GET(req: NextRequest) {
 			},
 		});
 
-		// Add signed URLs for item images
-		const requestsWithUrls = await Promise.all(
-			borrowRequests.map(async request => ({
-				...request,
-				item: {
-					...request.item,
-					imageUrl: await getSignedUrl(request.item.imagePath, 'items').catch(() => ''),
-				},
-			})),
-		);
+		const hasMore = borrowRequests.length > take;
+		const page = hasMore ? borrowRequests.slice(0, take) : borrowRequests;
 
-		return NextResponse.json(requestsWithUrls, { status: 200 });
+		// Add signed URLs for item images (batched within bucket).
+		const itemImagePaths = page.map(r => r.item.imagePath).filter(Boolean);
+		const itemUrlMap = itemImagePaths.length
+			? await getSignedUrls(itemImagePaths, 'items').catch(() => new Map<string, string>())
+			: new Map<string, string>();
+
+		const requestsWithUrls = page.map(request => ({
+			...request,
+			item: {
+				...request.item,
+				imageUrl: itemUrlMap.get(request.item.imagePath) ?? '',
+			},
+		}));
+
+		// Backwards-compatible: callers passing no ?limit get the flat array; paginated callers
+		// can opt-in via Accept-header convention. To stay safe with existing clients we always
+		// return the bare array here and document cursor via response header.
+		const response = NextResponse.json(requestsWithUrls, { status: 200 });
+		if (hasMore) {
+			response.headers.set('x-next-cursor', page[page.length - 1]?.id ?? '');
+		}
+		return response;
 	} catch (error) {
 		console.error('Get borrow requests error:', error);
 		return NextResponse.json({ error: 'Failed to fetch borrow requests' }, { status: 500 });

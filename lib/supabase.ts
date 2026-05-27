@@ -113,6 +113,51 @@ export async function getSignedUrl(
 }
 
 /**
+ * Batch-generate signed URLs for many paths within a single bucket.
+ * One Supabase HTTP request per bucket instead of one per path.
+ * Returns a Map<path, url> for easy lookup. Cached paths are returned without re-signing.
+ */
+export async function getSignedUrls(
+	filePaths: string[],
+	bucket: string = 'avatars',
+	expiresIn: number = 3600,
+): Promise<Map<string, string>> {
+	const result = new Map<string, string>();
+	if (filePaths.length === 0) return result;
+
+	const uniquePaths = Array.from(new Set(filePaths));
+	const pathsToFetch: string[] = [];
+
+	for (const filePath of uniquePaths) {
+		const cacheKey = `${bucket}:${filePath}`;
+		const cached = signedUrlCache.get(cacheKey);
+		if (cached && Date.now() < cached.expiresAt) {
+			result.set(filePath, cached.url);
+		} else {
+			pathsToFetch.push(filePath);
+		}
+	}
+
+	if (pathsToFetch.length === 0) return result;
+
+	const admin = getSupabaseAdmin();
+	const { data, error } = await admin.storage.from(bucket).createSignedUrls(pathsToFetch, expiresIn);
+	if (error || !data) {
+		throw new Error(`Failed to generate signed URLs (batch): ${error?.message ?? 'unknown error'}`);
+	}
+
+	for (const row of data) {
+		if (!row.signedUrl || !row.path) continue;
+		signedUrlCache.set(`${bucket}:${row.path}`, {
+			url: row.signedUrl,
+			expiresAt: Date.now() + (expiresIn - 300) * 1000,
+		});
+		result.set(row.path, row.signedUrl);
+	}
+	return result;
+}
+
+/**
  * Delete an image from Supabase storage
  * Uses admin client (service role key) for server-side operations
  * @param filePath - The path of the file to delete

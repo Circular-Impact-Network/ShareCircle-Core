@@ -32,6 +32,7 @@ vi.mock('@supabase/supabase-js', () => ({
 				send: mockSupabaseSend,
 			};
 		},
+		removeChannel: () => undefined,
 	}),
 }));
 

@@ -265,6 +265,7 @@ model Item {
   @@index([ownerId])
   @@index([isAvailable])
   @@index([archivedAt])
+  @@index([archivedAt, createdAt(sort: Desc)])
   @@map("items")
 }
 
@@ -452,6 +453,8 @@ model BorrowRequest {
   @@index([requesterId])
   @@index([ownerId])
   @@index([status])
+  @@index([ownerId, status, createdAt(sort: Desc)])
+  @@index([requesterId, status, createdAt(sort: Desc)])
   @@map("borrow_requests")
 }
 
@@ -522,6 +525,7 @@ model Notification {
 
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([userId, type, status])
   @@map("notifications")
 }
 

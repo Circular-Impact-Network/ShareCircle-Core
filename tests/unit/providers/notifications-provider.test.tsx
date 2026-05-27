@@ -43,6 +43,7 @@ vi.mock('@/lib/supabaseBrowser', () => ({
 			channels[name] = { handlers, subscribe: channel.subscribe, unsubscribe: channel.unsubscribe };
 			return channel;
 		},
+		removeChannel: vi.fn(),
 	}),
 }));
 

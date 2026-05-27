@@ -59,12 +59,14 @@ export async function GET() {
 						image: true,
 					},
 				},
+				// Only the first 5 active members for the avatar preview.
+				// We deliberately do NOT include all members — that was an unbounded payload on large circles.
+				// Caller's role is fetched separately via roleByCircleId below.
 				members: {
-					where: {
-						leftAt: null, // Only count active members
-					},
+					where: { leftAt: null },
+					take: 5,
+					orderBy: { joinedAt: 'asc' },
 					select: {
-						id: true,
 						userId: true,
 						role: true,
 						user: {
@@ -91,11 +93,18 @@ export async function GET() {
 			},
 		});
 
+		// Caller's role: fetch in a single grouped query to avoid the missing-member case.
+		const callerMemberships = await prisma.circleMember.findMany({
+			where: { userId, leftAt: null, circleId: { in: circles.map(c => c.id) } },
+			select: { circleId: true, role: true },
+		});
+		const roleByCircleId = new Map(callerMemberships.map(m => [m.circleId, m.role] as const));
+
 		// Transform the response to include user's role in each circle
 		// Generate signed URLs for avatars
 		const circlesWithRole = await Promise.all(
 			circles.map(async circle => {
-				const userMembership = circle.members.find(m => m.userId === userId);
+				const userRole = roleByCircleId.get(circle.id) ?? null;
 
 				// Generate signed URL from path if available
 				let avatarUrl = circle.avatarUrl;
@@ -118,9 +127,9 @@ export async function GET() {
 					updatedAt: circle.updatedAt,
 					createdBy: circle.createdBy,
 					membersCount: circle._count.members,
-					userRole: userMembership?.role || null,
-					// Include first 5 member avatars for preview
-					memberPreviews: circle.members.slice(0, 5).map(m => ({
+					userRole,
+					// First 5 member avatars for preview
+					memberPreviews: circle.members.map(m => ({
 						id: m.user.id,
 						name: m.user.name,
 						image: m.user.image,
