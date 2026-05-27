@@ -546,6 +546,7 @@ export function NotificationsPage() {
 								onRespond={handleRespond}
 								onIgnore={handleIgnore}
 								onClose={handleCloseRequest}
+								onChat={handleOpenChat}
 								isMyRequest={myItemRequests.some(r => r.id === request.id)}
 								isResponding={respondingRequestId === request.id}
 							/>
