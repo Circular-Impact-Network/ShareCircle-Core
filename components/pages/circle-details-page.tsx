@@ -200,43 +200,6 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		}
 	};
 
-	const handleMemberAction = async () => {
-		if (!selectedMember || !memberAction || !circle) return;
-
-		setIsProcessingMember(true);
-		try {
-			if (memberAction === 'promote' || memberAction === 'demote') {
-				const newRole = memberAction === 'promote' ? 'ADMIN' : 'MEMBER';
-				await updateMemberRole({ circleId, userId: selectedMember.userId, role: newRole }).unwrap();
-				toast({
-					title: 'Role updated',
-					description: `${selectedMember.name || 'Member'} is now ${newRole === 'ADMIN' ? 'an admin' : 'a member'}.`,
-				});
-			} else if (memberAction === 'leave') {
-				await leaveCircle(circleId).unwrap();
-				toast({ title: 'Left circle', description: 'You have left this circle.' });
-				router.push('/circles');
-				return;
-			} else if (memberAction === 'remove') {
-				await removeMember({ circleId, userId: selectedMember.userId }).unwrap();
-				toast({
-					title: 'Member removed',
-					description: `${selectedMember.name || 'Member'} has been removed from the circle.`,
-				});
-			}
-		} catch (error) {
-			toast({
-				title: 'Error',
-				description: (error as { data?: { error?: string } })?.data?.error || 'Failed to process action.',
-				variant: 'destructive',
-			});
-		} finally {
-			setIsProcessingMember(false);
-			setSelectedMember(null);
-			setMemberAction(null);
-		}
-	};
-
 	const getInitials = (name: string | null) => {
 		if (!name) return '?';
 		return name
@@ -435,83 +398,16 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 			{/* Collapsible Invite Section */}
 			{showInviteSection && (
-				<Card className="border-border/70 bg-muted/30">
-					<CardContent className="p-4">
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-							{/* Invite Code */}
-							<div className="flex-1">
-								<div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-									<Link2 className="h-3 w-3" />
-									Invite Code
-								</div>
-								<div className="flex items-center gap-2">
-									<code className="font-mono text-lg font-bold tracking-widest text-foreground sm:text-xl">
-										{circle.inviteCode}
-									</code>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-8 w-8 p-0"
-										onClick={() => handleCopy(circle.inviteCode, 'code')}
-									>
-										{copied === 'code' ? (
-											<Check className="h-4 w-4 text-emerald-500" />
-										) : (
-											<Copy className="h-4 w-4" />
-										)}
-									</Button>
-									{isAdmin && (
-										<Button
-											variant="ghost"
-											size="sm"
-											className="h-8 w-8 p-0"
-											onClick={handleRegenerateCode}
-											disabled={isRegeneratingCode}
-										>
-											{isRegeneratingCode ? (
-												<Loader2 className="h-4 w-4 animate-spin" />
-											) : (
-												<RefreshCw className="h-4 w-4" />
-											)}
-										</Button>
-									)}
-								</div>
-							</div>
-
-							<Separator orientation="vertical" className="hidden h-12 sm:block" />
-							<Separator className="sm:hidden" />
-
-							{/* Share Link */}
-							<div className="flex-1">
-								<div className="mb-1 text-xs text-muted-foreground">Share Link</div>
-								<div className="flex items-center gap-2">
-									<code className="flex-1 truncate rounded bg-muted/50 px-2 py-1 text-sm text-primary">
-										{getShareUrl()}
-									</code>
-									<Button
-										variant="secondary"
-										size="sm"
-										className="shrink-0 gap-1"
-										onClick={() => handleCopy(getShareUrl(), 'link')}
-									>
-										{copied === 'link' ? (
-											<>
-												<Check className="h-3 w-3" />
-												<span className="hidden sm:inline">Copied</span>
-											</>
-										) : (
-											<>
-												<Copy className="h-3 w-3" />
-												<span className="hidden sm:inline">Copy</span>
-											</>
-										)}
-									</Button>
-								</div>
-							</div>
-						</div>
-						<p className="mt-3 text-xs text-muted-foreground">{getInviteExpiryLabel()}</p>
-					</CardContent>
-				</Card>
+				<CircleInviteSection
+					inviteCode={circle.inviteCode}
+					shareUrl={getShareUrl()}
+					expiryLabel={getInviteExpiryLabel()}
+					isAdmin={isAdmin}
+					isRegeneratingCode={isRegeneratingCode}
+					copied={copied}
+					onCopy={handleCopy}
+					onRegenerate={handleRegenerateCode}
+				/>
 			)}
 
 			{/* Members Section - Horizontal Carousel on Desktop, Stack on Mobile */}
@@ -959,55 +855,20 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 
 					{/* Requested Items Tab */}
 					<PageTabsContent value="requested" className="space-y-3">
-						<ItemRequestFilter value={circleItemFilter} onChange={setCircleItemFilter} />
-						{isLoadingRequests ? (
-							<RequestCardListSkeleton count={3} />
-						) : filteredCircleRequests.length === 0 ? (
-							<Card className="border-dashed border-border/70 bg-card">
-								<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-									<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-										<PackageOpen className="h-7 w-7 text-muted-foreground" />
-									</div>
-									<div>
-										<p className="font-medium text-foreground mb-1">
-											{circleItemFilter === 'from-others'
-												? 'No open requests from others'
-												: circleItemFilter === 'mine'
-													? 'You have no requests'
-													: 'No item requests'}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{circleItemFilter === 'from-others'
-												? 'When circle members need something, their requests will appear here'
-												: circleItemFilter === 'mine'
-													? 'Post a request if you need to borrow something from this circle'
-													: 'Item requests for this circle will appear here'}
-										</p>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<>
-								<div className="space-y-3">
-									{visibleRequests.map(request => (
-										<ItemRequestCard
-											key={request.id}
-											request={request}
-											onRespond={handleRespondRequest}
-											onIgnore={handleIgnoreRequest}
-											onClose={handleCloseRequest}
-											isMyRequest={myItemRequests.some(r => r.id === request.id)}
-											isResponding={respondingRequestId === request.id}
-										/>
-									))}
-								</div>
-								<InfiniteScrollSentinel
-									hasMore={hasMoreRequests}
-									onLoadMore={loadMoreRequests}
-									label="Loading more requests"
-								/>
-							</>
-						)}
+						<CircleRequestsTab
+							filter={circleItemFilter}
+							onFilterChange={setCircleItemFilter}
+							isLoading={isLoadingRequests}
+							filteredRequests={filteredCircleRequests}
+							visibleRequests={visibleRequests}
+							hasMore={hasMoreRequests}
+							loadMore={loadMoreRequests}
+							myItemRequests={myItemRequests}
+							respondingRequestId={respondingRequestId}
+							onRespond={handleRespondRequest}
+							onIgnore={handleIgnoreRequest}
+							onClose={handleCloseRequest}
+						/>
 					</PageTabsContent>
 				</PageTabs>
 			</div>
