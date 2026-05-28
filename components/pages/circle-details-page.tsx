@@ -4,26 +4,23 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-	Copy,
 	Share2,
 	Plus,
 	ArrowLeft,
 	Crown,
 	Shield,
 	MoreVertical,
-	RefreshCw,
 	Settings,
 	UserMinus,
 	UserPlus,
 	LogOut,
 	Loader2,
-	Check,
 	Calendar,
-	Link2,
 	Users,
 	ChevronLeft,
 	ChevronRight,
 	Package,
+	PackageOpen,
 	MessageCircle,
 	Trash2,
 } from 'lucide-react';
@@ -34,7 +31,6 @@ import { ItemDetailsModal } from '@/components/modals/item-details-modal';
 import { AddItemModal } from '@/components/modals/add-item-modal';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import {
 	DropdownMenu,
@@ -61,29 +57,20 @@ import {
 	useRemoveItemFromCircleMutation,
 	Item as ItemType,
 } from '@/lib/redux/api/itemsApi';
-import {
-	useGetCircleQuery,
-	useRegenerateInviteCodeMutation,
-	useUpdateMemberRoleMutation,
-	useRemoveMemberMutation,
-	useLeaveCircleMutation,
-	type CircleMember,
-} from '@/lib/redux/api/circlesApi';
+import { useGetCircleQuery, useRegenerateInviteCodeMutation } from '@/lib/redux/api/circlesApi';
 import { useCreateThreadMutation } from '@/lib/redux/api/messagesApi';
-import {
-	useGetItemRequestsQuery,
-	useIgnoreItemRequestMutation,
-	useRespondToItemRequestMutation,
-	useUpdateItemRequestMutation,
-} from '@/lib/redux/api/borrowApi';
+import { openDirectChat } from '@/lib/chat-navigation';
+import { useGetItemRequestsQuery } from '@/lib/redux/api/borrowApi';
+import { useCircleItemRequestActions } from '@/hooks/useCircleItemRequestActions';
+import { useCircleMemberActions } from '@/hooks/useCircleMemberActions';
 import { PageShell } from '@/components/ui/page';
-import { CircleDetailSkeleton, ItemGridSkeleton, RequestCardListSkeleton } from '@/components/ui/skeletons';
+import { CircleDetailSkeleton, ItemGridSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
-import { ItemRequestCard } from '@/components/cards/item-request-card';
-import { PackageOpen } from 'lucide-react';
-import { ItemRequestFilter, type ItemRequestFilterValue } from '@/components/app/item-request-filter';
+import { type ItemRequestFilterValue } from '@/components/app/item-request-filter';
+import { CircleRequestsTab } from './circle-details/CircleRequestsTab';
+import { CircleInviteSection } from './circle-details/CircleInviteSection';
 
 interface CircleDetailsPageProps {
 	circleId: string;
