@@ -87,17 +87,20 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const [showInviteSection, setShowInviteSection] = useState(false);
 	const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 	const [isStartingChatId, setIsStartingChatId] = useState<string | null>(null);
-	const [selectedMember, setSelectedMember] = useState<CircleMember | null>(null);
-	const [memberAction, setMemberAction] = useState<'promote' | 'demote' | 'remove' | 'leave' | null>(null);
-	const [isProcessingMember, setIsProcessingMember] = useState(false);
 	const membersScrollRef = useRef<HTMLDivElement>(null);
 	const { toast } = useToast();
 
+	const {
+		selectedMember,
+		memberAction,
+		isProcessingMember,
+		setSelectedMember,
+		setMemberAction,
+		execute: handleMemberAction,
+	} = useCircleMemberActions({ circleId, router });
+
 	const { data: circle, isLoading } = useGetCircleQuery(circleId);
 	const [regenerateInviteCode, { isLoading: isRegeneratingCode }] = useRegenerateInviteCodeMutation();
-	const [updateMemberRole] = useUpdateMemberRoleMutation();
-	const [removeMember] = useRemoveMemberMutation();
-	const [leaveCircle] = useLeaveCircleMutation();
 	const [createThread] = useCreateThreadMutation();
 
 	// Items query and mutation (server-side paginated, 24 per page)
@@ -122,15 +125,11 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	// Item requests for this circle
 	const [itemsTab, setItemsTab] = useState<'shared' | 'requested'>('shared');
 	const [circleItemFilter, setCircleItemFilter] = useState<ItemRequestFilterValue>('from-others');
-	const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
 	const { data: circleItemRequests = [], isLoading: isLoadingRequests } = useGetItemRequestsQuery({
 		circleId,
 		includeIgnored: true,
 	});
 	const { data: myItemRequests = [] } = useGetItemRequestsQuery({ myRequests: true });
-	const [ignoreItemRequest] = useIgnoreItemRequestMutation();
-	const [respondToItemRequest] = useRespondToItemRequestMutation();
-	const [updateItemRequest] = useUpdateItemRequestMutation();
 	const myRequestIds = useMemo(() => new Set(myItemRequests.map(r => r.id)), [myItemRequests]);
 	const filteredCircleRequests = useMemo(() => {
 		if (circleItemFilter === 'from-others')
@@ -144,38 +143,12 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		loadMore: loadMoreRequests,
 	} = useProgressivePagination({ items: filteredCircleRequests, pageSize: 8 });
 
-	const handleRespondRequest = async (requestId: string, requesterId: string, requestTitle: string) => {
-		setRespondingRequestId(requestId);
-		try {
-			await respondToItemRequest(requestId).unwrap();
-			const thread = await createThread({ otherUserId: requesterId }).unwrap();
-			const draft = `I have this item and can help with your request: "${requestTitle}".`;
-			router.push(`/messages/${thread.id}?draft=${encodeURIComponent(draft)}`);
-		} catch (error) {
-			console.error('Respond error:', error);
-			toast({ title: 'Unable to respond', variant: 'destructive' });
-		} finally {
-			setRespondingRequestId(null);
-		}
-	};
-
-	const handleIgnoreRequest = async (requestId: string) => {
-		try {
-			await ignoreItemRequest(requestId).unwrap();
-			toast({ title: 'Request ignored' });
-		} catch {
-			toast({ title: 'Failed to ignore request', variant: 'destructive' });
-		}
-	};
-
-	const handleCloseRequest = async (requestId: string) => {
-		try {
-			await updateItemRequest({ id: requestId, status: 'CANCELLED' }).unwrap();
-			toast({ title: 'Request closed' });
-		} catch {
-			toast({ title: 'Failed to close request', variant: 'destructive' });
-		}
-	};
+	const {
+		respondingRequestId,
+		handleRespond: handleRespondRequest,
+		handleIgnore: handleIgnoreRequest,
+		handleClose: handleCloseRequest,
+	} = useCircleItemRequestActions({ router });
 
 	const handleCopy = async (text: string, type: 'code' | 'link') => {
 		try {
@@ -212,8 +185,10 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		if (!otherUserId) return;
 		setIsStartingChatId(otherUserId);
 		try {
-			const data = await createThread({ otherUserId }).unwrap();
-			router.push(`/messages/${data.id}`);
+			await openDirectChat(router, {
+				otherUserId,
+				createThread: args => createThread(args).unwrap(),
+			});
 		} catch (error) {
 			toast({
 				title: 'Unable to start chat',
