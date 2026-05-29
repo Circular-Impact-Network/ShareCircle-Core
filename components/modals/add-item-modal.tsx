@@ -13,6 +13,7 @@ import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus, Info } fr
 import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useDraftCircles } from '@/hooks/useDraftCircles';
 import {
 	useUploadItemImageMutation,
 	useUploadMediaMutation,
@@ -22,7 +23,6 @@ import {
 	useCleanupImageMutation,
 	type DetectedItem,
 } from '@/lib/redux/api/itemsApi';
-import { type Circle } from '@/lib/redux/api/circlesApi';
 import {
 	MAX_MEDIA_ATTACHMENTS,
 	MAX_UPLOAD_SIZE_BYTES,
@@ -67,13 +67,19 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [categoryInput, setCategoryInput] = useState('');
 	const [tags, setTags] = useState<string[]>([]);
 	const [tagInput, setTagInput] = useState('');
-	const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
 	const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | null>(null);
 	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
 
-	// Circles state
-	const [circles, setCircles] = useState<Circle[]>([]);
-	const [isLoadingCircles, setIsLoadingCircles] = useState(false);
+	// Circles selection encapsulated in a hook (fetch + selection state)
+	const {
+		circles,
+		isLoadingCircles,
+		selectedCircleIds,
+		toggleCircle,
+		toggleSelectAll: toggleSelectAllCircles,
+		allCirclesSelected,
+		reset: resetCircleSelection,
+	} = useDraftCircles({ open, currentCircleId });
 
 	// Supporting media state
 	const [supportingMedia, setSupportingMedia] = useState<
@@ -126,41 +132,6 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		await Promise.all(cleanupTasks);
 	}, [cleanupImage, imagePath]);
 
-	// Fetch circles when modal opens
-	useEffect(() => {
-		if (open) {
-			fetchCircles();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [open]);
-
-	const fetchCircles = async () => {
-		try {
-			setIsLoadingCircles(true);
-			const response = await fetch('/api/circles');
-			if (!response.ok) throw new Error('Failed to fetch circles');
-			const data = await response.json();
-			setCircles(data);
-
-			// Pre-select current circle if provided
-			if (currentCircleId) {
-				setSelectedCircleIds([currentCircleId]);
-			} else if (data.length > 0) {
-				// If no current circle, select the first one by default
-				setSelectedCircleIds([data[0].id]);
-			}
-		} catch (error) {
-			console.error('Failed to fetch circles:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to load circles',
-				variant: 'destructive',
-			});
-		} finally {
-			setIsLoadingCircles(false);
-		}
-	};
-
 	// Reset state when modal closes
 	const resetState = useCallback(() => {
 		setState('capture');
@@ -173,7 +144,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setCategoryInput('');
 		setTags([]);
 		setTagInput('');
-		setSelectedCircleIds(currentCircleId ? [currentCircleId] : []);
+		resetCircleSelection();
 		setSupportingMedia(prev => {
 			clearSupportingMedia(prev);
 			return [];
@@ -185,7 +156,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setManualItemName('');
 		setEstimatedWeightKg(null);
 		setEstimatedNewPriceUsd(null);
-	}, [clearSupportingMedia, currentCircleId]);
+	}, [clearSupportingMedia, resetCircleSelection]);
 
 	useEffect(() => {
 		supportingMediaRef.current = supportingMedia;
@@ -496,28 +467,6 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 			addTag();
 		}
 	};
-
-	// Circle selection
-	const toggleCircle = (circleId: string) => {
-		setSelectedCircleIds(prev => {
-			if (prev.includes(circleId)) {
-				return prev.filter(id => id !== circleId);
-			}
-			return [...prev, circleId];
-		});
-	};
-
-	const toggleSelectAllCircles = () => {
-		if (selectedCircleIds.length === circles.length) {
-			// Deselect all
-			setSelectedCircleIds([]);
-		} else {
-			// Select all
-			setSelectedCircleIds(circles.map(c => c.id));
-		}
-	};
-
-	const allCirclesSelected = circles.length > 0 && selectedCircleIds.length === circles.length;
 
 	// Handle supporting media upload
 	const handleSupportingMediaUpload = async (files: FileList | null) => {
