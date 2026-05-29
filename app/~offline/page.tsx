@@ -1,7 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function OfflinePage() {
+	const [isRetrying, setIsRetrying] = useState(false);
+
 	return (
 		<div className="flex min-h-[100dvh] items-center justify-center bg-background px-6 py-12">
 			<div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-lg">
