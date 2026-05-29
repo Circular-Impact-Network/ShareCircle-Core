@@ -31,28 +31,31 @@ const withPWA = withPWAInit({
 				handler: 'NetworkFirst',
 				options: {
 					cacheName: 'sharecircle-api-read-cache',
-					networkTimeoutSeconds: 4,
+					networkTimeoutSeconds: 10,
 					expiration: {
 						maxEntries: 80,
 						maxAgeSeconds: 60 * 5,
 					},
 					cacheableResponse: {
-						statuses: [0, 200],
+						statuses: [200],
 					},
 				},
 			},
+			// Document navigations: NetworkFirst with a generous timeout so Vercel
+			// cold starts don't trip the offline fallback for genuinely-online users.
+			// Only cache successful 200 responses (skip 3xx redirects and auth states).
 			{
 				urlPattern: ({ request, url }) => request.url.startsWith('http') && request.destination === 'document',
 				handler: 'NetworkFirst',
 				options: {
 					cacheName: 'sharecircle-page-cache',
-					networkTimeoutSeconds: 4,
+					networkTimeoutSeconds: 15,
 					expiration: {
 						maxEntries: 40,
 						maxAgeSeconds: 60 * 60,
 					},
 					cacheableResponse: {
-						statuses: [0, 200],
+						statuses: [200],
 					},
 				},
 			},
