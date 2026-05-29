@@ -57,10 +57,13 @@ export default function OfflinePage() {
 					publish item changes.
 				</p>
 				<div className="mt-6 flex flex-col gap-3">
-					<Button asChild className="w-full">
-						<Link href="/home">Go to Home</Link>
+					<Button onClick={handleHardReload} disabled={isRetrying} className="w-full">
+						{isRetrying ? 'Reloading…' : 'Try again'}
 					</Button>
 					<Button asChild variant="outline" className="w-full">
+						<Link href="/home">Go to Home</Link>
+					</Button>
+					<Button asChild variant="ghost" className="w-full">
 						<Link href="/messages">Open Messages</Link>
 					</Button>
 				</div>
