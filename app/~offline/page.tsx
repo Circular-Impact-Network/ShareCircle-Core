@@ -1,11 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function OfflinePage() {
 	const [isRetrying, setIsRetrying] = useState(false);
+
+	// Auto-recover: if the browser thinks we're online (or comes back online),
+	// retry the navigation the user originally wanted. This handles the case
+	// where the service worker false-positives an offline state (e.g., a slow
+	// Vercel cold start tripped the network-first timeout).
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+
+		const retry = () => {
+			if (navigator.onLine) {
+				window.location.replace('/');
+			}
+		};
+
+		// Try once on mount in case we landed here while actually online.
+		retry();
+
+		window.addEventListener('online', retry);
+		return () => window.removeEventListener('online', retry);
+	}, []);
+
+	const handleHardReload = async () => {
+		setIsRetrying(true);
+		// Best-effort: clear any stale runtime caches and unregister service workers
+		// before reloading. This is the escape hatch for users stuck behind a bad SW.
+		try {
+			if ('serviceWorker' in navigator) {
+				const registrations = await navigator.serviceWorker.getRegistrations();
+				await Promise.all(registrations.map(r => r.unregister()));
+			}
+			if ('caches' in window) {
+				const keys = await caches.keys();
+				await Promise.all(keys.filter(k => !k.includes('precache')).map(k => caches.delete(k)));
+			}
+		} catch {
+			// Ignore — we'll reload regardless.
+		}
+		window.location.replace('/');
+	};
 
 	return (
 		<div className="flex min-h-[100dvh] items-center justify-center bg-background px-6 py-12">
