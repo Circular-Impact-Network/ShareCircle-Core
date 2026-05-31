@@ -93,16 +93,10 @@ export const authOptions: NextAuthOptions = {
 				// Email/Password login
 				if (credentials?.email && credentials?.password) {
 					const normalizedEmail = normalizeEmail(credentials.email);
-					let user = null;
-					for (let attempt = 0; attempt < 3; attempt++) {
-						try {
-							user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-							break;
-						} catch (err) {
-							if (attempt === 2) throw err;
-							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
-						}
-					}
+					// One DB attempt is enough — the Supabase pooler handles retries upstream.
+					// The previous 3-attempt loop introduced up to 450ms of synchronous sleep
+					// in the login hot path under transient failures.
+					const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
 					if (!user || !user.hashed_password) {
 						return null;
@@ -275,10 +269,11 @@ export const authOptions: NextAuthOptions = {
 		async signIn({ user, account, profile }) {
 			// Allow all sign-ins for Google OAuth and credentials
 			if (account?.provider === 'google') {
-				// The PrismaAdapter will handle user creation automatically
+				// The PrismaAdapter will handle user creation automatically.
+				// Only write emailVerified for users who don't already have it — skips a no-op write per login.
 				if (user?.email) {
-					await prisma.user.update({
-						where: { email: user.email },
+					await prisma.user.updateMany({
+						where: { email: user.email, emailVerified: null },
 						data: { emailVerified: new Date() },
 					});
 				}
