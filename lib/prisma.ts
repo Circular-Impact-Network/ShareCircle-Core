@@ -4,14 +4,15 @@ const globalForPrisma = globalThis as unknown as {
 	prisma: PrismaClient | undefined;
 };
 
+// Runtime uses DATABASE_URL — must be the Supabase Supavisor pooler (port 6543, ?pgbouncer=true)
+// to avoid per-invocation connection storms on serverless. Migrations use DIRECT_URL.
+// If/when Accelerate is added: `new PrismaClient().$extends(withAccelerate())` and point DATABASE_URL at the Accelerate edge.
 export const prisma =
 	globalForPrisma.prisma ??
 	new PrismaClient({
-		log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+		log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 	});
 
-// Only cache in global during development to prevent HMR from creating new instances.
-// In production (serverless), each invocation has an isolated module scope anyway.
 if (process.env.NODE_ENV !== 'production') {
 	globalForPrisma.prisma = prisma;
 }
