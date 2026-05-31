@@ -453,6 +453,8 @@ model BorrowRequest {
   @@index([requesterId])
   @@index([ownerId])
   @@index([status])
+  @@index([ownerId, status, createdAt(sort: Desc)])
+  @@index([requesterId, status, createdAt(sort: Desc)])
   @@map("borrow_requests")
 }
 
