@@ -12,3 +12,6 @@ CREATE INDEX IF NOT EXISTS "borrow_requests_owner_status_created_idx"
 
 CREATE INDEX IF NOT EXISTS "borrow_requests_requester_status_created_idx"
   ON "borrow_requests" ("requester_id", "status", "created_at" DESC);
+
+CREATE INDEX IF NOT EXISTS "notifications_user_type_status_idx"
+  ON "notifications" ("user_id", "type", "status");
