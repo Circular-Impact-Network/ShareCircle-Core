@@ -525,6 +525,7 @@ model Notification {
 
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([userId, type, status])
   @@map("notifications")
 }
 
