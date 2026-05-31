@@ -265,6 +265,7 @@ model Item {
   @@index([ownerId])
   @@index([isAvailable])
   @@index([archivedAt])
+  @@index([archivedAt, createdAt(sort: Desc)])
   @@map("items")
 }
 
