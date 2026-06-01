@@ -100,6 +100,14 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
+
+	// Serve the pre-designed standalone legal documents (in public/legal) at clean URLs.
+	async rewrites() {
+		return [
+			{ source: '/terms', destination: '/legal/terms.html' },
+			{ source: '/privacy', destination: '/legal/privacy.html' },
+		];
+	},
 	serverExternalPackages: ['@prisma/client', 'prisma'],
 	experimental: {
 		optimizePackageImports: [
