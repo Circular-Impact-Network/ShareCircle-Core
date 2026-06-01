@@ -8,6 +8,7 @@ declare module 'next-auth' {
 			email?: string | null;
 			image?: string | null;
 			emailVerified?: Date | null;
+			profileComplete?: boolean;
 		};
 	}
 }
@@ -19,5 +20,6 @@ declare module 'next-auth/jwt' {
 		email?: string | null;
 		image?: string | null;
 		emailVerified?: Date | null;
+		profileComplete?: boolean;
 	}
 }
