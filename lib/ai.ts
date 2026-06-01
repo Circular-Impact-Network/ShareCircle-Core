@@ -190,9 +190,13 @@ export async function validateListingAgainstImages(
 	imageEntries: { url: string; label: string }[],
 	listing: ListingFields,
 ): Promise<ValidateListingResult> {
-	// Run all image validations in parallel — each is an independent Gemini call
+	// Validate against the main image only. The previous implementation issued one Gemini call per
+	// supporting media entry, which 3-5x'd cost without meaningfully improving accuracy — the main
+	// image is what `analyzeImage` already derived the name/description from, so it's the contract.
+	// Supporting media is treated as context, not validation surface.
+	const validationTargets = imageEntries.slice(0, 1);
 	const results = await Promise.allSettled(
-		imageEntries.map(({ url, label }, i) =>
+		validationTargets.map(({ url, label }, i) =>
 			validateListingMatchInImage(url, listing).then(validation => ({ i, label, validation })),
 		),
 	);
