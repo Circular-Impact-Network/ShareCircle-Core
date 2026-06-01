@@ -79,9 +79,10 @@ const securityHeaders = [
 		value: [
 			"default-src 'self'",
 			"script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for Next.js dev, unsafe-inline for some RSC patterns
-			"style-src 'self' 'unsafe-inline'",
+			// fonts.googleapis.com / fonts.gstatic.com: the standalone legal pages (/terms, /privacy) load Google Fonts.
+			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
-			"font-src 'self' data:",
+			"font-src 'self' data: https://fonts.gstatic.com",
 			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
 			"frame-src 'none'",
 			"object-src 'none'",
@@ -100,7 +101,6 @@ const nextConfig: NextConfig = {
 			},
 		];
 	},
-
 	// Serve the pre-designed standalone legal documents (in public/legal) at clean URLs.
 	async rewrites() {
 		return [
