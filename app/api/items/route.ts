@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma } from '@prisma/client';
-import { getSignedUrl } from '@/lib/supabase';
+import { getSignedUrl, getSignedUrls } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 import { z } from 'zod';
 
@@ -168,26 +168,27 @@ export async function GET(req: NextRequest) {
 		const hasMore = limit !== null && items.length > limit;
 		const paginatedItems = hasMore ? items.slice(0, limit) : items;
 
-		// Generate signed URLs for item images and media
-		const itemsWithUrls = await Promise.all(
-			paginatedItems.map(async item => {
-				let imageUrl = '';
-				try {
-					imageUrl = await getSignedUrl(item.imagePath, 'items');
-				} catch (err) {
-					console.error(`Failed to get signed URL for item ${item.id}:`, err);
-				}
-				// Generate signed URLs for all media files (main image + supporting media)
-				const mediaUrls = await Promise.all([
-					imageUrl, // Main image is first
-					...(item.mediaPaths || []).map(path =>
-						getSignedUrl(path, 'media').catch(err => {
-							console.error(`Failed to get signed URL for media of item ${item.id}:`, err);
-							return '';
-						}),
-					),
-				]);
-				return {
+		// Batch-sign all paths in two HTTP calls (one per bucket) instead of N+M calls.
+		const allItemImagePaths = paginatedItems.map(i => i.imagePath).filter(Boolean);
+		const allMediaPaths = paginatedItems.flatMap(i => i.mediaPaths || []).filter(Boolean);
+		const [itemUrlMap, mediaUrlMap] = await Promise.all([
+			getSignedUrls(allItemImagePaths, 'items').catch(err => {
+				console.error('Failed to batch-sign item images:', err);
+				return new Map<string, string>();
+			}),
+			getSignedUrls(allMediaPaths, 'media').catch(err => {
+				console.error('Failed to batch-sign media:', err);
+				return new Map<string, string>();
+			}),
+		]);
+
+		const itemsWithUrls = paginatedItems.map(item => {
+			const imageUrl = itemUrlMap.get(item.imagePath) ?? '';
+			const mediaUrls = [
+				imageUrl,
+				...(item.mediaPaths || []).map(p => mediaUrlMap.get(p) ?? ''),
+			];
+			return {
 					id: item.id,
 					name: item.name,
 					description: item.description,
@@ -214,8 +215,7 @@ export async function GET(req: NextRequest) {
 					estimatedNewPriceUsd: item.estimatedNewPriceUsd,
 					isValueVisible: item.isValueVisible,
 				};
-			}),
-		);
+			});
 
 		// When limit param is present, return paginated response format
 		// Otherwise return flat array for backward compatibility
