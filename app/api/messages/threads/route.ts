@@ -11,6 +11,12 @@ export async function GET(req: NextRequest) {
 		const search = req.nextUrl.searchParams.get('q')?.trim().toLowerCase();
 		const showArchived = req.nextUrl.searchParams.get('archived') === 'true';
 
+		// Cap to most recent 100 threads by default. The dashboard preview uses limit=3,
+		// the messages page can opt-in to a larger limit. This stops power-users with
+		// hundreds of threads from paying full-load cost on every nav.
+		const rawLimit = Number(req.nextUrl.searchParams.get('limit') ?? '100');
+		const take = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 100;
+
 		const conversations = await prisma.conversation.findMany({
 			where: {
 				participants: {
@@ -20,7 +26,11 @@ export async function GET(req: NextRequest) {
 					},
 				},
 			},
+			take,
 			include: {
+				// Restrict participants to ones with users we care about: the caller (for their flags) and the other party.
+				// The "include only the other party" optimization would require splitting the query — keeping all participants
+				// here is cheap because DIRECT conversations have 2 rows and GROUP rarely exceeds 5.
 				participants: {
 					include: {
 						user: {
