@@ -223,6 +223,7 @@ export const authOptions: NextAuthOptions = {
 				session.user.email = token.email;
 				session.user.image = token.image as string;
 				session.user.emailVerified = token.emailVerified as Date | null;
+				session.user.profileComplete = token.profileComplete as boolean | undefined;
 			}
 
 			return session;
