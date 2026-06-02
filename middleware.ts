@@ -33,6 +33,14 @@ export async function middleware(request: NextRequest) {
 
 	// Check if current path is a protected route
 	const isProtectedRoute = protectedRoutePatterns.some(pattern => pattern.test(pathname));
+	const isCompleteProfile = pathname === '/complete-profile';
+
+	// /complete-profile requires authentication
+	if (isCompleteProfile && !token) {
+		const loginUrl = new URL('/login', request.url);
+		loginUrl.searchParams.set('callbackUrl', pathname);
+		return NextResponse.redirect(loginUrl);
+	}
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {
