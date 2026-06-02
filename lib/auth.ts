@@ -236,20 +236,26 @@ export const authOptions: NextAuthOptions = {
 				token.image = user.image;
 			}
 
-			// Fetch emailVerified from DB on sign-in, update, or when not yet cached in token
-			if (trigger === 'signIn' || trigger === 'update' || !token.emailVerified) {
+			// Fetch emailVerified + profile completion (date_of_birth) from DB on
+			// sign-in, update, or whenever either value isn't cached in the token.
+			if (
+				trigger === 'signIn' ||
+				trigger === 'update' ||
+				!token.emailVerified ||
+				token.profileComplete === undefined
+			) {
 				// Retry up to 3 times to handle transient Prisma Accelerate connection errors
-				let dbUser: { emailVerified: Date | null } | null = null;
+				let dbUser: { emailVerified: Date | null; date_of_birth: Date | null } | null = null;
 				for (let attempt = 0; attempt < 3; attempt++) {
 					try {
 						dbUser = await prisma.user.findUnique({
 							where: { id: token.id as string },
-							select: { emailVerified: true },
+							select: { emailVerified: true, date_of_birth: true },
 						});
 						break;
 					} catch (err) {
 						if (attempt === 2) {
-							console.error('JWT callback: failed to fetch emailVerified after retries:', err);
+							console.error('JWT callback: failed to fetch user after retries:', err);
 						} else {
 							await new Promise(r => setTimeout(r, 150 * (attempt + 1)));
 						}
@@ -257,11 +263,13 @@ export const authOptions: NextAuthOptions = {
 				}
 				if (dbUser !== null) {
 					token.emailVerified = dbUser.emailVerified;
+					// Profile is "complete" once date of birth is captured (required field).
+					token.profileComplete = dbUser.date_of_birth != null;
 				} else if (trigger === 'signIn') {
 					// authorize() already verified email — don't null it out if DB is transiently unreachable
 					token.emailVerified = (token.emailVerified as Date | null) ?? new Date();
 				}
-				// else: leave token.emailVerified unchanged (don't null out a cached value)
+				// else: leave cached values unchanged (don't null out on transient DB errors)
 			}
 
 			return token;
