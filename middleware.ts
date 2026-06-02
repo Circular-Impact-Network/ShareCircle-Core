@@ -41,6 +41,14 @@ export async function middleware(request: NextRequest) {
 		loginUrl.searchParams.set('callbackUrl', pathname);
 		return NextResponse.redirect(loginUrl);
 	}
+	const isCompleteProfile = pathname === '/complete-profile';
+
+	// /complete-profile requires authentication
+	if (isCompleteProfile && !token) {
+		const loginUrl = new URL('/login', request.url);
+		loginUrl.searchParams.set('callbackUrl', pathname);
+		return NextResponse.redirect(loginUrl);
+	}
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {
@@ -74,6 +82,14 @@ export async function middleware(request: NextRequest) {
 			verifyUrl.searchParams.set('mode', 'verify');
 			verifyUrl.searchParams.set('email', token.email as string);
 			return NextResponse.redirect(verifyUrl);
+		}
+
+		// Profile completion gate: users missing required profile data (e.g. Google
+		// sign-ups that skip date of birth) must complete it before using the app.
+		if (token.emailVerified && token.profileComplete === false) {
+			const completeUrl = new URL('/complete-profile', request.url);
+			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', pathname);
+			return NextResponse.redirect(completeUrl);
 		}
 	}
 
