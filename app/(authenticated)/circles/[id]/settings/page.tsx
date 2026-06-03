@@ -1,13 +1,4 @@
-import dynamic from 'next/dynamic';
-import { PageSkeleton } from '@/components/ui/skeletons';
-
-const CircleSettingsPage = dynamic(
-	() =>
-		import('@/components/pages/circle-settings-page').then(m => ({
-			default: m.CircleSettingsPage,
-		})),
-	{ loading: () => <PageSkeleton /> },
-);
+import { CircleSettingsPage } from '@/components/pages/circle-settings-page';
 
 interface CircleSettingsRouteProps {
 	params: Promise<{ id: string }>;
