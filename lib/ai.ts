@@ -204,15 +204,13 @@ export async function validateListingAgainstImages(
 	const failures: ValidateListingFailure[] = [];
 	for (const result of results) {
 		if (result.status === 'rejected') {
-			const err = result.reason;
-			failures.push({
-				imageIndex: -1,
-				imageLabel: 'Unknown',
-				reason:
-					err instanceof Error
-						? err.message
-						: 'Could not validate this media (may be video or unsupported format).',
-			});
+			// The AI validator itself failed (quota / rate limit / timeout / network /
+			// unsupported media) — NOT a genuine content mismatch. Fail OPEN: never block
+			// a legitimate listing, and never surface a raw provider error to the user,
+			// just because the validation service is unavailable. We only block on a real
+			// mismatch (isValid: false) below.
+			console.error('Listing validation unavailable, allowing creation:', result.reason);
+			continue;
 		} else {
 			const { i, label, validation } = result.value;
 			if (!validation.isValid) {
