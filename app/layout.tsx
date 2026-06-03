@@ -6,8 +6,19 @@ import { ThemeProvider } from './providers';
 import { PWAInstallGuard } from '@/components/providers/pwa-install-guard';
 import { Plus_Jakarta_Sans, Poppins } from 'next/font/google';
 
-const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sans' });
-const poppins = Poppins({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-display' });
+const plusJakartaSans = Plus_Jakarta_Sans({
+	subsets: ['latin'],
+	variable: '--font-sans',
+	display: 'swap',
+});
+// Trimmed weights: 500 is rarely used and 700 (bold) is now handled by Plus_Jakarta_Sans.
+// Keep only display weights actually needed for the brand header/title typography.
+const poppins = Poppins({
+	subsets: ['latin'],
+	weight: ['400', '600', '700'],
+	variable: '--font-display',
+	display: 'swap',
+});
 
 export const metadata: Metadata = {
 	applicationName: 'ShareCircle',
