@@ -78,6 +78,10 @@ export default async function globalSetup(config: FullConfig) {
 				name: user.name,
 				email: user.email,
 				password: user.password,
+				// Real email signup collects date of birth (required), which marks the
+				// profile complete. Without it the profile-completion gate would redirect
+				// these test users to /complete-profile and block every authenticated route.
+				dateOfBirth: '1990-01-01',
 			},
 		});
 
