@@ -41,14 +41,6 @@ export async function middleware(request: NextRequest) {
 		loginUrl.searchParams.set('callbackUrl', pathname);
 		return NextResponse.redirect(loginUrl);
 	}
-	const isCompleteProfile = pathname === '/complete-profile';
-
-	// /complete-profile requires authentication
-	if (isCompleteProfile && !token) {
-		const loginUrl = new URL('/login', request.url);
-		loginUrl.searchParams.set('callbackUrl', pathname);
-		return NextResponse.redirect(loginUrl);
-	}
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {
@@ -91,6 +83,15 @@ export async function middleware(request: NextRequest) {
 			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', pathname);
 			return NextResponse.redirect(completeUrl);
 		}
+	}
+
+	// If the profile is already complete, keep users out of the onboarding step
+	if (token && isCompleteProfile && token.profileComplete === true) {
+		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
+		if (callbackUrl && callbackUrl.startsWith('/')) {
+			return NextResponse.redirect(new URL(callbackUrl, request.url));
+		}
+		return NextResponse.redirect(new URL('/home', request.url));
 	}
 
 	return NextResponse.next();
