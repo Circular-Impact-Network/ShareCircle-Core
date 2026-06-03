@@ -72,6 +72,18 @@ export function getItemRequestPresentation(status: ItemRequestStatus | string): 
 	return ITEM_REQUEST[status as ItemRequestStatus] ?? { label: String(status), tone: 'outline' };
 }
 
+// Transaction states where the item is still in the borrower's hands and a due
+// date is meaningful. RETURN_PENDING / COMPLETED / CANCELLED are excluded —
+// the item is on its way back or already settled.
+const OVERDUE_ELIGIBLE_STATUSES = ['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED'];
+
+// UI-only overdue check (no backend job): a borrow is overdue when its due date
+// has passed and the item is still out. Computed at render time.
+export function isBorrowOverdue(dueAt: string | Date | null | undefined, status: string): boolean {
+	if (!dueAt || !OVERDUE_ELIGIBLE_STATUSES.includes(status)) return false;
+	return new Date(dueAt).getTime() < Date.now();
+}
+
 // Unified helper for "any borrow-flow status string we have lying around" —
 // matches the prior ad-hoc getStatusBadge() in my-activity-page.tsx which
 // dispatched across all three borrow enums by string value.
