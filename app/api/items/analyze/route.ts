@@ -108,14 +108,29 @@ export async function POST(req: NextRequest) {
 	} catch (error) {
 		console.error('Image analysis error:', error);
 
-		// Provide more specific error messages
+		// Provide more specific, user-friendly error messages — never surface the raw
+		// multi-line provider error (quota dumps, stack traces) to the client.
 		if (error instanceof Error) {
-			if (error.message.includes('API key')) {
+			const msg = error.message.toLowerCase();
+			if (msg.includes('api key') || msg.includes('api_key')) {
 				return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
 			}
-			if (error.message.includes('rate limit')) {
+			// Gemini quota / rate-limit surfaces as "quota", "exceeded", "rate limit",
+			// "resource_exhausted", or HTTP 429 — collapse them all to one clean message.
+			if (
+				msg.includes('quota') ||
+				msg.includes('exceeded') ||
+				msg.includes('rate limit') ||
+				msg.includes('rate_limit') ||
+				msg.includes('resource_exhausted') ||
+				msg.includes('429') ||
+				msg.includes('too many requests')
+			) {
 				return NextResponse.json(
-					{ error: 'AI service rate limit reached. Please try again later.' },
+					{
+						error: 'AI is busy right now (usage limit reached). Please try again in a minute, or fill in the details manually.',
+						code: 'AI_RATE_LIMITED',
+					},
 					{ status: 429 },
 				);
 			}
