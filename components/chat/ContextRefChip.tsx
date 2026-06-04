@@ -51,6 +51,7 @@ export function ContextRefChip({ contextRef, variant, onClick, onClear }: Contex
 				<button
 					type="button"
 					aria-label="Remove reference"
+					data-testid="context-ref-chip-clear"
 					className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
 					onClick={e => {
 						e.stopPropagation();
@@ -63,13 +64,15 @@ export function ContextRefChip({ contextRef, variant, onClick, onClear }: Contex
 		</>
 	);
 
+	const testIdValue = isComposer ? 'context-ref-chip-composer' : isOwn ? 'context-ref-chip-own' : 'context-ref-chip-other';
+
 	if (isClickable) {
 		return (
-			<button type="button" onClick={onClick} className={containerClasses}>
+			<button type="button" onClick={onClick} className={containerClasses} data-testid={testIdValue}>
 				{body}
 			</button>
 		);
 	}
 
-	return <div className={containerClasses}>{body}</div>;
+	return <div className={containerClasses} data-testid={testIdValue}>{body}</div>;
 }
