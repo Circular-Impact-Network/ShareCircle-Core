@@ -93,57 +93,45 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json([], { status: 200 });
 		}
 
-		// Generate embedding based on search type
-		let embedding: number[];
-		try {
-			if (imageUrl && query) {
-				// Combined search: image + text refinement
-				embedding = await generateDocumentEmbedding(imageUrl, query);
-			} else if (imageUrl) {
-				// Image-only search
-				embedding = await generateImageEmbedding(imageUrl);
-			} else {
-				// Text-only search
-				embedding = await generateTextEmbedding(query!);
-			}
-		} catch (embeddingError) {
-			console.error('Failed to generate search embedding:', embeddingError);
-			// Return empty results instead of error - graceful degradation
-			return NextResponse.json([], { status: 200 });
-		}
-
 		// Prepare category and tag filters (null if not specified or "All Categories")
 		const categoryFilter = category && category !== 'All Categories' ? category : null;
 		const tagFilter = tag || null;
-
-		// Format embedding as a PostgreSQL vector literal
-		// We use Prisma.raw to inject the vector directly since parameterized vectors can be tricky
-		const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
-
-		// Prepare query text for hybrid full-text search (null for image-only searches)
 		const queryText = query?.trim() || null;
 
-		// Perform hybrid search (vector similarity + full-text) using the SQL function
-		let results: SearchResult[];
+		// 1) Vector / hybrid search (best-effort). Embedding generation or the SQL
+		//    function can fail (quota, NULL embeddings on freshly-created items, etc.) —
+		//    we never let that abort the request; the text fallback below covers it.
+		let vectorResults: SearchResult[] = [];
 		try {
-			results = await prisma.$queryRaw<SearchResult[]>`
-				SELECT * FROM search_items(
-					${embeddingVector},
-					${queryText},
-					${searchCircleIds}::text[],
-					${categoryFilter},
-					${tagFilter},
-					${threshold}::float,
-					${limit}::int
-				)
-			`;
-		} catch (dbError) {
-			console.error('Database search error:', dbError);
-			// Return empty results instead of error - graceful degradation
-			return NextResponse.json([], { status: 200 });
+			let embedding: number[] | null = null;
+			if (imageUrl && query) {
+				embedding = await generateDocumentEmbedding(imageUrl, query);
+			} else if (imageUrl) {
+				embedding = await generateImageEmbedding(imageUrl);
+			} else if (queryText) {
+				embedding = await generateTextEmbedding(queryText);
+			}
+			if (embedding) {
+				const embeddingVector = Prisma.raw(`'[${embedding.join(',')}]'::vector`);
+				vectorResults = await prisma.$queryRaw<SearchResult[]>`
+					SELECT * FROM search_items(
+						${embeddingVector},
+						${queryText},
+						${searchCircleIds}::text[],
+						${categoryFilter},
+						${tagFilter},
+						${threshold}::float,
+						${limit}::int
+					)
+				`;
+			}
+		} catch (vectorError) {
+			console.error('Vector search failed; falling back to text search:', vectorError);
 		}
 
-		// If no results, return empty array early
+		const results = vectorResults;
+
+				// If no results, return empty array early
 		if (results.length === 0) {
 			return NextResponse.json([], { status: 200 });
 		}
