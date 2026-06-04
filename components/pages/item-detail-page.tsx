@@ -602,6 +602,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 							<Button
 								variant="outline"
 								className="gap-2 bg-transparent"
+								data-testid="chat-with-owner-btn"
 								onClick={handleStartChat}
 								disabled={isStartingChat}
 							>
