@@ -129,9 +129,64 @@ export async function POST(req: NextRequest) {
 			console.error('Vector search failed; falling back to text search:', vectorError);
 		}
 
-		const results = vectorResults;
+		// 2) Text-search fallback/supplement. Guarantees plain name/description matches
+		//    surface even when an item has no embedding yet (embeddings are generated
+		//    asynchronously after create) or when the vector path failed. Scoped to the
+		//    user's circles, with the same category/tag filters.
+		let textResults: SearchResult[] = [];
+		if (queryText) {
+			try {
+				const rows = await prisma.item.findMany({
+					where: {
+						archivedAt: null,
+						circles: { some: { circleId: { in: searchCircleIds } } },
+						...(categoryFilter ? { categories: { has: categoryFilter } } : {}),
+						...(tagFilter ? { tags: { has: tagFilter } } : {}),
+						OR: [
+							{ name: { contains: queryText, mode: 'insensitive' } },
+							{ description: { contains: queryText, mode: 'insensitive' } },
+						],
+					},
+					select: {
+						id: true,
+						name: true,
+						description: true,
+						imagePath: true,
+						categories: true,
+						tags: true,
+						ownerId: true,
+						createdAt: true,
+					},
+					orderBy: { createdAt: 'desc' },
+					take: limit,
+				});
+				textResults = rows.map(r => ({
+					id: r.id,
+					name: r.name,
+					description: r.description,
+					image_path: r.imagePath,
+					categories: r.categories,
+					tags: r.tags,
+					owner_id: r.ownerId,
+					created_at: r.createdAt,
+					similarity: 0.5,
+				}));
+			} catch (textError) {
+				console.error('Text search failed:', textError);
+			}
+		}
 
-				// If no results, return empty array early
+		// Merge: vector matches first (ranked), then any text matches not already present.
+		const seenIds = new Set<string>();
+		const results: SearchResult[] = [];
+		for (const row of [...vectorResults, ...textResults]) {
+			if (seenIds.has(row.id)) continue;
+			seenIds.add(row.id);
+			results.push(row);
+			if (results.length >= limit) break;
+		}
+
+		// If no results, return empty array early
 		if (results.length === 0) {
 			return NextResponse.json([], { status: 200 });
 		}
