@@ -59,6 +59,7 @@ export function ItemRequestCard({
 								<span
 									aria-label="Responded"
 									title="Responded"
+									data-testid="responded-indicator"
 									className="inline-flex items-center justify-center rounded-full bg-green-100 p-0.5 text-green-700"
 								>
 									<CheckCircle className="h-3.5 w-3.5" />
@@ -97,6 +98,7 @@ export function ItemRequestCard({
 										variant="outline"
 										className="gap-2"
 										disabled={isResponding}
+										data-testid="respond-btn"
 										onClick={() => onRespond(request.id, request.requester.id, request.title)}
 									>
 										{isResponding ? (
@@ -112,6 +114,7 @@ export function ItemRequestCard({
 										size="sm"
 										variant="ghost"
 										className="gap-2 text-muted-foreground"
+										data-testid="ignore-btn"
 										onClick={() => onIgnore(request.id)}
 									>
 										<EyeOff className="h-4 w-4" />
@@ -128,6 +131,7 @@ export function ItemRequestCard({
 									size="sm"
 									variant="outline"
 									className="gap-2"
+									data-testid="chat-btn"
 									onClick={() => onChat(request.requester.id, request.id, request.title)}
 								>
 									<MessageCircle className="h-4 w-4" />
@@ -144,6 +148,7 @@ export function ItemRequestCard({
 									variant="outline"
 									className="gap-2"
 									disabled={isClosing}
+									data-testid="close-request-btn"
 									onClick={() => onClose(request.id)}
 								>
 									{isClosing ? (
