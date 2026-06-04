@@ -151,12 +151,14 @@ export class TestAPI {
 	}
 
 	async sendMessage(threadId: string, content: string): Promise<Message> {
+		// API schema uses `body`, not `content`. We accept `content` as the friendlier param name
+		// in tests and translate here.
 		const response = await this.request.post(`/api/messages/threads/${threadId}/messages`, {
-			data: { content },
+			data: { body: content },
 		});
 
 		if (!response.ok()) {
-			throw new Error(`Failed to send message: ${response.status()}`);
+			throw new Error(`Failed to send message: ${response.status()} ${await response.text()}`);
 		}
 
 		return response.json();
