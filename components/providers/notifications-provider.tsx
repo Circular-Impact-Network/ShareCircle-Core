@@ -345,7 +345,9 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		// via the NEW_MESSAGE notification type.
 
 		return () => {
-			notificationChannel.unsubscribe();
+			// `removeChannel` both unsubscribes and frees the supabase client's internal
+			// reference; calling only `unsubscribe()` leaks the channel for the page lifetime.
+			supabase.removeChannel(notificationChannel);
 			notificationChannelRef.current = null;
 			messageChannelRef.current = null;
 		};
