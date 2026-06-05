@@ -70,10 +70,10 @@ export function DashboardHome() {
 		<div className="flex-1 bg-background">
 			<PageShell className="space-y-5 sm:space-y-6">
 				<h1 className="sr-only">Home</h1>
-				<Card className="border-none bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 text-primary-foreground shadow-xl">
+				<Card className="border-none bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 text-foreground shadow-xl">
 					<CardHeader className="space-y-1.5 pb-4">
 						<CardTitle className="text-2xl font-semibold lg:text-3xl">{welcomeTitle}</CardTitle>
-						<CardDescription className="text-sm text-primary-foreground/80 sm:text-base">
+						<CardDescription className="text-sm text-foreground/80 sm:text-base">
 							Share what you have, borrow what you need
 						</CardDescription>
 					</CardHeader>
