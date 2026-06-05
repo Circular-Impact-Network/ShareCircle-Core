@@ -9,6 +9,7 @@ import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Mail, ArrowLeft, MapPin, LocateFixed } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -47,6 +48,7 @@ function SignupContent() {
 	const [successMessage, setSuccessMessage] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+	const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 	const [mode, setMode] = useState<SignupMode>('signup');
 	const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'signing-in'>('idle');
 	const [isVerifying, setIsVerifying] = useState(false);
@@ -108,6 +110,12 @@ function SignupContent() {
 	const handleSignup = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
+
+		if (!agreedToPolicies) {
+			setError('Please accept the Terms of Service and Privacy Policy to continue.');
+			return;
+		}
+
 		setIsLoading(true);
 
 		try {
@@ -257,6 +265,10 @@ function SignupContent() {
 	};
 
 	const handleGoogleLogin = async () => {
+		if (!agreedToPolicies) {
+			setError('Please accept the Terms of Service and Privacy Policy to continue.');
+			return;
+		}
 		setIsGoogleLoading(true);
 		try {
 			await signIn('google', { callbackUrl });
@@ -709,10 +721,45 @@ function SignupContent() {
 							</p>
 						</div>
 
+						<div className="flex items-start gap-2.5 pt-1">
+							<Checkbox
+								id="agree-policies"
+								checked={agreedToPolicies}
+								onCheckedChange={checked => {
+									const next = checked === true;
+									setAgreedToPolicies(next);
+									if (next) setError('');
+								}}
+								disabled={isLoading}
+								className="mt-0.5"
+							/>
+							<label htmlFor="agree-policies" className="text-sm leading-snug text-muted-foreground">
+								I agree to ShareCircle&apos;s{' '}
+								<Link
+									href="/terms"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="font-medium text-primary hover:underline"
+								>
+									Terms of Service
+								</Link>{' '}
+								and{' '}
+								<Link
+									href="/privacy"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="font-medium text-primary hover:underline"
+								>
+									Privacy Policy
+								</Link>
+								.
+							</label>
+						</div>
+
 						<Button
 							type="submit"
 							className="w-full bg-primary hover:bg-primary/90 text-lg h-11"
-							disabled={isLoading}
+							disabled={isLoading || !agreedToPolicies}
 						>
 							{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							{isLoading ? 'Creating account...' : 'Create Account'}
@@ -734,7 +781,7 @@ function SignupContent() {
 					variant="outline"
 					className="w-full h-11"
 					onClick={handleGoogleLogin}
-					disabled={isGoogleLoading || isLoading}
+					disabled={isGoogleLoading || isLoading || !agreedToPolicies}
 				>
 					{isGoogleLoading ? (
 						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
