@@ -38,6 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No active transaction found' }, { status: 400 });
 		}
 
+		const txStatus = borrowRequest.transaction.status;
+		if (txStatus === BorrowTransactionStatus.CANCELLED) {
+			return NextResponse.json({ error: 'This borrow has been cancelled.' }, { status: 400 });
+		}
 		if (borrowRequest.transaction.status !== BorrowTransactionStatus.ACTIVE) {
 			return NextResponse.json(
 				{ error: 'Transaction must be in ACTIVE state for handoff confirmation' },
