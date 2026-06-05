@@ -38,10 +38,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No active transaction found' }, { status: 400 });
 		}
 
-		if (borrowRequest.transaction.status !== BorrowTransactionStatus.LENDER_CONFIRMED) {
+		const txStatus = borrowRequest.transaction.status;
+		if (txStatus === BorrowTransactionStatus.CANCELLED) {
+			return NextResponse.json({ error: 'This borrow has been cancelled.' }, { status: 400 });
+		}
+		if (txStatus === BorrowTransactionStatus.ACTIVE) {
 			return NextResponse.json(
-				{ error: 'Lender must confirm handoff before borrower can confirm receipt' },
+				{ error: "The lender hasn't confirmed handoff yet. You can confirm receipt once they do." },
 				{ status: 400 },
+			);
+		}
+		// Idempotent: receipt already confirmed (or the flow has moved past it) —
+		// return success instead of erroring on a stale/duplicate action.
+		if (txStatus !== BorrowTransactionStatus.LENDER_CONFIRMED) {
+			return NextResponse.json(
+				{ message: 'Receipt already confirmed', transaction: borrowRequest.transaction },
+				{ status: 200 },
 			);
 		}
 
