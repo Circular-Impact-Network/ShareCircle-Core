@@ -42,10 +42,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		if (txStatus === BorrowTransactionStatus.CANCELLED) {
 			return NextResponse.json({ error: 'This borrow has been cancelled.' }, { status: 400 });
 		}
-		if (borrowRequest.transaction.status !== BorrowTransactionStatus.ACTIVE) {
+		// Idempotent: handoff already confirmed (or the flow has moved past it) —
+		// return success instead of erroring on a stale/duplicate action.
+		if (txStatus !== BorrowTransactionStatus.ACTIVE) {
 			return NextResponse.json(
-				{ error: 'Transaction must be in ACTIVE state for handoff confirmation' },
-				{ status: 400 },
+				{ message: 'Handoff already confirmed', transaction: borrowRequest.transaction },
+				{ status: 200 },
 			);
 		}
 
