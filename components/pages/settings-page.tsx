@@ -9,7 +9,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Moon, Smartphone, Mail, Camera, Loader2, ShieldCheck, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
+import {
+	Moon,
+	Smartphone,
+	Mail,
+	Camera,
+	Loader2,
+	ShieldCheck,
+	Download,
+	RefreshCw,
+	CheckCircle2,
+	FileText,
+	ExternalLink,
+} from 'lucide-react';
+import Link from 'next/link';
 import { useTheme } from '@/app/providers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -916,6 +929,36 @@ export function SettingsPage() {
 									</div>
 								</div>
 							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<FileText className="h-5 w-5" />
+								Legal
+							</CardTitle>
+							<CardDescription>Review the policies that govern your use of ShareCircle.</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-2">
+							<Link
+								href="/terms"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+							>
+								Terms of Service
+								<ExternalLink className="h-4 w-4 text-muted-foreground" />
+							</Link>
+							<Link
+								href="/privacy"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+							>
+								Privacy Policy
+								<ExternalLink className="h-4 w-4 text-muted-foreground" />
+							</Link>
 						</CardContent>
 					</Card>
 				</PageTabsContent>
