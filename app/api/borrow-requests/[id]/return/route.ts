@@ -66,13 +66,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		if (txStatus === BorrowTransactionStatus.COMPLETED) {
 			return NextResponse.json({ error: 'This borrow is already completed.' }, { status: 400 });
 		}
-		// Transaction must be active, lender-confirmed, or borrower-confirmed
-		if (
-			txStatus !== BorrowTransactionStatus.ACTIVE &&
-			txStatus !== BorrowTransactionStatus.LENDER_CONFIRMED &&
-			txStatus !== BorrowTransactionStatus.BORROWER_CONFIRMED
-		) {
-			return NextResponse.json({ error: 'Transaction is not in an active state' }, { status: 400 });
+		// Idempotent: already marked as returned, waiting on the owner — return
+		// success instead of erroring on a stale/duplicate action.
+		if (txStatus === BorrowTransactionStatus.RETURN_PENDING) {
+			return NextResponse.json(
+				{
+					message: 'Return already marked. Waiting for owner confirmation.',
+					transaction: borrowRequest.transaction,
+				},
+				{ status: 200 },
+			);
 		}
 
 		// Update transaction to return pending
