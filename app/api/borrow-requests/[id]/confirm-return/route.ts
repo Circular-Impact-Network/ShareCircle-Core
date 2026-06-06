@@ -57,10 +57,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No transaction found' }, { status: 400 });
 		}
 
-		// Only RETURN_PENDING is valid — borrower must mark the item as returned first
-		if (borrowRequest.transaction.status !== BorrowTransactionStatus.RETURN_PENDING) {
+		const txStatus = borrowRequest.transaction.status;
+		if (txStatus === BorrowTransactionStatus.CANCELLED) {
+			return NextResponse.json({ error: 'This borrow has been cancelled.' }, { status: 400 });
+		}
+		// Idempotent: return already confirmed — return success instead of erroring
+		// on a stale/duplicate action.
+		if (txStatus === BorrowTransactionStatus.COMPLETED) {
 			return NextResponse.json(
-				{ error: 'The borrower must first mark the item as returned before you can confirm.' },
+				{ message: 'Return already confirmed.', transaction: borrowRequest.transaction, nextInQueue: null },
+				{ status: 200 },
+			);
+		}
+		// Only RETURN_PENDING can be confirmed — borrower must mark it returned first
+		if (txStatus !== BorrowTransactionStatus.RETURN_PENDING) {
+			return NextResponse.json(
+				{ error: "The borrower hasn't marked the item as returned yet." },
 				{ status: 400 },
 			);
 		}
