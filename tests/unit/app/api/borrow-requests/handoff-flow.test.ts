@@ -69,14 +69,15 @@ describe('POST /api/borrow-requests/[id]/handoff', () => {
 		vi.mocked(prisma.borrowTransaction.update).mockReset();
 	});
 
-	it('returns 400 when transaction is already LENDER_CONFIRMED', async () => {
+	it('returns 200 (idempotent) when transaction is already LENDER_CONFIRMED', async () => {
+		// Stale/duplicate handoff confirmation is a no-op success, not an error.
 		vi.mocked(getServerSession).mockResolvedValue(SESSION_OWNER as never);
 		vi.mocked(prisma.borrowRequest.findUnique).mockResolvedValue(
 			makeBorrowRequest(BorrowTransactionStatus.LENDER_CONFIRMED) as never,
 		);
 
 		const res = await handoffPOST(makeRequest('req-1'), { params: makeParams('req-1') });
-		expect(res.status).toBe(400);
+		expect(res.status).toBe(200);
 	});
 
 	it('returns 200 when transaction is ACTIVE', async () => {
