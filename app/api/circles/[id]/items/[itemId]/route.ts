@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { MemberRole, NotificationType } from '@prisma/client';
+import { BorrowTransactionStatus, MemberRole, NotificationType } from '@prisma/client';
 import { queueNotification } from '@/lib/notify';
 
 // DELETE /api/circles/[id]/items/[itemId]
@@ -34,6 +34,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		});
 		if (!itemCircle) {
 			return NextResponse.json({ error: 'Item not found in this circle' }, { status: 404 });
+		}
+
+
+		// Block removal while the item is in an active borrow lifecycle
+		const activeTransaction = await prisma.borrowTransaction.findFirst({
+			where: {
+				itemId,
+				status: { notIn: [BorrowTransactionStatus.COMPLETED, BorrowTransactionStatus.CANCELLED] },
+			},
+			select: { id: true },
+		});
+		if (activeTransaction) {
+			return NextResponse.json(
+				{
+					error: "This item is currently borrowed — it can't be removed from the circle until the borrow is completed or cancelled.",
+				},
+				{ status: 409 },
+			);
 		}
 
 		// Remove item from this circle only
