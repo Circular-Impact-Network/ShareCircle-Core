@@ -70,7 +70,8 @@ describe('POST /api/borrow-requests/[id]/handoff', () => {
 	});
 
 	it('returns 200 (idempotent) when transaction is already LENDER_CONFIRMED', async () => {
-		// Stale/duplicate handoff confirmation is a no-op success, not an error.
+		// Stale/duplicate handoff confirmation (e.g. tapping an old notification) is a
+		// no-op success, not an error — see idempotency fix in the handoff route.
 		vi.mocked(getServerSession).mockResolvedValue(SESSION_OWNER as never);
 		vi.mocked(prisma.borrowRequest.findUnique).mockResolvedValue(
 			makeBorrowRequest(BorrowTransactionStatus.LENDER_CONFIRMED) as never,
@@ -191,14 +192,16 @@ describe('POST /api/borrow-requests/[id]/return', () => {
 		expect(res.status).toBe(200);
 	});
 
-	it('returns 400 when transaction is already RETURN_PENDING', async () => {
+	it('returns 200 (idempotent) when transaction is already RETURN_PENDING', async () => {
+		// Re-marking an already-return-pending borrow is a no-op success (idempotent),
+		// so a stale/duplicate "mark returned" tap doesn't error.
 		vi.mocked(getServerSession).mockResolvedValue(SESSION_BORROWER as never);
 		vi.mocked(prisma.borrowRequest.findUnique).mockResolvedValue(
 			makeBorrowRequest(BorrowTransactionStatus.RETURN_PENDING) as never,
 		);
 
 		const res = await returnPOST(makeRequest('req-1', { returnNote: null }), { params: makeParams('req-1') });
-		expect(res.status).toBe(400);
+		expect(res.status).toBe(200);
 	});
 
 	it('returns 400 when transaction is COMPLETED', async () => {
@@ -230,7 +233,7 @@ describe('POST /api/borrow-requests/[id]/confirm-return', () => {
 		const res = await confirmReturnPOST(makeRequest('req-1'), { params: makeParams('req-1') });
 		expect(res.status).toBe(400);
 		const data = (await res.json()) as { error: string };
-		expect(data.error).toMatch(/mark the item as returned/i);
+		expect(data.error).toMatch(/marked the item as returned/i);
 	});
 
 	it('returns 400 when transaction is LENDER_CONFIRMED (strict enforcement)', async () => {
