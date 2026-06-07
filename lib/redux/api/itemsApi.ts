@@ -83,6 +83,7 @@ export interface CreateItemRequest {
 	circleIds: string[];
 	estimatedWeightKg?: number | null;
 	estimatedNewPriceUsd?: number | null;
+	isValueVisible?: boolean;
 }
 
 export interface UpdateItemRequest {
