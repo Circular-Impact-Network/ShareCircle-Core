@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowTransactionStatus, MemberRole, NotificationType } from '@prisma/client';
-import { queueNotification } from '@/lib/notify';
+import { queueNotification, queueBroadcast } from '@/lib/notify';
 
 // DELETE /api/circles/[id]/items/[itemId]
 // Circle admin removes an item listing from their circle (does not delete the item).
@@ -36,7 +36,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 			return NextResponse.json({ error: 'Item not found in this circle' }, { status: 404 });
 		}
 
-
 		// Block removal while the item is in an active borrow lifecycle
 		const activeTransaction = await prisma.borrowTransaction.findFirst({
 			where: {
@@ -58,6 +57,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		await prisma.itemCircle.delete({
 			where: { itemId_circleId: { itemId, circleId } },
 		});
+
+		// Tell everyone viewing this circle to drop the item immediately.
+		queueBroadcast(`circle:${circleId}:items`, 'item_removed', { itemId, circleId });
 
 		// Notify item owner (skip if admin is removing their own item)
 		const ownerId = itemCircle.item.ownerId;
