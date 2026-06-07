@@ -63,6 +63,7 @@ import { openDirectChat } from '@/lib/chat-navigation';
 import { useGetItemRequestsQuery } from '@/lib/redux/api/borrowApi';
 import { useCircleItemRequestActions } from '@/hooks/useCircleItemRequestActions';
 import { useCircleMemberActions } from '@/hooks/useCircleMemberActions';
+import { useItemRealtime } from '@/hooks/useItemRealtime';
 import { PageShell } from '@/components/ui/page';
 import { CircleDetailSkeleton, ItemGridSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
@@ -79,6 +80,8 @@ interface CircleDetailsPageProps {
 export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const router = useRouter();
 	const { data: session } = useSession();
+	// Live updates: when anyone deletes/removes an item from this circle, drop it here too.
+	useItemRealtime([circleId]);
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
