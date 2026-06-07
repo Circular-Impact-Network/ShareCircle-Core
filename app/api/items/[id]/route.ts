@@ -188,7 +188,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
-			select: { ownerId: true, imagePath: true, mediaPaths: true },
+			select: {
+				ownerId: true,
+				imagePath: true,
+				mediaPaths: true,
+				circles: { select: { circleId: true } },
+			},
 		});
 
 		if (!item) {
@@ -453,7 +458,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
-			select: { ownerId: true, imagePath: true, mediaPaths: true },
+			select: {
+				ownerId: true,
+				imagePath: true,
+				mediaPaths: true,
+				circles: { select: { circleId: true } },
+			},
 		});
 
 		if (!item) {
@@ -463,6 +473,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 		if (item.ownerId !== userId) {
 			return NextResponse.json({ error: 'You can only delete your own items' }, { status: 403 });
 		}
+
+		const affectedCircleIds = (item.circles ?? []).map(c => c.circleId);
 
 		// Block deletion if any borrow transaction is still in progress
 		const activeTransaction = await prisma.borrowTransaction.findFirst({
