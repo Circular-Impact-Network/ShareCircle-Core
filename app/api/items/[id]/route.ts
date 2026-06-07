@@ -7,6 +7,7 @@ import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma, BorrowTransactionStatus } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
+import { queueBroadcast } from '@/lib/notify';
 
 export const maxDuration = 60;
 
@@ -188,12 +189,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		// Verify ownership
 		const item = await prisma.item.findUnique({
 			where: { id },
-			select: {
-				ownerId: true,
-				imagePath: true,
-				mediaPaths: true,
-				circles: { select: { circleId: true } },
-			},
+			select: { ownerId: true, imagePath: true, mediaPaths: true },
 		});
 
 		if (!item) {
@@ -517,6 +513,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 					// Continue deleting other files even if one fails
 				}
 			}
+		}
+
+		// Tell everyone viewing the affected circles to drop this item immediately.
+		for (const circleId of affectedCircleIds) {
+			queueBroadcast(`circle:${circleId}:items`, 'item_removed', { itemId: id, circleId });
 		}
 
 		return NextResponse.json({ message: 'Item deleted successfully' }, { status: 200 });
