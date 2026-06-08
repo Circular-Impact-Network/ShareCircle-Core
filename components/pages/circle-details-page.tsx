@@ -992,8 +992,17 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 									}).unwrap();
 									toast({ title: 'Item removed from circle' });
 									setItemToRemoveFromCircle(null);
-								} catch {
-									toast({ title: 'Failed to remove item', variant: 'destructive' });
+									await refetchItems();
+								} catch (error) {
+									const msg =
+										error && typeof error === 'object' && 'data' in error
+											? (error.data as { error?: string })?.error
+											: undefined;
+									toast({
+										title: 'Failed to remove item',
+										description: msg ?? undefined,
+										variant: 'destructive',
+									});
 								}
 							}}
 						>
