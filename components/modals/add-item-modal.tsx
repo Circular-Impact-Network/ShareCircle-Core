@@ -71,8 +71,6 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
 	// Price visibility for borrowers (weight is always shown). Off by default.
 	const [isValueVisible, setIsValueVisible] = useState(false);
-	// Price visibility for borrowers (weight is always shown). Off by default.
-	const [isValueVisible, setIsValueVisible] = useState(false);
 
 	// Circles selection encapsulated in a hook (fetch + selection state)
 	const {
@@ -1174,14 +1172,14 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 											</button>
 										)}
 
-										{/* Horizontal Scrollable Circle List */}
-										<div className="app-scrollbar app-scrollbar-thin flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+										{/* Vertical Scrollable Circle List */}
+										<div className="app-scrollbar app-scrollbar-thin flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
 											{circles.map(circle => (
 												<button
 													key={circle.id}
 													type="button"
 													onClick={() => toggleCircle(circle.id)}
-													className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left flex-shrink-0 snap-start min-w-[200px] ${
+													className={`flex w-full items-center gap-3 p-3 rounded-lg border transition-all text-left ${
 														selectedCircleIds.includes(circle.id)
 															? 'border-primary bg-primary/5'
 															: 'border-border hover:border-primary/50 hover:bg-muted/50'
