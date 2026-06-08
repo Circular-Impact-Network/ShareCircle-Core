@@ -20,6 +20,7 @@ import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/useToast';
+import { useItemRealtime } from '@/hooks/useItemRealtime';
 import { ItemSummaryCard } from '@/components/cards/item-summary-card';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
 import { openDirectChat } from '@/lib/chat-navigation';
@@ -185,6 +186,9 @@ export function BrowseListingsPage() {
 	// Get user's circles (only circles the user is a member of)
 	const { data: userCircles = [] } = useGetCirclesQuery();
 	const allRequestCirclesSelected = userCircles.length > 0 && requestCircleIds.length === userCircles.length;
+
+	// Live updates: drop items others delete/remove from any of the user's circles.
+	useItemRealtime(userCircles.map(c => c.id));
 
 	const toggleRequestCircle = (circleId: string) => {
 		setRequestCircleIds(prev =>
