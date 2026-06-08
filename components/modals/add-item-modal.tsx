@@ -71,6 +71,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
 	// Price visibility for borrowers (weight is always shown). Off by default.
 	const [isValueVisible, setIsValueVisible] = useState(false);
+	// Price visibility for borrowers (weight is always shown). Off by default.
+	const [isValueVisible, setIsValueVisible] = useState(false);
 
 	// Circles selection encapsulated in a hook (fetch + selection state)
 	const {
@@ -1113,12 +1115,25 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 									</div>
 									<div className="flex items-start gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30 px-2.5 py-2 text-xs text-blue-700 dark:text-blue-400">
 										<Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-										<span>
-											AI suggested — edit if needed. Price &amp; weight are{' '}
-											<strong>private to you</strong> by default. Make them visible to borrowers
-											from the item page.
-										</span>
+										<span>AI suggested — edit if needed. Weight is always shown to borrowers.</span>
 									</div>
+									{estimatedNewPriceUsd !== null && (
+										<div className="flex items-center gap-2 pt-1">
+											<Switch
+												id="value-visibility-create"
+												checked={isValueVisible}
+												onCheckedChange={setIsValueVisible}
+											/>
+											<label
+												htmlFor="value-visibility-create"
+												className="cursor-pointer select-none text-xs text-muted-foreground"
+											>
+												{isValueVisible
+													? 'Price visible to borrowers'
+													: 'Price hidden from borrowers (only you can see it)'}
+											</label>
+										</div>
+									)}
 								</div>
 							)}
 
