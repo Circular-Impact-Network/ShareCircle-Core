@@ -69,6 +69,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 	const [tagInput, setTagInput] = useState('');
 	const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | null>(null);
 	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
+	// Price visibility for borrowers (weight is always shown). Off by default.
+	const [isValueVisible, setIsValueVisible] = useState(false);
 
 	// Circles selection encapsulated in a hook (fetch + selection state)
 	const {
@@ -156,6 +158,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 		setManualItemName('');
 		setEstimatedWeightKg(null);
 		setEstimatedNewPriceUsd(null);
+		setIsValueVisible(false);
 	}, [clearSupportingMedia, resetCircleSelection]);
 
 	useEffect(() => {
@@ -585,6 +588,7 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 				circleIds: selectedCircleIds,
 				estimatedWeightKg,
 				estimatedNewPriceUsd,
+				isValueVisible,
 			}).unwrap();
 
 			if (savePhaseTimeoutRef.current) {
