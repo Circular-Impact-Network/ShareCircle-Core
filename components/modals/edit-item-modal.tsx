@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -72,6 +73,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 	const [media, setMedia] = useState<MediaEntry[]>([]);
 	const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | null>(null);
 	const [estimatedNewPriceUsd, setEstimatedNewPriceUsd] = useState<number | null>(null);
+	const [isValueVisible, setIsValueVisible] = useState(false);
 	const savePhaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [savePhase, setSavePhase] = useState<'idle' | 'validating' | 'saving'>('idle');
 
@@ -86,6 +88,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 		setImageUrl(item.imageUrl);
 		setEstimatedWeightKg((item as Item).estimatedWeightKg ?? null);
 		setEstimatedNewPriceUsd((item as Item).estimatedNewPriceUsd ?? null);
+		setIsValueVisible((item as Item).isValueVisible ?? false);
 
 		const existingMediaPaths = item.mediaPaths || [];
 		const existingMediaUrls = (item.mediaUrls || []).slice(1);
@@ -335,6 +338,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				circleIds: selectedCircleIds,
 				estimatedWeightKg,
 				estimatedNewPriceUsd,
+				isValueVisible,
 			}).unwrap();
 
 			if (savePhaseTimeoutRef.current) {
@@ -475,6 +479,24 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 								/>
 							</div>
 						</div>
+
+						{estimatedNewPriceUsd !== null && (
+							<div className="flex items-center gap-2">
+								<Switch
+									id="edit-value-visibility"
+									checked={isValueVisible}
+									onCheckedChange={setIsValueVisible}
+								/>
+								<label
+									htmlFor="edit-value-visibility"
+									className="cursor-pointer select-none text-sm text-muted-foreground"
+								>
+									{isValueVisible
+										? 'Price visible to borrowers'
+										: 'Price hidden from borrowers (only you can see it)'}
+								</label>
+							</div>
+						)}
 
 						<div className="space-y-2">
 							<Label>Main image</Label>
