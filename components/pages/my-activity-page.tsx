@@ -38,7 +38,7 @@ import { useToast } from '@/hooks/useToast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
-import { getAnyBorrowStatusPresentation, toBadgeProps } from '@/lib/borrow-ui';
+import { getAnyBorrowStatusPresentation, isBorrowOverdue, toBadgeProps } from '@/lib/borrow-ui';
 
 type TabType = 'active' | 'pending' | 'queue' | 'history' | 'requests';
 
@@ -75,6 +75,7 @@ function ActiveTransactionCard({
 	const isLenderConfirmed = transaction.status === 'LENDER_CONFIRMED';
 	const isBorrowerConfirmed = transaction.status === 'BORROWER_CONFIRMED';
 	const isReturnPending = transaction.status === 'RETURN_PENDING';
+	const overdue = isBorrowOverdue(transaction.dueAt, transaction.status);
 	const otherPerson = role === 'borrower' ? transaction.owner : transaction.borrower;
 
 	return (
@@ -102,6 +103,12 @@ function ActiveTransactionCard({
 								{transaction.item.name}
 							</p>
 							{getStatusBadge(transaction.status)}
+							{overdue && (
+								<Badge variant="destructive" className="gap-1">
+									<Clock className="h-3 w-3" />
+									Overdue
+								</Badge>
+							)}
 						</div>
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<span>{role === 'borrower' ? 'From:' : 'To:'}</span>
@@ -113,8 +120,9 @@ function ActiveTransactionCard({
 							</Avatar>
 							<span className="truncate">{otherPerson?.name || 'Unknown'}</span>
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">
+						<p className={`text-xs mt-1 ${overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
 							Due: {new Date(transaction.dueAt).toLocaleDateString()}
+							{overdue && ' — overdue'}
 						</p>
 
 						{/* Owner actions */}
