@@ -63,6 +63,10 @@ interface ItemDetailPageProps {
 	itemId: string;
 }
 
+// Extend-borrow is disabled for MVP. Flip to true to re-enable the feature
+// (the dialog + API route are left intact behind this flag).
+const EXTEND_ENABLED = false;
+
 export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const router = useRouter();
 	const { toast } = useToast();
@@ -628,7 +632,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								View in My Activity
 							</Button>
 						)}
-						{isCurrentBorrower &&
+						{EXTEND_ENABLED &&
+							isCurrentBorrower &&
 							activeTransaction &&
 							['ACTIVE', 'LENDER_CONFIRMED', 'BORROWER_CONFIRMED'].includes(activeTransaction.status) && (
 								<Button
