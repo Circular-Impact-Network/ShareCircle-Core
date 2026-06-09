@@ -68,10 +68,6 @@ interface ItemDetailPageProps {
 // (the dialog + API route are left intact behind this flag).
 const EXTEND_ENABLED = false;
 
-// Extend-borrow is disabled for MVP. Flip to true to re-enable the feature
-// (the dialog + API route are left intact behind this flag).
-const EXTEND_ENABLED = false;
-
 export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const router = useRouter();
 	const { toast } = useToast();
@@ -478,7 +474,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
 							{isCurrentBorrower ? (
 								<>
-									<CheckCircle2 className="h-5 w-5 text-primary" />
+									{activeTransaction && isBorrowOverdue(activeTransaction.dueAt, activeTransaction.status) ? (
+										<AlertCircle className="h-5 w-5 text-destructive" />
+									) : (
+										<CheckCircle2 className="h-5 w-5 text-primary" />
+									)}
 									<div>
 										<p className="text-sm font-medium text-primary">You&apos;re borrowing this</p>
 										<p className="text-xs text-muted-foreground">
@@ -490,6 +490,12 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 														? `Received — due ${new Date(activeTransaction.dueAt).toLocaleDateString()}`
 														: `Due ${new Date(activeTransaction!.dueAt).toLocaleDateString()}`}
 										</p>
+										{activeTransaction &&
+											isBorrowOverdue(activeTransaction.dueAt, activeTransaction.status) && (
+												<p className="text-xs font-medium text-destructive">
+													Overdue — please return it as soon as you can.
+												</p>
+											)}
 									</div>
 								</>
 							) : itemWithAvailability?.isAvailable !== false ? (
@@ -561,9 +567,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								htmlFor="value-visibility"
 								className="text-sm text-muted-foreground cursor-pointer select-none"
 							>
-								{item.isValueVisible
-									? 'Price & weight visible to borrowers'
-									: 'Price & weight hidden from borrowers'}
+								{item.isValueVisible ? 'Price visible to borrowers' : 'Price hidden from borrowers'}
 							</label>
 						</div>
 					)}
