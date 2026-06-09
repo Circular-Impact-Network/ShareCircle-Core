@@ -297,7 +297,7 @@ export function MessageComposer({
 				<textarea
 					ref={textareaRef}
 					placeholder={disabled ? 'Chat disabled' : 'Type a message...'}
-					className="flex-1 min-h-[36px] max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent py-2 text-sm leading-5 shadow-none outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+					className="flex-1 min-h-[36px] max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent py-2 text-base leading-5 shadow-none outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
 					rows={1}
 					value={value}
 					onChange={event => {
