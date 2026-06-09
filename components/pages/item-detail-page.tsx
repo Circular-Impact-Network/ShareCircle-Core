@@ -55,6 +55,7 @@ import {
 	useExtendBorrowMutation,
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
+import { isBorrowOverdue } from '@/lib/borrow-ui';
 import { ItemDetailSkeleton } from '@/components/ui/skeletons';
 import { useToast } from '@/hooks/useToast';
 import { openDirectChat } from '@/lib/chat-navigation';
@@ -62,6 +63,10 @@ import { openDirectChat } from '@/lib/chat-navigation';
 interface ItemDetailPageProps {
 	itemId: string;
 }
+
+// Extend-borrow is disabled for MVP. Flip to true to re-enable the feature
+// (the dialog + API route are left intact behind this flag).
+const EXTEND_ENABLED = false;
 
 // Extend-borrow is disabled for MVP. Flip to true to re-enable the feature
 // (the dialog + API route are left intact behind this flag).
