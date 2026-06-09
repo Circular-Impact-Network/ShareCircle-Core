@@ -73,7 +73,12 @@ function parseMessageContent(text: string, highlight?: string, isOwn?: boolean):
 					href={href}
 					target="_blank"
 					rel="noopener noreferrer"
-					className={cn('underline underline-offset-2 break-all', isOwn ? 'text-blue-200' : 'text-blue-500')}
+					className={cn(
+						'font-medium underline underline-offset-2 break-all',
+						// Own bubbles use bg-primary (near-white in dark mode), so a light blue
+						// link is invisible there — ride the bubble's foreground colour instead.
+						isOwn ? 'text-primary-foreground' : 'text-blue-600 dark:text-blue-400',
+					)}
 					onClick={e => e.stopPropagation()}
 				>
 					{part}
