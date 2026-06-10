@@ -3,11 +3,13 @@
 import type React from 'react';
 
 import { Suspense, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { Loader2, MapPin, LocateFixed, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
@@ -25,6 +27,7 @@ function CompleteProfileContent() {
 	const [longitude, setLongitude] = useState<number | null>(null);
 	const [isLocating, setIsLocating] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+	const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 	const [error, setError] = useState('');
 
 	const handleUseLocation = () => {
@@ -75,6 +78,10 @@ function CompleteProfileContent() {
 		}
 		if (!isBefore(dob, subYears(new Date(), 13))) {
 			setError('You must be at least 13 years old.');
+			return;
+		}
+		if (!agreedToPolicies) {
+			setError('Please accept the Terms of Service and Privacy Policy to continue.');
 			return;
 		}
 
@@ -153,7 +160,11 @@ function CompleteProfileContent() {
 							disabled={isSaving || isLocating}
 							title="Use my location"
 						>
-							{isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+							{isLocating ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<LocateFixed className="h-4 w-4" />
+							)}
 						</Button>
 					</div>
 					{latitude && longitude && (
@@ -167,7 +178,42 @@ function CompleteProfileContent() {
 					</p>
 				</div>
 
-				<Button type="submit" className="w-full text-lg h-11" disabled={isSaving}>
+				<div className="flex items-start gap-2.5 pt-1">
+					<Checkbox
+						id="agree-policies"
+						checked={agreedToPolicies}
+						onCheckedChange={checked => {
+							const next = checked === true;
+							setAgreedToPolicies(next);
+							if (next) setError('');
+						}}
+						disabled={isSaving}
+						className="mt-0.5"
+					/>
+					<label htmlFor="agree-policies" className="text-sm leading-snug text-muted-foreground">
+						I agree to ShareCircle&apos;s{' '}
+						<Link
+							href="/terms"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-primary hover:underline"
+						>
+							Terms of Service
+						</Link>{' '}
+						and{' '}
+						<Link
+							href="/privacy"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-primary hover:underline"
+						>
+							Privacy Policy
+						</Link>
+						.
+					</label>
+				</div>
+
+				<Button type="submit" className="w-full text-lg h-11" disabled={isSaving || !agreedToPolicies}>
 					{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 					{isSaving ? 'Saving...' : 'Continue'}
 				</Button>
@@ -205,7 +251,9 @@ export default function CompleteProfilePage() {
 							<UserCircle2 className="w-6 h-6 text-primary" />
 						</div>
 						<h1 className="text-3xl font-display font-bold mb-2">Complete your profile</h1>
-						<p className="text-muted-foreground">Add your date of birth (and location, if you like) to finish.</p>
+						<p className="text-muted-foreground">
+							Add your date of birth (and location, if you like) to finish.
+						</p>
 					</div>
 				}
 			>
