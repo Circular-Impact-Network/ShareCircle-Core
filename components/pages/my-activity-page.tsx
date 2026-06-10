@@ -120,7 +120,9 @@ function ActiveTransactionCard({
 							</Avatar>
 							<span className="truncate">{otherPerson?.name || 'Unknown'}</span>
 						</div>
-						<p className={`text-xs mt-1 ${overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
+						<p
+							className={`text-xs mt-1 ${overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}`}
+						>
 							Due: {new Date(transaction.dueAt).toLocaleDateString()}
 							{overdue && ' — overdue'}
 						</p>
