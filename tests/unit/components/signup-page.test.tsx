@@ -17,9 +17,29 @@ vi.mock('next/link', () => ({
 }));
 
 describe('Signup page', () => {
+	it('disables both signup actions until the policies are accepted', async () => {
+		const user = userEvent.setup();
+		render(<Signup />);
+
+		const createButton = screen.getByRole('button', { name: 'Create Account' });
+		const googleButton = screen.getByRole('button', { name: /Sign up with Google/i });
+
+		// Gate: neither sign-up path is usable before consent.
+		expect(createButton).toBeDisabled();
+		expect(googleButton).toBeDisabled();
+
+		await user.click(screen.getByRole('checkbox'));
+
+		expect(createButton).toBeEnabled();
+		expect(googleButton).toBeEnabled();
+	});
+
 	it('shows validation error for mismatched passwords', async () => {
 		const user = userEvent.setup();
 		render(<Signup />);
+
+		// Accept the policies first so the Create Account button is enabled.
+		await user.click(screen.getByRole('checkbox'));
 
 		// Use placeholder text selectors as the labels don't have proper htmlFor
 		await user.type(screen.getByPlaceholderText('John Doe'), 'Test User');
