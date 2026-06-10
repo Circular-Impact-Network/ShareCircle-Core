@@ -109,6 +109,9 @@ export function ChatContainer({
 			if (isDesktop && !activeId && sorted.length > 0) {
 				setActiveId(sorted[0].id);
 			}
+		} catch (err) {
+			console.error('Failed to load conversations:', err);
+			setLoadError('Could not load conversations. Check your connection and retry.');
 		} finally {
 			setIsLoadingThreads(false);
 		}
@@ -141,6 +144,9 @@ export function ChatContainer({
 					),
 				);
 				fetchThreads();
+			} catch (err) {
+				console.error('Failed to load messages:', err);
+				setLoadError('Could not load this conversation. Check your connection and retry.');
 			} finally {
 				setIsLoadingMessages(false);
 			}
@@ -345,9 +351,24 @@ export function ChatContainer({
 		onNewItem: () => setShowAddItem(true),
 	};
 
+	const retryLoad = () => {
+		setLoadError(null);
+		fetchThreads();
+		if (activeId) fetchMessages(activeId);
+	};
+
 	const threadContent = activeUser ? (
 		<>
+			{loadError && (
+				<div className="flex items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+					<span>{loadError}</span>
+					<button type="button" onClick={retryLoad} className="font-semibold underline underline-offset-2">
+						Retry
+					</button>
+				</div>
+			)}
 			<ChatThread
+				conversationId={activeId}
 				messages={messages}
 				currentUserId={currentUser?.id || ''}
 				onRetry={handleRetry}
