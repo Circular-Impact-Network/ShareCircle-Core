@@ -73,7 +73,7 @@ export function useBorrowNotificationActions({ refetchRequests }: { refetchReque
 			await confirmReturn(id).unwrap();
 			setCompletedActions(prev => new Map(prev).set(id, 'Return confirmed'));
 			toast({ title: 'Return confirmed!' });
-		} catch {
+
 			toast({ title: 'Failed to confirm return', variant: 'destructive' });
 		} finally {
 			setProcessingId(null);
