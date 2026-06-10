@@ -27,9 +27,7 @@ export function useItemRealtime(circleIds: string[]) {
 			const channel = supabase.channel(`circle:${circleId}:items`);
 			channel
 				.on('broadcast', { event: 'item_removed' }, () => {
-					dispatch(
-						itemsApi.util.invalidateTags(['Items', { type: 'CircleItems', id: circleId }]),
-					);
+					dispatch(itemsApi.util.invalidateTags(['Items', { type: 'CircleItems', id: circleId }]));
 				})
 				.subscribe();
 			return channel;
