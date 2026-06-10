@@ -42,6 +42,7 @@ import {
 import {
 	useGetBorrowRequestsQuery,
 	useGetItemRequestsQuery,
+	useGetTransactionsQuery,
 	useCreateItemRequestMutation,
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
@@ -95,6 +96,19 @@ export function NotificationsPage() {
 		isLoading: requestsLoading,
 		refetch: refetchRequests,
 	} = useGetBorrowRequestsQuery({ type: 'incoming' });
+
+	// Live transaction status (both roles) so inline alert actions reflect the CURRENT
+	// state, not just the notification type. Prevents stale "Confirm I Received It" /
+	// "Confirm Return" buttons lingering after the borrow loop has moved on.
+	const { data: borrowerTransactions = [] } = useGetTransactionsQuery({ role: 'borrower' });
+	const { data: ownerTransactions = [] } = useGetTransactionsQuery({ role: 'owner' });
+	const txStatusByRequestId = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const t of [...borrowerTransactions, ...ownerTransactions]) {
+			if (t.borrowRequestId) map.set(t.borrowRequestId, t.status);
+		}
+		return map;
+	}, [borrowerTransactions, ownerTransactions]);
 
 	// Fetch item requests
 	const { data: allItemRequests = [], isLoading: itemRequestsLoading } = useGetItemRequestsQuery({});
