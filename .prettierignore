@@ -17,6 +17,9 @@ next-env.d.ts
 # Prisma
 prisma/migrations
 
+# Vendored standalone legal documents (pre-designed HTML, large inline assets)
+public/legal
+
 # Cache
 .cache
 .parcel-cache

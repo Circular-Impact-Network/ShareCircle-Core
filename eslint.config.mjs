@@ -17,6 +17,11 @@ export default [
 			'.claude/**',
 			'coverage/**',
 			'graphify-out/**',
+			// Generated test artifacts (gitignored; not present in CI lint runs)
+			'playwright-report/**',
+			'test-results/**',
+			'.playwright/**',
+			'.playwright-mcp/**',
 		],
 	},
 	js.configs.recommended,
