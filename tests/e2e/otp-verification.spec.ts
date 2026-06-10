@@ -57,6 +57,12 @@ test.describe('OTP email verification', () => {
 			const hasConfirm = await confirmInput.isVisible({ timeout: 2000 }).catch(() => false);
 			if (hasConfirm) await confirmInput.fill(password);
 
+			// Signup actions are gated behind accepting the Terms / Privacy policies.
+			await page
+				.getByRole('checkbox')
+				.check()
+				.catch(() => {});
+
 			await page.getByRole('button', { name: /^(sign up|create account)$/i }).click();
 			await page.waitForLoadState('domcontentloaded');
 			await page.waitForTimeout(1000);
