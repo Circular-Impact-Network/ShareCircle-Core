@@ -462,16 +462,10 @@ export function NotificationsPage() {
 								// Only offer the action when the transaction is actually in the
 								// state that action applies to — otherwise the loop has moved on
 								// (or completed) and the button would be a dead no-op.
-								if (
-									notification.type === 'ITEM_HANDOFF_CONFIRMED' &&
-									txStatus === 'LENDER_CONFIRMED'
-								) {
+								if (notification.type === 'ITEM_HANDOFF_CONFIRMED' && txStatus === 'LENDER_CONFIRMED') {
 									actionLabel = 'Confirm I Received It';
 									onAction = () => handleConfirmReceipt(borrowRequestId);
-								} else if (
-									notification.type === 'RETURN_REQUESTED' &&
-									txStatus === 'RETURN_PENDING'
-								) {
+								} else if (notification.type === 'RETURN_REQUESTED' && txStatus === 'RETURN_PENDING') {
 									actionLabel = 'Confirm Return';
 									onAction = () => handleConfirmReturn(borrowRequestId);
 								}
