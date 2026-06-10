@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import type { ChatMessage } from './types';
 
 type ChatThreadProps = {
+	conversationId?: string | null;
 	messages: ChatMessage[];
 	currentUserId: string;
 	onRetry: (message: ChatMessage) => void;
@@ -14,6 +15,7 @@ type ChatThreadProps = {
 };
 
 export function ChatThread({
+	conversationId,
 	messages,
 	currentUserId,
 	onRetry,
@@ -28,6 +30,28 @@ export function ChatThread({
 	const prevMessagesLengthRef = useRef(messages.length);
 	const prevLastMessageIdRef = useRef<string | null>(null);
 	const restoreScrollRef = useRef<{ top: number; height: number } | null>(null);
+	// Conversation we've already done the initial jump-to-bottom for.
+	const didInitialScrollFor = useRef<string | null>(null);
+
+	// Reset the initial-scroll flag whenever the active conversation changes so the
+	// next batch of messages jumps to the newest message (not a random scroll pos).
+	useEffect(() => {
+		didInitialScrollFor.current = null;
+	}, [conversationId]);
+
+	// Initial jump to bottom (instant, before paint) when a conversation's messages
+	// first land. Runs once per conversation; subsequent updates use the smooth logic.
+	useLayoutEffect(() => {
+		const key = conversationId ?? '__none__';
+		if (didInitialScrollFor.current === key) return;
+		if (messages.length === 0) return;
+		const container = containerRef.current;
+		if (!container) return;
+		container.scrollTop = container.scrollHeight;
+		didInitialScrollFor.current = key;
+		prevMessagesLengthRef.current = messages.length;
+		prevLastMessageIdRef.current = messages[messages.length - 1]?.id ?? null;
+	}, [conversationId, messages]);
 
 	useEffect(() => {
 		// Only scroll if new messages were added (not loaded from history)
