@@ -68,6 +68,7 @@ export function ChatContainer({
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
 	const [isLoadingThreads, setIsLoadingThreads] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+	const [loadError, setLoadError] = useState<string | null>(null);
 	const [canMessage, setCanMessage] = useState(true);
 	const [hasAppliedInitialDraft, setHasAppliedInitialDraft] = useState(false);
 	const [showAddItem, setShowAddItem] = useState(false);
@@ -93,7 +94,10 @@ export function ChatContainer({
 		try {
 			const searchParam = threadSearch ? `?q=${encodeURIComponent(threadSearch)}` : '';
 			const response = await fetch(`/api/messages/threads${searchParam}`);
-			if (!response.ok) return;
+			if (!response.ok) {
+				setLoadError('Could not load conversations.');
+				return;
+			}
 			const data = (await response.json()) as ChatThreadType[];
 			const sorted = [...data].sort((a, b) => {
 				if (a.pinnedAt && !b.pinnedAt) return -1;
@@ -101,6 +105,7 @@ export function ChatContainer({
 				return new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime();
 			});
 			setThreads(sorted);
+			setLoadError(null);
 			if (isDesktop && !activeId && sorted.length > 0) {
 				setActiveId(sorted[0].id);
 			}
@@ -117,12 +122,16 @@ export function ChatContainer({
 				params.set('limit', String(PAGE_SIZE));
 				if (cursor) params.set('cursor', cursor);
 				const response = await fetch(`/api/messages/threads/${threadId}/messages?${params.toString()}`);
-				if (!response.ok) return;
+				if (!response.ok) {
+					setLoadError('Could not load this conversation.');
+					return;
+				}
 				const data = await response.json();
 				setCanMessage(Boolean(data.canMessage));
 				setNextCursor(data.nextCursor ?? null);
-				const incoming = data.messages as ChatMessage[];
+				const incoming = Array.isArray(data.messages) ? (data.messages as ChatMessage[]) : [];
 				setMessages(prev => (append ? [...incoming, ...prev] : incoming));
+				setLoadError(null);
 				void markThreadRead({ threadId });
 				setThreads(prev =>
 					prev.map(thread =>
