@@ -215,10 +215,13 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 							style={{ animationDelay: '160ms' }}
 						>
 							The drill, the tent, the stand mixer — they’re probably sitting in a cupboard down the
-							street. Borrow from circles of people you actually trust, save your money, and waste a
-							whole lot less.
+							street. Borrow from circles of people you actually trust, save your money, and waste a whole
+							lot less.
 						</p>
-						<div className="lp-rise mt-9 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ animationDelay: '240ms' }}>
+						<div
+							className="lp-rise mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
+							style={{ animationDelay: '240ms' }}
+						>
 							<Link
 								href={isAuthenticated ? '/home' : '/signup'}
 								className="lp-btn-primary inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold"
@@ -233,7 +236,10 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 								See how it works
 							</Link>
 						</div>
-						<div className="lp-rise mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm lp-muted" style={{ animationDelay: '320ms' }}>
+						<div
+							className="lp-rise mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm lp-muted"
+							style={{ animationDelay: '320ms' }}
+						>
 							<span className="inline-flex items-center gap-2">
 								<ShieldCheck className="h-4 w-4" style={{ color: 'var(--green-deep)' }} />
 								Private, invite-only circles
@@ -246,7 +252,10 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 					</div>
 
 					{/* Editorial item-cluster visual (illustrative, no real data) */}
-					<div className="lp-rise relative mx-auto w-full max-w-md lg:max-w-none" style={{ animationDelay: '200ms' }}>
+					<div
+						className="lp-rise relative mx-auto w-full max-w-md lg:max-w-none"
+						style={{ animationDelay: '200ms' }}
+					>
 						<div className="lp-surface relative rounded-[2rem] p-6 shadow-[0_30px_60px_-30px_rgba(30,42,34,.45)]">
 							<div className="flex items-center justify-between">
 								<p className="lp-display text-sm font-semibold">Maple Street Circle</p>
@@ -267,7 +276,9 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 									<div key={item.name} className="lp-chip rounded-2xl p-3.5">
 										<div
 											className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl"
-											style={{ background: 'color-mix(in srgb, ' + item.tone + ' 16%, transparent)' }}
+											style={{
+												background: 'color-mix(in srgb, ' + item.tone + ' 16%, transparent)',
+											}}
 										>
 											<PackageCheck className="h-5 w-5" style={{ color: item.tone }} />
 										</div>
@@ -321,7 +332,10 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 						{STEPS.map(step => (
 							<li key={step.n} className="relative">
 								<div className="flex items-center gap-3">
-									<span className="lp-display text-5xl font-bold" style={{ color: 'var(--clay-soft)' }}>
+									<span
+										className="lp-display text-5xl font-bold"
+										style={{ color: 'var(--clay-soft)' }}
+									>
 										{step.n}
 									</span>
 									<span
@@ -348,10 +362,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 					</div>
 					<div className="mt-10 grid gap-4 lg:grid-cols-5">
 						{FEATURES.map(f => (
-							<div
-								key={f.title}
-								className={`lp-surface lp-card rounded-3xl p-7 ${f.span}`}
-							>
+							<div key={f.title} className={`lp-surface lp-card rounded-3xl p-7 ${f.span}`}>
 								<div
 									className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
 									style={{ background: 'color-mix(in srgb, var(--green) 14%, transparent)' }}
@@ -442,15 +453,23 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 							className="h-auto w-32 object-contain"
 						/>
 						<div className="flex flex-col items-center gap-1.5">
-							<p className="lp-muted text-sm">A better way to share. © {new Date().getFullYear()} ShareCircle.</p>
+							<p className="lp-muted text-sm">
+								A better way to share. © {new Date().getFullYear()} ShareCircle.
+							</p>
 							<div className="flex items-center gap-3 text-sm">
-								<Link href="/terms" className="lp-muted transition-colors hover:text-[color:var(--ink)]">
+								<Link
+									href="/terms"
+									className="lp-muted transition-colors hover:text-[color:var(--ink)]"
+								>
 									Terms
 								</Link>
 								<span className="lp-muted" aria-hidden>
 									·
 								</span>
-								<Link href="/privacy" className="lp-muted transition-colors hover:text-[color:var(--ink)]">
+								<Link
+									href="/privacy"
+									className="lp-muted transition-colors hover:text-[color:var(--ink)]"
+								>
 									Privacy
 								</Link>
 							</div>
@@ -462,7 +481,10 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 								</Link>
 							) : (
 								<>
-									<Link href="/login" className="lp-muted transition-colors hover:text-[color:var(--ink)]">
+									<Link
+										href="/login"
+										className="lp-muted transition-colors hover:text-[color:var(--ink)]"
+									>
 										Log in
 									</Link>
 									<Link href="/signup" style={{ color: 'var(--green-deep)' }}>
