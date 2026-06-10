@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 // Minimal smoke tests for production — read-only, no data mutations
 test.describe('smoke', () => {
 	test('landing page loads', async ({ page }) => {
-		await page.goto('/landing');
+		// The marketing landing page now lives at the site root ("/landing" was removed).
+		await page.goto('/');
 		await expect(page).toHaveTitle(/ShareCircle/i);
 	});
 
