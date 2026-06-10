@@ -73,8 +73,13 @@ export function useBorrowNotificationActions({ refetchRequests }: { refetchReque
 			await confirmReturn(id).unwrap();
 			setCompletedActions(prev => new Map(prev).set(id, 'Return confirmed'));
 			toast({ title: 'Return confirmed!' });
-
-			toast({ title: 'Failed to confirm return', variant: 'destructive' });
+			await refetchRequests();
+		} catch (err) {
+			toast({
+				title: 'Failed to confirm return',
+				description: extractErrorMessage(err, 'Please try again.'),
+				variant: 'destructive',
+			});
 		} finally {
 			setProcessingId(null);
 		}
@@ -85,8 +90,13 @@ export function useBorrowNotificationActions({ refetchRequests }: { refetchReque
 		try {
 			await confirmHandoff(id).unwrap();
 			toast({ title: 'Handoff confirmed! Borrower has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm handoff', variant: 'destructive' });
+			await refetchRequests();
+		} catch (err) {
+			toast({
+				title: 'Failed to confirm handoff',
+				description: extractErrorMessage(err, 'Please try again.'),
+				variant: 'destructive',
+			});
 		} finally {
 			setProcessingId(null);
 		}
@@ -98,8 +108,13 @@ export function useBorrowNotificationActions({ refetchRequests }: { refetchReque
 			await confirmReceipt(id).unwrap();
 			setCompletedActions(prev => new Map(prev).set(id, 'Item marked as received'));
 			toast({ title: 'Receipt confirmed!', description: 'Lender has been notified.' });
-		} catch {
-			toast({ title: 'Failed to confirm receipt', variant: 'destructive' });
+			await refetchRequests();
+		} catch (err) {
+			toast({
+				title: 'Failed to confirm receipt',
+				description: extractErrorMessage(err, 'Please try again.'),
+				variant: 'destructive',
+			});
 		} finally {
 			setProcessingId(null);
 		}
