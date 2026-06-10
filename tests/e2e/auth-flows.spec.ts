@@ -162,6 +162,8 @@ test.describe('authentication flows', () => {
 
 			await page.getByRole('tab', { name: 'Phone' }).click();
 			await page.getByPlaceholder('Phone number').fill('123');
+			// Signup actions are gated behind accepting the policies.
+			await page.getByRole('checkbox').check();
 			await page.getByRole('button', { name: 'Create Account' }).click();
 
 			await expect(page.getByText(/valid phone number/i)).toBeVisible();
