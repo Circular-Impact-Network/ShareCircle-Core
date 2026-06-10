@@ -474,7 +474,8 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						<div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
 							{isCurrentBorrower ? (
 								<>
-									{activeTransaction && isBorrowOverdue(activeTransaction.dueAt, activeTransaction.status) ? (
+									{activeTransaction &&
+									isBorrowOverdue(activeTransaction.dueAt, activeTransaction.status) ? (
 										<AlertCircle className="h-5 w-5 text-destructive" />
 									) : (
 										<CheckCircle2 className="h-5 w-5 text-primary" />
