@@ -565,11 +565,12 @@ export function SettingsPage() {
 			<PageTabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
 				<PageStickyHeader className="pt-2 sm:pt-6 lg:pt-7 pb-3 space-y-3">
 					<PageHeader title="Settings" description="Manage your account settings and preferences." />
-					<PageTabsList className="grid grid-cols-2 gap-0.5 sm:grid-cols-4 sm:gap-0">
+					<PageTabsList className="grid grid-cols-3 gap-0.5 sm:grid-cols-5 sm:gap-0">
 						<PageTabsTrigger value="profile">Profile</PageTabsTrigger>
 						<PageTabsTrigger value="account">Account</PageTabsTrigger>
 						<PageTabsTrigger value="notifications">Notifications</PageTabsTrigger>
 						<PageTabsTrigger value="appearance">Appearance</PageTabsTrigger>
+						<PageTabsTrigger value="about">About</PageTabsTrigger>
 					</PageTabsList>
 				</PageStickyHeader>
 
@@ -842,7 +843,9 @@ export function SettingsPage() {
 							</div>
 						</CardContent>
 					</Card>
+				</PageTabsContent>
 
+				<PageTabsContent value="about" className="space-y-6">
 					{/* PWA Install & Update */}
 					<Card>
 						<CardHeader>
