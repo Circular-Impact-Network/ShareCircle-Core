@@ -12,9 +12,17 @@ type ChatListProps = {
 	searchValue: string;
 	onSearch: (value: string) => void;
 	onSelect: (threadId: string) => void;
+	isLoading?: boolean;
 };
 
-export const ChatList = memo(function ChatList({ threads, activeId, searchValue, onSearch, onSelect }: ChatListProps) {
+export const ChatList = memo(function ChatList({
+	threads,
+	activeId,
+	searchValue,
+	onSearch,
+	onSelect,
+	isLoading = false,
+}: ChatListProps) {
 	return (
 		<div className="flex h-full w-full shrink-0 flex-col overflow-hidden border-b border-border/70 bg-card/90 md:w-[22rem] md:border-b-0 md:border-r">
 			{/* Header — single row: title left, search right */}
@@ -33,7 +41,19 @@ export const ChatList = memo(function ChatList({ threads, activeId, searchValue,
 
 			{/* Thread list */}
 			<div className="app-scrollbar flex-1 overflow-auto bg-muted/20 pb-bottom-nav md:pb-0">
-				{threads.length === 0 ? (
+				{threads.length === 0 && isLoading ? (
+					// Loading skeleton — avoids flashing "No conversations yet" before the
+					// first fetch resolves (state drift between loading and actual content).
+					Array.from({ length: 6 }).map((_, index) => (
+						<div key={index} className="flex items-center gap-3 px-4 py-3.5">
+							<div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-muted" />
+							<div className="min-w-0 flex-1 space-y-2">
+								<div className="h-4 w-32 animate-pulse rounded bg-muted" />
+								<div className="h-3 w-40 animate-pulse rounded bg-muted" />
+							</div>
+						</div>
+					))
+				) : threads.length === 0 ? (
 					<div className="px-4 py-12 text-center text-sm text-muted-foreground">No conversations yet.</div>
 				) : (
 					threads.map(thread => {

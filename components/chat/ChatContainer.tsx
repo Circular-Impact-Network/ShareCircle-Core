@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { PageHeader, PageShell } from '@/components/ui/page';
@@ -66,7 +66,10 @@ export function ChatContainer({
 	const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false);
 	const [messageInput, setMessageInput] = useState('');
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
-	const [isLoadingThreads, setIsLoadingThreads] = useState(false);
+	// Start in the loading state: on mount we always fetch threads (once the session
+	// resolves), so the list should show a loading skeleton — not flash "No conversations".
+	const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+	const [hasLoadedThreads, setHasLoadedThreads] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [canMessage, setCanMessage] = useState(true);
@@ -76,6 +79,12 @@ export function ChatContainer({
 
 	const activeThread = threads.find(thread => thread.id === activeId) || null;
 	const activeUser = activeThread?.participants[0] || null;
+
+	// Read latest activeId inside fetchThreads without making it a dependency. Keeping
+	// activeId out of fetchThreads' deps prevents an identity change on every thread
+	// selection, which would otherwise re-trigger the thread-list fetch effect.
+	const activeIdRef = useRef(activeId);
+	activeIdRef.current = activeId;
 
 	// Global online status (tracked at Messages tab level)
 	const { onlineUserIds } = useGlobalPresence();
@@ -106,7 +115,7 @@ export function ChatContainer({
 			});
 			setThreads(sorted);
 			setLoadError(null);
-			if (isDesktop && !activeId && sorted.length > 0) {
+			if (isDesktop && !activeIdRef.current && sorted.length > 0) {
 				setActiveId(sorted[0].id);
 			}
 		} catch (err) {
@@ -114,8 +123,9 @@ export function ChatContainer({
 			setLoadError('Could not load conversations. Check your connection and retry.');
 		} finally {
 			setIsLoadingThreads(false);
+			setHasLoadedThreads(true);
 		}
-	}, [threadSearch, activeId, isDesktop]);
+	}, [threadSearch, isDesktop]);
 
 	const fetchMessages = useCallback(
 		async (threadId: string, cursor?: string | null, append = false) => {
@@ -136,6 +146,9 @@ export function ChatContainer({
 				setMessages(prev => (append ? [...incoming, ...prev] : incoming));
 				setLoadError(null);
 				void markThreadRead({ threadId });
+				// Optimistically clear the unread badge for this thread. We intentionally do
+				// NOT refetch the whole thread list here — opening a conversation shouldn't
+				// trigger a full /threads round-trip (this also runs on pagination).
 				setThreads(prev =>
 					prev.map(thread =>
 						thread.id === threadId
@@ -143,7 +156,6 @@ export function ChatContainer({
 							: thread,
 					),
 				);
-				fetchThreads();
 			} catch (err) {
 				console.error('Failed to load messages:', err);
 				setLoadError('Could not load this conversation. Check your connection and retry.');
@@ -151,7 +163,7 @@ export function ChatContainer({
 				setIsLoadingMessages(false);
 			}
 		},
-		[fetchThreads, markThreadRead],
+		[markThreadRead],
 	);
 
 	useEffect(() => {
@@ -412,6 +424,7 @@ export function ChatContainer({
 							searchValue={threadSearch}
 							onSearch={setThreadSearch}
 							onSelect={handleSelectThread}
+							isLoading={isLoadingThreads && !hasLoadedThreads}
 						/>
 					) : (
 						<div className="flex flex-1 flex-col overflow-hidden bg-card pb-bottom-nav">
@@ -448,6 +461,7 @@ export function ChatContainer({
 							searchValue={threadSearch}
 							onSearch={setThreadSearch}
 							onSelect={handleSelectThread}
+							isLoading={isLoadingThreads && !hasLoadedThreads}
 						/>
 					)}
 
