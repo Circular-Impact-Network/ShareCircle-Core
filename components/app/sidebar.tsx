@@ -62,7 +62,7 @@ export function Sidebar() {
 		if (typeof navigator !== 'undefined' && navigator.serviceWorker.controller) {
 			navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_RUNTIME_CACHES' });
 		}
-		await signOut({ callbackUrl: '/' });
+		await signOut({ callbackUrl: '/login' });
 	};
 
 	const getInitials = (name: string) => {
