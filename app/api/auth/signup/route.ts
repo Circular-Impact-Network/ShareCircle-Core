@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
 			latitude?: number;
 			longitude?: number;
 			city?: string;
+			state?: string;
+			zipCode?: string;
+			// Geocoded country NAME (distinct from `country`, which is the phone country CODE).
+			countryName?: string;
 		};
 		const normalizedEmail = body.email ? normalizeEmail(body.email) : '';
 		const normalizedName = body.name?.trim() || 'User';
@@ -113,6 +117,9 @@ export async function POST(req: NextRequest) {
 				...(body.latitude !== undefined && { latitude: body.latitude }),
 				...(body.longitude !== undefined && { longitude: body.longitude }),
 				...(body.city && { city: body.city }),
+				...(body.state && { state: body.state }),
+				...(body.zipCode && { zip_code: body.zipCode }),
+				...(body.countryName && { country: body.countryName }),
 			},
 			select: {
 				id: true,
@@ -137,6 +144,7 @@ export async function POST(req: NextRequest) {
 			},
 		});
 
+		let emailSent = false;
 		if (phoneE164) {
 			try {
 				await sendOtpSms({ toE164: phoneE164, code: otp, context: 'signup' });
@@ -166,6 +174,7 @@ export async function POST(req: NextRequest) {
 			if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
 				try {
 					await sendOTPEmail(normalizedEmail, otp, 'email_verification');
+					emailSent = true;
 				} catch (emailError) {
 					console.error('Failed to send OTP email:', emailError);
 				}
@@ -178,8 +187,13 @@ export async function POST(req: NextRequest) {
 			{
 				message: phoneE164
 					? 'User created successfully. Please verify your phone number.'
-					: 'User created successfully. Please verify your email.',
+					: emailSent
+						? 'User created successfully. Please verify your email.'
+						: "Account created, but we couldn't send your verification email. Tap Resend to try again.",
 				requiresVerification: true,
+				// For email signups, tells the client whether the OTP actually went out so it can
+				// prompt the user to resend instead of waiting on an email that never arrives.
+				emailSent: phoneE164 ? undefined : emailSent,
 				email: user.email,
 				phoneNumber: phoneE164,
 				user,

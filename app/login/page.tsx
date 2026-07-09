@@ -53,6 +53,8 @@ function LoginContent() {
 	const modeParam = searchParams.get('mode');
 	const tokenParam = searchParams.get('token');
 	const emailParam = searchParams.get('email');
+	const errorParam = searchParams.get('error');
+	const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
 
 	// Show success message if redirected from email verification
 	useEffect(() => {
@@ -60,6 +62,24 @@ function LoginContent() {
 			setSuccessMessage('Email verified successfully! Please log in to continue.');
 		}
 	}, [verified]);
+
+	// Surface OAuth failures NextAuth reports via ?error= — previously swallowed, so a failed
+	// Google sign-in just bounced back to /login with no message ("silent failure").
+	useEffect(() => {
+		if (!errorParam) return;
+		const messages: Record<string, string> = {
+			OAuthAccountNotLinked:
+				'This email is already registered with a password. Log in with your password below, then link Google from settings.',
+			OAuthCallback: 'Google sign-in could not be completed. Please try again.',
+			OAuthSignin: 'Could not start Google sign-in. Please try again.',
+			OAuthCreateAccount: 'Could not create your account from Google. Please try again.',
+			Callback: 'Sign-in could not be completed. Please try again.',
+			AccessDenied: 'Access was denied. Please try a different account.',
+			Configuration: 'Sign-in is temporarily unavailable. Please try again later.',
+			Verification: 'This sign-in link is invalid or has expired.',
+		};
+		setError(messages[errorParam] ?? 'Sign-in failed. Please try again.');
+	}, [errorParam]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -165,6 +185,7 @@ function LoginContent() {
 			if (result?.error) {
 				const message = result.error === 'CredentialsSignin' ? 'Invalid email or password.' : result.error;
 				setError(message);
+				setNeedsEmailVerification(/not verified/i.test(message));
 				setIsLoading(false);
 				return;
 			}
@@ -303,6 +324,7 @@ function LoginContent() {
 			if (result?.error) {
 				const message = result.error === 'CredentialsSignin' ? 'Invalid code. Please try again.' : result.error;
 				setError(message);
+				setNeedsEmailVerification(/not verified/i.test(message));
 				setIsOtpVerifying(false);
 				return;
 			}
@@ -821,7 +843,23 @@ function LoginContent() {
 
 			{error && (
 				<Alert variant="destructive" className="mb-6">
-					<AlertDescription>{error}</AlertDescription>
+					<AlertDescription>
+						{error}
+						{needsEmailVerification && (
+							<Button
+								type="button"
+								variant="outline"
+								className="mt-3 w-full h-10"
+								onClick={() =>
+									router.push(
+										`/signup?mode=verify${email ? `&email=${encodeURIComponent(email)}` : ''}`,
+									)
+								}
+							>
+								Verify your email
+							</Button>
+						)}
+					</AlertDescription>
 				</Alert>
 			)}
 

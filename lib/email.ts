@@ -129,12 +129,21 @@ export async function sendOTPEmail(to: string, otp: string, purpose: OtpPurpose)
 		console.log(`[Dev/Test] Skipping OTP email to ${to} (OTP: ${otp})`);
 		return;
 	}
-	await client.sendMail({
-		from: process.env.GMAIL_USER!,
+	const mailOptions = {
+		// Named sender reads as less spammy than a bare gmail address.
+		from: `ShareCircle <${process.env.GMAIL_USER!}>`,
 		to,
 		subject,
 		html,
-	});
+	};
+	// Retry once: the first send after a cold serverless start often fails on the SMTP
+	// handshake, which is why the very first verification code frequently never arrives.
+	try {
+		await client.sendMail(mailOptions);
+	} catch (err) {
+		console.error(`OTP email first attempt failed for ${to}, retrying:`, err);
+		await client.sendMail(mailOptions);
+	}
 }
 
 /**

@@ -20,6 +20,20 @@ export const authOptions: NextAuthOptions = {
 		GoogleProvider({
 			clientId: process.env.GOOGLE_CLIENT_ID!,
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+			// Link Google to an existing same-email account instead of failing with
+			// OAuthAccountNotLinked. Safe here because Google verifies email ownership.
+			allowDangerousEmailAccountLinking: true,
+			// Persist Google's verified-email status at creation so first-time Google users
+			// aren't bounced into an email-OTP screen they can't complete.
+			profile(profile) {
+				return {
+					id: profile.sub,
+					name: profile.name,
+					email: profile.email,
+					image: profile.picture,
+					emailVerified: profile.email_verified ? new Date() : null,
+				};
+			},
 		}),
 		CredentialsProvider({
 			name: 'Credentials',
@@ -228,7 +242,7 @@ export const authOptions: NextAuthOptions = {
 
 			return session;
 		},
-		async jwt({ token, user, trigger }) {
+		async jwt({ token, user, account, trigger }) {
 			if (user) {
 				token.id = user.id;
 				token.email = user.email;
@@ -262,6 +276,15 @@ export const authOptions: NextAuthOptions = {
 					}
 				}
 				if (dbUser !== null) {
+					// A Google sign-in whose account row predates the profile() emailVerified fix
+					// may still be null — heal it here so the user isn't sent to email verification.
+					if (account?.provider === 'google' && !dbUser.emailVerified) {
+						const verifiedAt = new Date();
+						await prisma.user
+							.update({ where: { id: token.id as string }, data: { emailVerified: verifiedAt } })
+							.catch(err => console.error('JWT callback: failed to heal Google emailVerified:', err));
+						dbUser.emailVerified = verifiedAt;
+					}
 					token.emailVerified = dbUser.emailVerified;
 					// Profile is "complete" once date of birth is captured (required field).
 					token.profileComplete = dbUser.date_of_birth != null;
