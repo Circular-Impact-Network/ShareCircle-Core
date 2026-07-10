@@ -47,6 +47,8 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useGetItemQuery, useUpdateItemMutation, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
+import { useGetUserQuery } from '@/lib/redux/api/userApi';
+import { formatWeight, defaultWeightUnit, isApparelOrShoes, type WeightUnit } from '@/lib/units';
 import {
 	useCreateBorrowRequestMutation,
 	useGetBorrowRequestsQuery,
@@ -84,8 +86,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [desiredTo, setDesiredTo] = useState<Date | undefined>(undefined);
 
 	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
+	const { data: currentUser } = useGetUserQuery();
 	const [updateItem, { isLoading: isUpdatingItem }] = useUpdateItemMutation();
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
+
+	// Weight unit: default from the user's country (US → lbs), with a manual toggle. Display-only; kg is canonical.
+	const [weightUnit, setWeightUnit] = useState<WeightUnit | null>(null);
+	const resolvedWeightUnit: WeightUnit = weightUnit ?? defaultWeightUnit(currentUser?.countryCode);
 
 	// Get existing borrow requests and queue for this item
 	const { data: existingRequests = [] } = useGetBorrowRequestsQuery({ itemId, type: 'outgoing' }, { skip: !itemId });
@@ -115,6 +122,13 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 
 	// Item with availability info (cast since API returns isAvailable)
 	const itemWithAvailability = item as (Item & { isAvailable?: boolean }) | undefined;
+
+	// Active borrow/reservation on this item. A booking whose start date is still in the
+	// future is a "reservation" (shown distinctly from a currently-borrowed item).
+	const activeBorrow = item?.activeBorrow ?? null;
+	const isReservedFuture = activeBorrow?.startAt ? new Date(activeBorrow.startAt) > new Date() : false;
+	const formatShortDate = (d: string) =>
+		new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString('en-US', {
@@ -427,12 +441,26 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 					)}
 
-					{/* Weight — always visible */}
+					{/* Weight — always visible, with kg/lbs toggle (defaults to the user's locale) */}
 					{item.estimatedWeightKg != null && (
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Scale className="h-4 w-4 flex-shrink-0" />
-							<span>~{item.estimatedWeightKg} kg</span>
+							<span>~{formatWeight(item.estimatedWeightKg, resolvedWeightUnit)}</span>
+							<button
+								type="button"
+								onClick={() => setWeightUnit(resolvedWeightUnit === 'kg' ? 'lbs' : 'kg')}
+								className="text-xs font-medium text-primary hover:underline"
+							>
+								Show in {resolvedWeightUnit === 'kg' ? 'lbs' : 'kg'}
+							</button>
 						</div>
+					)}
+
+					{/* Apparel/shoes: size isn't captured, so point borrowers to the owner */}
+					{isApparelOrShoes(item.categories) && (
+						<p className="text-xs text-muted-foreground">
+							For size and other details please check with owner.
+						</p>
 					)}
 
 					{/* Price — owner always sees it; others only if isValueVisible */}
@@ -514,18 +542,49 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 									<AlertCircle className="h-5 w-5 text-amber-500" />
 									<div className="flex-1">
 										<p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-											Currently Borrowed
+											{isReservedFuture ? 'Reserved' : 'Currently Borrowed'}
 										</p>
 										<p className="text-xs text-muted-foreground">
-											{itemWithAvailability?.borrowedUntil
-												? `Until ${new Date(itemWithAvailability.borrowedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-												: queueEntries.length > 0
-													? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
-													: 'You can join the queue'}
+											{isReservedFuture && activeBorrow?.startAt
+												? `Reserved ${formatShortDate(activeBorrow.startAt)} – ${formatShortDate(activeBorrow.dueAt)}`
+												: itemWithAvailability?.borrowedUntil
+													? `Until ${formatShortDate(itemWithAvailability.borrowedUntil)}`
+													: queueEntries.length > 0
+														? `${queueEntries.length} ${queueEntries.length === 1 ? 'person' : 'people'} in queue`
+														: 'You can join the queue'}
 										</p>
 									</div>
 								</>
 							)}
+						</div>
+					)}
+
+					{/* Owner view: who has this item + whether it's reserved for later or borrowed now.
+					    Previously only visible on My Activity — now surfaced on the item page too. */}
+					{item.isOwner && activeBorrow && (
+						<div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+							<Avatar className="h-9 w-9">
+								<AvatarImage src={activeBorrow.borrowerImage || undefined} />
+								<AvatarFallback className="text-xs">
+									{activeBorrow.borrowerName?.[0]?.toUpperCase() || '?'}
+								</AvatarFallback>
+							</Avatar>
+							<div className="flex-1">
+								<p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+									{isReservedFuture
+										? `Reserved by ${activeBorrow.borrowerName || 'a member'}`
+										: `Borrowed by ${activeBorrow.borrowerName || 'a member'}`}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{isReservedFuture && activeBorrow.startAt
+										? `${formatShortDate(activeBorrow.startAt)} – ${formatShortDate(activeBorrow.dueAt)}`
+										: activeBorrow.status === 'RETURN_PENDING'
+											? 'Return pending your confirmation'
+											: activeBorrow.status === 'LENDER_CONFIRMED'
+												? 'Handed off — awaiting their confirmation'
+												: `Due ${formatShortDate(activeBorrow.dueAt)}`}
+								</p>
+							</div>
 						</div>
 					)}
 
