@@ -428,10 +428,12 @@ export function ChatContainer({
 						/>
 					) : (
 						<div className="flex flex-1 flex-col overflow-hidden bg-card pb-bottom-nav">
-							<ChatHeader
-								{...chatHeaderProps}
-								onBack={hideList ? () => router.push('/messages') : undefined}
-							/>
+							{activeId && (
+								<ChatHeader
+									{...chatHeaderProps}
+									onBack={hideList ? () => router.push('/messages') : undefined}
+								/>
+							)}
 							{threadContent}
 						</div>
 					)}
@@ -467,7 +469,9 @@ export function ChatContainer({
 
 					{showThreadPanel && (
 						<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/40">
-							<ChatHeader {...chatHeaderProps} />
+							{/* Only render the header once a thread is selected — otherwise it renders the
+							    "Unknown"/offline fallback before any activeUser exists (the desktop-only bug). */}
+							{activeId && <ChatHeader {...chatHeaderProps} />}
 							{threadContent}
 						</div>
 					)}

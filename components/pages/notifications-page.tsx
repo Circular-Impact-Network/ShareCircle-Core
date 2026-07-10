@@ -47,6 +47,7 @@ import {
 } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useToast } from '@/hooks/useToast';
+import { openDirectChat } from '@/lib/chat-navigation';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { useBorrowNotificationActions } from '@/hooks/useBorrowNotificationActions';
 import { useItemRequestNotificationActions } from '@/hooks/useItemRequestNotificationActions';
@@ -179,6 +180,23 @@ export function NotificationsPage() {
 
 	const { respondingRequestId, handleRespond, handleOpenChat, handleIgnore, handleCloseRequest } =
 		useItemRequestNotificationActions({ router });
+
+	// Open a direct chat with the borrow requester (to discuss before approving / handing off).
+	const handleBorrowChat = async (requesterId: string, itemId: string, itemName: string) => {
+		try {
+			await openDirectChat(router, {
+				otherUserId: requesterId,
+				contextRef: { type: 'item', id: itemId, title: itemName },
+			});
+		} catch (error) {
+			console.error('Open borrow chat error:', error);
+			toast({
+				title: 'Unable to open chat',
+				description: error instanceof Error ? error.message : 'Please try again.',
+				variant: 'destructive',
+			});
+		}
+	};
 
 	// Alert handlers
 	const handleMarkRead = async (id: string) => {
@@ -520,6 +538,7 @@ export function NotificationsPage() {
 								onDecline={handleDecline}
 								onConfirmReturn={handleConfirmReturn}
 								onConfirmHandoff={handleConfirmHandoff}
+								onChat={handleBorrowChat}
 								isLoading={processingId === request.id}
 							/>
 						))
