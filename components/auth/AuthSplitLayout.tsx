@@ -18,7 +18,10 @@ export default function AuthSplitLayout({ leftTitle, leftDescription, rightHeade
 			<div className="relative hidden overflow-hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-emerald-950 items-center justify-center p-8">
 				{/* Ambient shapes — decorative only */}
 				<div aria-hidden className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-				<div aria-hidden className="absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-emerald-300/10 blur-3xl" />
+				<div
+					aria-hidden
+					className="absolute -bottom-32 -right-16 h-[28rem] w-[28rem] rounded-full bg-emerald-300/10 blur-3xl"
+				/>
 				<div className="relative max-w-md">
 					<div className="flex items-center gap-3 mb-8">
 						<a
