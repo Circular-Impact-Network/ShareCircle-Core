@@ -12,25 +12,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/ui/page';
 import { DashboardItemSkeleton } from '@/components/ui/skeletons';
-import { useGetUserQuery } from '@/lib/redux/api/userApi';
-import { useGetNotificationsQuery } from '@/lib/redux/api/notificationsApi';
-import { useGetUnreadMessageCountQuery, useGetRecentThreadsQuery } from '@/lib/redux/api/messagesApi';
-import { useGetBorrowRequestsQuery, useGetItemRequestsQuery } from '@/lib/redux/api/borrowApi';
-import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
+import { useGetRecentThreadsQuery } from '@/lib/redux/api/messagesApi';
+import { useGetHomeSummaryQuery } from '@/lib/redux/api/homeApi';
+import { NoCircleState } from '@/components/ui/no-circle-state';
 
 export function DashboardHome() {
 	const router = useRouter();
 	const { data: session } = useSession();
-	const { data: user } = useGetUserQuery();
 	const [dashboardSearch, setDashboardSearch] = useState('');
-	const { data: notificationsData, isLoading: isNotificationsLoading } = useGetNotificationsQuery({ limit: 5 });
-	const { data: unreadMessagesData, isLoading: isUnreadMessagesLoading } = useGetUnreadMessageCountQuery();
-	const { data: incomingRequests = [], isLoading: isIncomingLoading } = useGetBorrowRequestsQuery({
-		type: 'incoming',
-	});
-	const { data: itemRequests = [], isLoading: isItemRequestsLoading } = useGetItemRequestsQuery();
-	const { data: circles = [], isLoading: isCirclesLoading } = useGetCirclesQuery();
+	// One round-trip for the dashboard's core data instead of 6 separate queries (see /api/home/summary).
+	const { data: summary, isLoading: isSummaryLoading } = useGetHomeSummaryQuery();
 	const { data: recentThreads = [], isLoading: isRecentThreadsLoading } = useGetRecentThreadsQuery({ limit: 3 });
+
+	// Plain derivations — the React Compiler auto-memoizes these; manual useMemo is rejected by
+	// the compiler lint rule when deps use optional chaining.
+	const user = summary?.user ?? undefined;
+	const notificationsData = summary?.notifications
+		? { unreadCount: summary.notifications.unreadCount, notifications: summary.notifications.items }
+		: undefined;
+	const unreadMessagesData = summary?.unreadMessages;
+	const incomingRequests = summary?.pendingBorrowRequests ?? [];
+	const itemRequests = summary?.openItemRequests ?? [];
+	const circles = summary?.circles ?? [];
+	const isNotificationsLoading = isSummaryLoading;
+	const isIncomingLoading = isSummaryLoading;
+	const isItemRequestsLoading = isSummaryLoading;
+	const isCirclesLoading = isSummaryLoading;
 
 	const userName = user?.name || session?.user?.name || 'there';
 	const [clientNow] = useState(() => Date.now());
@@ -65,6 +72,28 @@ export function DashboardHome() {
 		}
 		router.push(`/browse?q=${encodeURIComponent(query)}`);
 	};
+
+	// First-time / no-circle users: the borrow + listing hero and request cards are all
+	// circle-dependent and useless with zero circles. Show a focused onboarding view that
+	// funnels them to create/join a circle instead of the confusing default dashboard.
+	if (!isCirclesLoading && circles.length === 0) {
+		return (
+			<div className="flex-1 bg-background">
+				<PageShell className="space-y-5 sm:space-y-6">
+					<h1 className="sr-only">Home</h1>
+					<Card className="border-none bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 text-foreground shadow-xl">
+						<CardHeader className="space-y-1.5">
+							<CardTitle className="text-2xl font-semibold lg:text-3xl">{welcomeTitle}</CardTitle>
+							<CardDescription className="text-sm text-foreground/80 sm:text-base">
+								Let&apos;s get you into a ShareCircle so you can start sharing and borrowing.
+							</CardDescription>
+						</CardHeader>
+					</Card>
+					<NoCircleState />
+				</PageShell>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex-1 bg-background">
@@ -226,7 +255,7 @@ export function DashboardHome() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="flex flex-1 flex-col gap-2.5 pt-0">
-							{isUnreadMessagesLoading || isRecentThreadsLoading ? (
+							{isRecentThreadsLoading ? (
 								<div className="space-y-2">
 									<DashboardItemSkeleton />
 									<DashboardItemSkeleton />

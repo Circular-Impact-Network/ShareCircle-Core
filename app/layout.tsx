@@ -107,6 +107,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
+			<head>
+				{/* Apply the saved theme before first paint to avoid a flash-of-light and a
+				    hydration mismatch on the theme toggle (matches ThemeProvider's 'light' default). */}
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `try{if(localStorage.getItem('sharecircle_theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}`,
+					}}
+				/>
+			</head>
 			<body className={`${plusJakartaSans.variable} ${poppins.variable} font-sans`}>
 				<ThemeProvider>{children}</ThemeProvider>
 				<PWAInstallGuard />
