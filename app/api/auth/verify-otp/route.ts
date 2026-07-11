@@ -36,13 +36,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
 		}
 
-		const expected = hashOtp(code, normalizedEmail, otpPurpose);
-		const matches = timingSafeEqualHex(verificationToken.token, expected);
-		if (!matches) {
-			return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
-		}
-
-		// Check if token has expired
+		// Check expiry first so an expired-but-correct code reports "expired" (not "invalid").
 		if (new Date() > verificationToken.expires) {
 			// Delete expired token
 			await prisma.verificationToken.delete({
@@ -58,6 +52,12 @@ export async function POST(req: NextRequest) {
 				{ error: 'Verification code has expired. Please request a new one.' },
 				{ status: 400 },
 			);
+		}
+
+		const expected = hashOtp(code, normalizedEmail, otpPurpose);
+		const matches = timingSafeEqualHex(verificationToken.token, expected);
+		if (!matches) {
+			return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
 		}
 
 		// Find the user and update emailVerified

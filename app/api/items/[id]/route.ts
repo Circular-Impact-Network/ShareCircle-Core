@@ -71,7 +71,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 					},
 					orderBy: { createdAt: 'desc' },
 					take: 1,
-					select: { dueAt: true },
+					select: {
+						status: true,
+						startAt: true,
+						dueAt: true,
+						borrower: { select: { id: true, name: true, image: true } },
+					},
 				},
 			},
 		});
@@ -135,6 +140,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				isOwner: item.ownerId === userId,
 				isAvailable: item.isAvailable,
 				borrowedUntil: item.borrowTransactions[0]?.dueAt ?? null,
+				// Active borrow/reservation details — surfaced to the owner on the item page, and used
+				// to distinguish a future "Reserved" booking from a "Currently borrowed" one.
+				activeBorrow: item.borrowTransactions[0]
+					? {
+							borrowerId: item.borrowTransactions[0].borrower.id,
+							borrowerName: item.borrowTransactions[0].borrower.name,
+							borrowerImage: item.borrowTransactions[0].borrower.image,
+							status: item.borrowTransactions[0].status,
+							startAt: item.borrowTransactions[0].startAt,
+							dueAt: item.borrowTransactions[0].dueAt,
+						}
+					: null,
 				estimatedWeightKg: item.estimatedWeightKg,
 				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
 				isValueVisible: item.isValueVisible,
@@ -199,6 +216,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		if (item.ownerId !== userId) {
 			return NextResponse.json({ error: 'You can only edit your own items' }, { status: 403 });
 		}
+
+		// Capture the item's circles BEFORE the edit so we can also notify circles it was removed from.
+		const priorCircleIds = (
+			await prisma.itemCircle.findMany({ where: { itemId: id }, select: { circleId: true } })
+		).map(c => c.circleId);
 
 		// If circleIds are provided, verify user is a member of all
 		let validCircleIds: string[] | undefined;
@@ -408,6 +430,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			});
 			responseCircles = updatedCircleRecords.map(c => ({ id: c.circle.id, name: c.circle.name }));
 		}
+
+		// Notify members of every affected circle (old ∪ new) so their lists reflect the edit live.
+		after(() => {
+			const affected = new Set<string>([...priorCircleIds, ...responseCircles.map(c => c.id)]);
+			for (const circleId of affected) {
+				queueBroadcast(`circle:${circleId}:items`, 'item_changed', { itemId: updatedItem.id, circleId });
+			}
+		});
 
 		return NextResponse.json(
 			{

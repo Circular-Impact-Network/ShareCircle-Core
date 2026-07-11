@@ -18,6 +18,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import { EMPTY_OTP, OtpInput } from '@/components/auth/OtpInput';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import {
 	PHONE_COUNTRIES,
 	SupportedPhoneCountry,
@@ -38,9 +39,12 @@ function SignupContent() {
 	const [signupMethod, setSignupMethod] = useState<'email' | 'phone'>('email');
 	const [dob, setDob] = useState<Date | undefined>(undefined);
 	const [city, setCity] = useState('');
+	const [stateRegion, setStateRegion] = useState('');
+	const [zipCode, setZipCode] = useState('');
+	const [countryName, setCountryName] = useState('');
 	const [latitude, setLatitude] = useState<number | null>(null);
 	const [longitude, setLongitude] = useState<number | null>(null);
-	const [isLocating, setIsLocating] = useState(false);
+	const { locate, isLocating } = useGeolocation();
 	const [verificationMethod, setVerificationMethod] = useState<'email' | 'phone'>('email');
 	const [verificationPhone, setVerificationPhone] = useState('');
 	const [verificationCountry, setVerificationCountry] = useState<SupportedPhoneCountry>('IN');
@@ -170,6 +174,9 @@ function SignupContent() {
 						latitude: latitude ?? undefined,
 						longitude: longitude ?? undefined,
 						city: city.trim() || undefined,
+						state: stateRegion.trim() || undefined,
+						zipCode: zipCode.trim() || undefined,
+						countryName: countryName.trim() || undefined,
 					}),
 				});
 
@@ -185,8 +192,15 @@ function SignupContent() {
 				if (data.requiresVerification) {
 					setVerificationMethod('email');
 					updateMode('verify', { email });
-					setError('');
-					setSuccessMessage('We sent a verification code to your email.');
+					// data.emailSent === false means the OTP email couldn't be sent (e.g. mail not
+					// configured / send failed) — tell the user to resend instead of waiting on nothing.
+					if (data.emailSent === false) {
+						setSuccessMessage('');
+						setError("We couldn't send your verification email. Tap Resend code to try again.");
+					} else {
+						setError('');
+						setSuccessMessage('We sent a verification code to your email.');
+					}
 					return;
 				}
 
@@ -237,6 +251,9 @@ function SignupContent() {
 						latitude: latitude ?? undefined,
 						longitude: longitude ?? undefined,
 						city: city.trim() || undefined,
+						state: stateRegion.trim() || undefined,
+						zipCode: zipCode.trim() || undefined,
+						countryName: countryName.trim() || undefined,
 					}),
 				});
 
@@ -256,8 +273,10 @@ function SignupContent() {
 				return;
 			}
 
-			// Redirect to callbackUrl if present, otherwise dashboard
-			router.push(callbackUrl);
+			// Full reload (not router.push) so the freshly-set session cookie is picked up by
+			// middleware without a client/server race — matches the login page and fixes the
+			// "stuck at Signing in…" hang on first signup.
+			window.location.href = callbackUrl;
 		} catch {
 			setError('Signup failed. Please try again.');
 			setIsLoading(false);
@@ -277,42 +296,18 @@ function SignupContent() {
 		}
 	};
 
-	const handleUseLocation = () => {
-		if (!navigator.geolocation) {
-			setError('Geolocation is not supported by your browser.');
+	const handleUseLocation = async () => {
+		const result = await locate();
+		if (!result) {
+			setError('Unable to retrieve your location. You can enter your city manually.');
 			return;
 		}
-		setIsLocating(true);
-		navigator.geolocation.getCurrentPosition(
-			async position => {
-				const { latitude: lat, longitude: lng } = position.coords;
-				setLatitude(lat);
-				setLongitude(lng);
-				try {
-					const res = await fetch(
-						`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-					);
-					if (res.ok) {
-						const data = await res.json();
-						const cityName =
-							data.address?.city ||
-							data.address?.town ||
-							data.address?.village ||
-							data.address?.county ||
-							'';
-						if (cityName) setCity(cityName);
-					}
-				} catch {
-					// Ignore reverse-geocode failures; coordinates are still captured
-				}
-				setIsLocating(false);
-			},
-			() => {
-				setError('Unable to retrieve your location. You can enter your city manually.');
-				setIsLocating(false);
-			},
-			{ timeout: 8000 },
-		);
+		setLatitude(result.latitude);
+		setLongitude(result.longitude);
+		if (result.city) setCity(result.city);
+		if (result.state) setStateRegion(result.state);
+		if (result.zipCode) setZipCode(result.zipCode);
+		if (result.country) setCountryName(result.country);
 	};
 
 	const handleVerify = async (verificationCode?: string) => {
@@ -347,8 +342,7 @@ function SignupContent() {
 					return;
 				}
 
-				router.push(callbackUrl);
-				router.refresh();
+				window.location.href = callbackUrl;
 				return;
 			}
 
@@ -384,13 +378,12 @@ function SignupContent() {
 				});
 
 				if (signInResult?.ok) {
-					router.push(callbackUrl);
-					router.refresh();
+					window.location.href = callbackUrl;
 					return;
 				}
 			}
 
-			router.push('/login?verified=true');
+			window.location.href = '/login?verified=true';
 		} catch {
 			setError('An error occurred. Please try again.');
 			setIsVerifying(false);

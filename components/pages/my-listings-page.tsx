@@ -22,6 +22,8 @@ import { useGetAllItemsQuery, useDeleteItemMutation, useUpdateItemMutation, Item
 import { useToast } from '@/hooks/useToast';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { EmptyState } from '@/components/ui/empty-state';
+import { NoCircleState } from '@/components/ui/no-circle-state';
+import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 
 type ListingTab = 'active' | 'archived';
@@ -39,6 +41,7 @@ export function MyListingsPage() {
 		ownerOnly: true,
 		includeArchived: true,
 	});
+	const { data: circles = [] } = useGetCirclesQuery();
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 	const [updateItem] = useUpdateItemMutation();
 
@@ -183,16 +186,23 @@ export function MyListingsPage() {
 					{isLoading ? (
 						<ItemGridSkeleton count={6} />
 					) : activeItems.length === 0 ? (
-						<EmptyState
-							title="No active listings"
-							description="Create a listing to start sharing items with your circles."
-							action={
-								<Button onClick={() => setShowAddItem(true)} className="gap-2">
-									<Plus className="h-4 w-4" />
-									Add your first item
-								</Button>
-							}
-						/>
+						circles.length === 0 ? (
+							<NoCircleState
+								title="Join a circle before you list"
+								description="Items are shared into circles, so you need to join or create one before adding a listing."
+							/>
+						) : (
+							<EmptyState
+								title="No active listings"
+								description="Create a listing to start sharing items with your circles."
+								action={
+									<Button onClick={() => setShowAddItem(true)} className="gap-2">
+										<Plus className="h-4 w-4" />
+										Add your first item
+									</Button>
+								}
+							/>
+						)
 					) : (
 						<>
 							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

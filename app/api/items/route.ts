@@ -7,6 +7,7 @@ import { getUserCircleIds } from '@/app/api/_utils';
 import { Prisma } from '@prisma/client';
 import { getSignedUrl, getSignedUrls } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
+import { queueBroadcast } from '@/lib/notify';
 import { z } from 'zod';
 
 const isSupabaseUrl = (url: string) => {
@@ -368,6 +369,13 @@ export async function POST(req: NextRequest) {
 				}).catch(err => console.error('Background embedding generation failed:', err));
 			});
 		}
+
+		// Notify other members of each circle so their lists update live (not just the creator).
+		after(() => {
+			for (const circleId of validCircleIds) {
+				queueBroadcast(`circle:${circleId}:items`, 'item_added', { itemId: item.id, circleId });
+			}
+		});
 
 		// Generate signed URLs for all media files (main image + supporting media)
 		const mediaUrls = await Promise.all([

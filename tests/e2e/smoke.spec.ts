@@ -2,9 +2,10 @@ import { test, expect } from '@playwright/test';
 
 // Minimal smoke tests for production — read-only, no data mutations
 test.describe('smoke', () => {
-	test('landing page loads', async ({ page }) => {
-		// The marketing landing page now lives at the site root ("/landing" was removed).
+	test('root redirects to login when signed out', async ({ page }) => {
+		// Marketing moved to circularimpact.org/sharecircle; the app root only routes.
 		await page.goto('/');
+		await expect(page).toHaveURL(/\/login/);
 		await expect(page).toHaveTitle(/ShareCircle/i);
 	});
 

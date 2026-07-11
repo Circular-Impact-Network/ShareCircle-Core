@@ -91,6 +91,7 @@ export const circlesApi = createApi({
 	}),
 	keepUnusedDataFor: 300,
 	refetchOnReconnect: true,
+	refetchOnFocus: true,
 	tagTypes: ['Circles', 'CircleDetails', 'CircleMembers'],
 	endpoints: builder => ({
 		// Get all circles the user is a member of
@@ -193,7 +194,7 @@ export const circlesApi = createApi({
 				body: { role },
 			}),
 			invalidatesTags: (_result, _error, { circleId }) => [
-				{ type: 'CircleDetails', circleId },
+				{ type: 'CircleDetails', id: circleId },
 				{ type: 'CircleMembers', id: circleId },
 			],
 		}),

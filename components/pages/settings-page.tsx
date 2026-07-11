@@ -21,6 +21,7 @@ import {
 	CheckCircle2,
 	FileText,
 	ExternalLink,
+	Info,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/app/providers';
@@ -932,6 +933,27 @@ export function SettingsPage() {
 									</div>
 								</div>
 							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<Info className="h-5 w-5" />
+								About ShareCircle
+							</CardTitle>
+							<CardDescription>Learn more about ShareCircle and how it works.</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<Link
+								href="https://circularimpact.org/sharecircle"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+							>
+								Visit our homepage
+								<ExternalLink className="h-4 w-4 text-muted-foreground" />
+							</Link>
 						</CardContent>
 					</Card>
 

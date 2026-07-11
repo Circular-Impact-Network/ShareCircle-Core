@@ -57,16 +57,6 @@ export function NotificationPreferencesPanel() {
 	const [categoryOverrides, setCategoryOverrides] = useState<Record<string, NotificationChannelOverride>>({});
 	const [typeOverrides, setTypeOverrides] = useState<Record<string, NotificationChannelOverride>>({});
 
-	useEffect(() => {
-		if (!data?.stored) {
-			return;
-		}
-		setGlobalInApp(data.stored.globalInApp);
-		setGlobalPush(data.stored.globalPush);
-		setCategoryOverrides(cloneOverrides(data.stored.categoryOverrides || {}));
-		setTypeOverrides(cloneOverrides(data.stored.typeOverrides || {}));
-	}, [data?.stored]);
-
 	const isDirty = useMemo(() => {
 		if (!data?.stored) {
 			return false;
@@ -78,6 +68,21 @@ export function NotificationPreferencesPanel() {
 			JSON.stringify(typeOverrides) !== JSON.stringify(data.stored.typeOverrides || {})
 		);
 	}, [data?.stored, globalInApp, globalPush, categoryOverrides, typeOverrides]);
+
+	useEffect(() => {
+		if (!data?.stored) {
+			return;
+		}
+		// Don't overwrite in-progress edits when a background refetch (e.g. on window focus)
+		// returns a new data.stored reference — that was snapping toggles back to saved state.
+		if (isDirty) {
+			return;
+		}
+		setGlobalInApp(data.stored.globalInApp);
+		setGlobalPush(data.stored.globalPush);
+		setCategoryOverrides(cloneOverrides(data.stored.categoryOverrides || {}));
+		setTypeOverrides(cloneOverrides(data.stored.typeOverrides || {}));
+	}, [data?.stored, isDirty]);
 
 	const setCategoryChannel = useCallback((categoryId: string, channel: 'inApp' | 'push', on: boolean) => {
 		setCategoryOverrides(prev => {

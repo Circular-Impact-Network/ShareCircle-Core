@@ -64,6 +64,7 @@ import { useGetItemRequestsQuery } from '@/lib/redux/api/borrowApi';
 import { useCircleItemRequestActions } from '@/hooks/useCircleItemRequestActions';
 import { useCircleMemberActions } from '@/hooks/useCircleMemberActions';
 import { useItemRealtime } from '@/hooks/useItemRealtime';
+import { useCircleMembersRealtime } from '@/hooks/useCircleMembersRealtime';
 import { PageShell } from '@/components/ui/page';
 import { CircleDetailSkeleton, ItemGridSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
@@ -82,6 +83,7 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 	const { data: session } = useSession();
 	// Live updates: when anyone deletes/removes an item from this circle, drop it here too.
 	useItemRealtime([circleId]);
+	useCircleMembersRealtime(circleId);
 	const [selectedItem, setSelectedItem] = useState<ItemType | null>(null);
 	const [showAddItem, setShowAddItem] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<ItemType | null>(null);
@@ -805,44 +807,39 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 											showMediaActions={item.isOwner}
 											onDelete={item.isOwner ? setItemToDelete : undefined}
 											actions={
-												<div
-													className="flex flex-wrap gap-2"
-													onClick={event => {
-														event.stopPropagation();
-													}}
-												>
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() => router.push(`/items/${item.id}`)}
+												item.isOwner || circle?.userRole === 'ADMIN' ? (
+													<div
+														className="flex flex-wrap gap-2"
+														onClick={event => {
+															event.stopPropagation();
+														}}
 													>
-														View item
-													</Button>
-													{item.isOwner ? (
-														<Button
-															variant="outline"
-															size="sm"
-															className="gap-2 text-destructive"
-															onClick={() => setItemToDelete(item)}
-														>
-															<Trash2 className="h-4 w-4" />
-															Delete
-														</Button>
-													) : circle?.userRole === 'ADMIN' ? (
-														<Button
-															variant="outline"
-															size="sm"
-															className="gap-2 text-destructive"
-															onClick={() => {
-																setItemToRemoveFromCircle(item);
-																setRemoveReason('');
-															}}
-														>
-															<Trash2 className="h-4 w-4" />
-															Remove
-														</Button>
-													) : null}
-												</div>
+														{item.isOwner ? (
+															<Button
+																variant="outline"
+																size="sm"
+																className="gap-2 text-destructive"
+																onClick={() => setItemToDelete(item)}
+															>
+																<Trash2 className="h-4 w-4" />
+																Delete
+															</Button>
+														) : (
+															<Button
+																variant="outline"
+																size="sm"
+																className="gap-2 text-destructive"
+																onClick={() => {
+																	setItemToRemoveFromCircle(item);
+																	setRemoveReason('');
+																}}
+															>
+																<Trash2 className="h-4 w-4" />
+																Remove
+															</Button>
+														)}
+													</div>
+												) : undefined
 											}
 										/>
 									))}

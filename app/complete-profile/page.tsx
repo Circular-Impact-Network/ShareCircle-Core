@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 function CompleteProfileContent() {
 	const router = useRouter();
@@ -23,49 +24,28 @@ function CompleteProfileContent() {
 
 	const [dob, setDob] = useState<Date | undefined>(undefined);
 	const [city, setCity] = useState('');
+	const [stateRegion, setStateRegion] = useState('');
+	const [zipCode, setZipCode] = useState('');
+	const [countryName, setCountryName] = useState('');
 	const [latitude, setLatitude] = useState<number | null>(null);
 	const [longitude, setLongitude] = useState<number | null>(null);
-	const [isLocating, setIsLocating] = useState(false);
+	const { locate, isLocating } = useGeolocation();
 	const [isSaving, setIsSaving] = useState(false);
 	const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 	const [error, setError] = useState('');
 
-	const handleUseLocation = () => {
-		if (!navigator.geolocation) {
-			setError('Geolocation is not supported by your browser.');
+	const handleUseLocation = async () => {
+		const result = await locate();
+		if (!result) {
+			setError('Unable to retrieve your location. You can enter your city manually.');
 			return;
 		}
-		setIsLocating(true);
-		navigator.geolocation.getCurrentPosition(
-			async position => {
-				const { latitude: lat, longitude: lng } = position.coords;
-				setLatitude(lat);
-				setLongitude(lng);
-				try {
-					const res = await fetch(
-						`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-					);
-					if (res.ok) {
-						const data = await res.json();
-						const cityName =
-							data.address?.city ||
-							data.address?.town ||
-							data.address?.village ||
-							data.address?.county ||
-							'';
-						if (cityName) setCity(cityName);
-					}
-				} catch {
-					// Ignore reverse-geocode failures; coordinates are still captured
-				}
-				setIsLocating(false);
-			},
-			() => {
-				setError('Unable to retrieve your location. You can enter your city manually.');
-				setIsLocating(false);
-			},
-			{ timeout: 8000 },
-		);
+		setLatitude(result.latitude);
+		setLongitude(result.longitude);
+		if (result.city) setCity(result.city);
+		if (result.state) setStateRegion(result.state);
+		if (result.zipCode) setZipCode(result.zipCode);
+		if (result.country) setCountryName(result.country);
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -95,6 +75,9 @@ function CompleteProfileContent() {
 					latitude: latitude ?? undefined,
 					longitude: longitude ?? undefined,
 					city: city.trim() || undefined,
+					state: stateRegion.trim() || undefined,
+					zipCode: zipCode.trim() || undefined,
+					countryName: countryName.trim() || undefined,
 				}),
 			});
 

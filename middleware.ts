@@ -16,6 +16,12 @@ export async function middleware(request: NextRequest) {
 		secret: process.env.NEXTAUTH_SECRET,
 	});
 
+	// The site root is a pure router: marketing lives on circularimpact.org/sharecircle,
+	// so send visitors straight into the app or to login without rendering anything.
+	if (pathname === '/') {
+		return NextResponse.redirect(new URL(token ? '/home' : '/login', request.url));
+	}
+
 	// Define routes that require authentication
 	const protectedRoutePatterns = [
 		/^\/items\/[^/]+$/, // /items/[id] - shareable item links

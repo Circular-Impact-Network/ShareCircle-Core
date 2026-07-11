@@ -2,9 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { ChatContainer } from './ChatContainer';
-import { GlobalPresenceProvider } from '@/hooks/useGlobalPresence';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { ContextRef } from './types';
 
@@ -16,7 +14,6 @@ type ChatThreadPageProps = {
 
 export function ChatThreadPage({ threadId, initialDraft = null, initialContextRef = null }: ChatThreadPageProps) {
 	const router = useRouter();
-	const { data: session } = useSession();
 	const isDesktop = useMediaQuery('(min-width: 768px)');
 
 	useEffect(() => {
@@ -25,16 +22,15 @@ export function ChatThreadPage({ threadId, initialDraft = null, initialContextRe
 		}
 	}, [threadId, router]);
 
+	// Presence is provided app-wide by the authenticated layout's GlobalPresenceProvider.
+	// On desktop: show chat list alongside thread. On mobile: thread-only with back button in ChatHeader.
 	return (
-		<GlobalPresenceProvider userId={session?.user?.id || null}>
-			{/* On desktop: show chat list alongside thread. On mobile: thread-only with back button in ChatHeader. */}
-			<ChatContainer
-				initialThreadId={threadId}
-				initialMessageDraft={initialDraft}
-				initialContextRef={initialContextRef}
-				hideList={!isDesktop}
-				fullBleed
-			/>
-		</GlobalPresenceProvider>
+		<ChatContainer
+			initialThreadId={threadId}
+			initialMessageDraft={initialDraft}
+			initialContextRef={initialContextRef}
+			hideList={!isDesktop}
+			fullBleed
+		/>
 	);
 }

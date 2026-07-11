@@ -1,7 +1,9 @@
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { queueBroadcast } from '@/lib/notify';
 import { MemberRole, JoinType } from '@prisma/client';
 
 // GET /api/circles/[id]/members - List circle members with profiles
@@ -189,6 +191,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 					},
 				},
 			},
+		});
+
+		// Notify other members viewing the circle so the roster updates live.
+		after(() => {
+			queueBroadcast(`circle:${circleId}:members`, 'member_changed', { circleId, userId: newMember.user.id });
 		});
 
 		return NextResponse.json(

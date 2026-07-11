@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		name: 'ShareCircle',
 		short_name: 'ShareCircle',
 		description: 'Share, lend, and borrow items with your trusted circles.',
-		start_url: '/',
+		start_url: '/home',
 		scope: '/',
 		display: 'standalone',
 		display_override: ['standalone', 'minimal-ui', 'browser'],

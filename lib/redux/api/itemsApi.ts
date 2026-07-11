@@ -30,6 +30,14 @@ export interface Item {
 	isOwner: boolean;
 	isAvailable?: boolean;
 	borrowedUntil?: string | null;
+	activeBorrow?: {
+		borrowerId: string;
+		borrowerName: string | null;
+		borrowerImage: string | null;
+		status: string;
+		startAt?: string | null;
+		dueAt: string;
+	} | null;
 	similarity?: number;
 	estimatedWeightKg?: number | null;
 	estimatedNewPriceUsd?: number | null;
@@ -96,6 +104,8 @@ export interface UpdateItemRequest {
 	categories?: string[];
 	tags?: string[];
 	circleIds?: string[];
+	/** Circle ids the item belonged to BEFORE this edit — used to invalidate lists it was removed from. Not sent to the server. */
+	previousCircleIds?: string[];
 	archived?: boolean;
 	estimatedWeightKg?: number | null;
 	estimatedNewPriceUsd?: number | null;
@@ -129,6 +139,7 @@ export const itemsApi = createApi({
 	}),
 	keepUnusedDataFor: 120,
 	refetchOnReconnect: true,
+	refetchOnFocus: true,
 	tagTypes: ['Items', 'CircleItems'],
 	endpoints: builder => ({
 		// Upload item image
@@ -237,16 +248,21 @@ export const itemsApi = createApi({
 
 		// Update an item
 		updateItem: builder.mutation<Item, UpdateItemRequest>({
-			query: ({ id, ...body }) => ({
+			query: ({ id, previousCircleIds: _prev, ...body }) => ({
 				url: `/items/${id}`,
 				method: 'PATCH',
 				body,
 			}),
-			invalidatesTags: (_result, _error, { id, circleIds }) => [
-				{ type: 'Items', id },
-				'Items',
-				...(circleIds?.map(cid => ({ type: 'CircleItems' as const, id: cid })) || []),
-			],
+			invalidatesTags: (_result, _error, { id, circleIds, previousCircleIds }) => {
+				// Invalidate the union of the item's old and new circles so a circle it was
+				// removed from also refetches (append-only merge used to leave it stale there).
+				const affected = new Set([...(circleIds ?? []), ...(previousCircleIds ?? [])]);
+				return [
+					{ type: 'Items', id },
+					'Items',
+					...[...affected].map(cid => ({ type: 'CircleItems' as const, id: cid })),
+				];
+			},
 		}),
 
 		// Delete an item
@@ -304,11 +320,22 @@ export const itemsApi = createApi({
 				delete rest.cursor;
 				return rest;
 			},
-			merge: (currentCache, newData) => {
+			merge: (currentCache, newData, { arg }) => {
+				// Page-1 / cursor-less fetch — this is what a tag-invalidation refetch runs when the
+				// list hasn't been scrolled. Reconcile the full set (drop deleted, apply edits, add new)
+				// instead of appending. Append-only merge was why deleted/edited items lingered until refresh.
+				if (!arg?.cursor) {
+					currentCache.items = newData.items;
+					currentCache.nextCursor = newData.nextCursor;
+					currentCache.hasMore = newData.hasMore;
+					return;
+				}
+				// Pagination fetch (cursor set): upsert — refresh existing items in place, append unseen.
 				if (!newData.items.length) return currentCache;
+				const byId = new Map(newData.items.map(i => [i.id, i]));
+				currentCache.items = currentCache.items.map(i => byId.get(i.id) ?? i);
 				const existingIds = new Set(currentCache.items.map(i => i.id));
-				const unique = newData.items.filter(i => !existingIds.has(i.id));
-				currentCache.items.push(...unique);
+				currentCache.items.push(...newData.items.filter(i => !existingIds.has(i.id)));
 				currentCache.nextCursor = newData.nextCursor;
 				currentCache.hasMore = newData.hasMore;
 			},

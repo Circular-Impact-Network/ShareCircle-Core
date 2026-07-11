@@ -18,6 +18,7 @@ import {
 } from '@/lib/redux/api/itemsApi';
 import { useCreateItemRequestMutation } from '@/lib/redux/api/borrowApi';
 import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
+import { NoCircleState } from '@/components/ui/no-circle-state';
 import { PageHeader, PageShell, PageStickyHeader } from '@/components/ui/page';
 import { useToast } from '@/hooks/useToast';
 import { useItemRealtime } from '@/hooks/useItemRealtime';
@@ -375,21 +376,29 @@ export function BrowseListingsPage() {
 			{isLoading && <ItemGridSkeleton count={8} />}
 
 			{/* Empty State - No Items at all */}
-			{!isLoadingData && items.length === 0 && !isSearchActive && (
-				<Card className="border-dashed border-border/70 bg-card">
-					<CardContent className="flex flex-col items-center gap-4 text-center py-12">
-						<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-							<Package className="h-7 w-7 text-primary" />
-						</div>
-						<div>
-							<p className="font-medium text-foreground mb-1">No items yet</p>
-							<p className="text-sm text-muted-foreground">
-								Items shared in your circles will appear here.
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-			)}
+			{!isLoadingData &&
+				items.length === 0 &&
+				!isSearchActive &&
+				(userCircles.length === 0 ? (
+					<NoCircleState
+						title="No items to browse yet"
+						description="Items are shared inside circles. Join or create a circle to see what people are sharing."
+					/>
+				) : (
+					<Card className="border-dashed border-border/70 bg-card">
+						<CardContent className="flex flex-col items-center gap-4 text-center py-12">
+							<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+								<Package className="h-7 w-7 text-primary" />
+							</div>
+							<div>
+								<p className="font-medium text-foreground mb-1">No items yet</p>
+								<p className="text-sm text-muted-foreground">
+									Items shared in your circles will appear here.
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				))}
 
 			{/* Empty State - No Search Results */}
 			{!isLoadingData && isSearchActive && displayItems.length === 0 && (
@@ -529,44 +538,36 @@ export function BrowseListingsPage() {
 								onClick={() => router.push(`/items/${item.id}`)}
 								showMediaActions
 								actions={
-									<div
-										className="flex flex-wrap gap-2"
-										onClick={event => {
-											event.stopPropagation();
-										}}
-									>
-										{!item.isOwner ? (
-											<>
-												<Button
-													variant="outline"
-													size="sm"
-													className="gap-2"
-													onClick={() =>
-														handleStartChat(item.owner.id, { id: item.id, name: item.name })
-													}
-													disabled={startingChatId === item.owner.id}
-												>
-													{startingChatId === item.owner.id ? (
-														<Loader2 className="h-4 w-4 animate-spin" />
-													) : (
-														<MessageCircle className="h-4 w-4" />
-													)}
-													Chat
-												</Button>
-												<Button size="sm" onClick={() => router.push(`/items/${item.id}`)}>
-													{item.isAvailable === false ? 'Join Queue' : 'Borrow'}
-												</Button>
-											</>
-										) : (
+									// Owners already open the item by tapping the card, so the redundant
+									// "View item" button is dropped — only non-owners get Chat + Borrow actions.
+									!item.isOwner ? (
+										<div
+											className="flex flex-wrap gap-2"
+											onClick={event => {
+												event.stopPropagation();
+											}}
+										>
 											<Button
 												variant="outline"
 												size="sm"
-												onClick={() => router.push(`/items/${item.id}`)}
+												className="gap-2"
+												onClick={() =>
+													handleStartChat(item.owner.id, { id: item.id, name: item.name })
+												}
+												disabled={startingChatId === item.owner.id}
 											>
-												View item
+												{startingChatId === item.owner.id ? (
+													<Loader2 className="h-4 w-4 animate-spin" />
+												) : (
+													<MessageCircle className="h-4 w-4" />
+												)}
+												Chat
 											</Button>
-										)}
-									</div>
+											<Button size="sm" onClick={() => router.push(`/items/${item.id}`)}>
+												{item.isAvailable === false ? 'Join Queue' : 'Borrow'}
+											</Button>
+										</div>
+									) : undefined
 								}
 							/>
 						))}

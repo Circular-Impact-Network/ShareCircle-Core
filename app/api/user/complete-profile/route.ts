@@ -9,6 +9,9 @@ const completeProfileSchema = z.object({
 	latitude: z.number().min(-90).max(90).nullish(),
 	longitude: z.number().min(-180).max(180).nullish(),
 	city: z.string().trim().max(120).nullish(),
+	state: z.string().trim().max(120).nullish(),
+	zipCode: z.string().trim().max(20).nullish(),
+	countryName: z.string().trim().max(120).nullish(),
 });
 
 // POST /api/user/complete-profile - capture profile data skipped by Google sign-up
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
 		}
 
-		const { dateOfBirth, latitude, longitude, city } = parsed.data;
+		const { dateOfBirth, latitude, longitude, city, state, zipCode, countryName } = parsed.data;
 
 		const dob = new Date(dateOfBirth);
 		if (Number.isNaN(dob.getTime())) {
@@ -45,6 +48,9 @@ export async function POST(req: NextRequest) {
 				...(latitude != null && { latitude }),
 				...(longitude != null && { longitude }),
 				...(city && { city }),
+				...(state && { state }),
+				...(zipCode && { zip_code: zipCode }),
+				...(countryName && { country: countryName }),
 			},
 		});
 
