@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { AudioInput } from '@/components/ui/audio-input';
 import { cn } from '@/lib/utils';
 
 const APP_VERSION = '1.0';
@@ -217,16 +218,24 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 
 							{/* Message */}
 							<div className="space-y-2">
-								<p className="text-sm font-medium">
-									Share the details{' '}
-									{isMessageRequired ? (
-										<span className="font-normal text-destructive">
-											(required for low ratings &amp; bug reports)
-										</span>
-									) : (
-										<span className="font-normal text-muted-foreground">(optional)</span>
-									)}
-								</p>
+								<div className="flex items-center justify-between gap-2">
+									<p className="text-sm font-medium">
+										Share the details{' '}
+										{isMessageRequired ? (
+											<span className="font-normal text-destructive">
+												(required for low ratings &amp; bug reports)
+											</span>
+										) : (
+											<span className="font-normal text-muted-foreground">(optional)</span>
+										)}
+									</p>
+									<AudioInput
+										aria-label="Record feedback with your voice"
+										onTranscript={text =>
+											setMessage(prev => (prev ? `${prev} ${text}` : text).slice(0, 2000))
+										}
+									/>
+								</div>
 								<Textarea
 									placeholder="The more specific you are, the more we can act on it."
 									value={message}
