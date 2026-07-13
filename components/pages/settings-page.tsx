@@ -35,6 +35,7 @@ import {
 	isSupportedPhoneCountry,
 	validatePhoneByCountry,
 } from '@/lib/phone';
+import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
 import {
 	selectUserImage,
 	selectUserName,
@@ -86,13 +87,16 @@ export function SettingsPage() {
 	const [contactCooldown, setContactCooldown] = useState(0);
 	const [contactOtp, setContactOtp] = useState(['', '', '', '', '', '']);
 	const contactOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
-	const [passwordStep, setPasswordStep] = useState<'idle' | 'request' | 'verify' | 'reset' | 'success'>('idle');
+	const [passwordStep, setPasswordStep] = useState<'idle' | 'change' | 'request' | 'verify' | 'reset' | 'success'>(
+		'idle',
+	);
 	const [passwordError, setPasswordError] = useState('');
 	const [passwordSuccess, setPasswordSuccess] = useState('');
 	const [passwordIsLoading, setPasswordIsLoading] = useState(false);
 	const [resendCooldown, setResendCooldown] = useState(0);
 	const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
 	const [resetToken, setResetToken] = useState('');
+	const [currentPassword, setCurrentPassword] = useState('');
 	const [newPassword, setNewPassword] = useState('');
 	const [confirmNewPassword, setConfirmNewPassword] = useState('');
 	const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -284,6 +288,49 @@ export function SettingsPage() {
 
 	const accountEmail = userEmail || email;
 
+	const handleChangePassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setPasswordError('');
+		setPasswordSuccess('');
+
+		if (!currentPassword || !newPassword || !confirmNewPassword) {
+			setPasswordError('Please fill in all fields.');
+			return;
+		}
+		if (newPassword.length < 8) {
+			setPasswordError('Password must be at least 8 characters.');
+			return;
+		}
+		if (newPassword !== confirmNewPassword) {
+			setPasswordError('Passwords do not match.');
+			return;
+		}
+
+		setPasswordIsLoading(true);
+		try {
+			const response = await fetch('/api/user/change-password', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ currentPassword, newPassword }),
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				setPasswordError(data.error || 'Failed to change password.');
+				setPasswordIsLoading(false);
+				return;
+			}
+			setPasswordStep('success');
+			setPasswordSuccess('Password updated successfully.');
+			setCurrentPassword('');
+			setNewPassword('');
+			setConfirmNewPassword('');
+		} catch {
+			setPasswordError('Failed to change password. Please try again.');
+		} finally {
+			setPasswordIsLoading(false);
+		}
+	};
+
 	const handleRequestPasswordOtp = async () => {
 		setPasswordError('');
 		setPasswordSuccess('');
@@ -449,6 +496,62 @@ export function SettingsPage() {
 						Done
 					</Button>
 				</div>
+			);
+		}
+
+		if (passwordStep === 'change') {
+			return (
+				<form onSubmit={handleChangePassword} className="rounded-lg border p-4 space-y-4">
+					<div>
+						<Label className="text-sm">Current Password</Label>
+						<PasswordInput
+							value={currentPassword}
+							onChange={e => setCurrentPassword(e.target.value)}
+							className="mt-2"
+							disabled={passwordIsLoading}
+						/>
+					</div>
+					<div>
+						<Label className="text-sm">New Password</Label>
+						<PasswordInput
+							value={newPassword}
+							onChange={e => setNewPassword(e.target.value)}
+							className="mt-2"
+							disabled={passwordIsLoading}
+						/>
+						<p className="text-xs text-muted-foreground mt-1">Must be at least 8 characters.</p>
+					</div>
+					<div>
+						<Label className="text-sm">Confirm New Password</Label>
+						<PasswordInput
+							value={confirmNewPassword}
+							onChange={e => setConfirmNewPassword(e.target.value)}
+							className="mt-2"
+							disabled={passwordIsLoading}
+						/>
+					</div>
+					<div className="flex flex-col sm:flex-row sm:items-center gap-2">
+						<Button type="submit" className="w-full sm:w-auto" disabled={passwordIsLoading}>
+							{passwordIsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Update Password
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => {
+								setPasswordError('');
+								setPasswordSuccess('');
+								setCurrentPassword('');
+								setNewPassword('');
+								setConfirmNewPassword('');
+								setPasswordStep('request');
+							}}
+							disabled={passwordIsLoading}
+						>
+							Forgot current password?
+						</Button>
+					</div>
+				</form>
 			);
 		}
 
@@ -674,66 +777,72 @@ export function SettingsPage() {
 									</p>
 								</div>
 
-								<div className="space-y-2">
-									<Label htmlFor="phone">Phone Number</Label>
-									<div className="flex gap-2">
-										<Select
-											value={phoneCountry}
-											onValueChange={value => {
-												if (isSupportedPhoneCountry(value)) {
-													setPhoneCountry(value);
-												}
-											}}
-											disabled={contactIsLoading}
-										>
-											<SelectTrigger className="w-[130px]">
-												<SelectValue placeholder="Code" />
-											</SelectTrigger>
-											<SelectContent>
-												{PHONE_COUNTRIES.map(phoneCountryOption => (
-													<SelectItem
-														key={phoneCountryOption.iso2}
-														value={phoneCountryOption.iso2}
-													>
-														{phoneCountryOption.flag}{' '}
-														{getDialCodeForCountry(phoneCountryOption.iso2)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<div className="relative flex-1">
-											<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-											<Input
-												id="phone"
-												value={phone}
-												onChange={e => setPhone(e.target.value)}
-												placeholder="Phone number"
-												className="pl-9"
+								{PHONE_AUTH_ENABLED && (
+									<div className="space-y-2">
+										<Label htmlFor="phone">Phone Number</Label>
+										<div className="flex gap-2">
+											<Select
+												value={phoneCountry}
+												onValueChange={value => {
+													if (isSupportedPhoneCountry(value)) {
+														setPhoneCountry(value);
+													}
+												}}
 												disabled={contactIsLoading}
-											/>
+											>
+												<SelectTrigger className="w-[130px]">
+													<SelectValue placeholder="Code" />
+												</SelectTrigger>
+												<SelectContent>
+													{PHONE_COUNTRIES.map(phoneCountryOption => (
+														<SelectItem
+															key={phoneCountryOption.iso2}
+															value={phoneCountryOption.iso2}
+														>
+															{phoneCountryOption.flag}{' '}
+															{getDialCodeForCountry(phoneCountryOption.iso2)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<div className="relative flex-1">
+												<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+												<Input
+													id="phone"
+													value={phone}
+													onChange={e => setPhone(e.target.value)}
+													placeholder="Phone number"
+													className="pl-9"
+													disabled={contactIsLoading}
+												/>
+											</div>
 										</div>
+										{contactError && <p className="text-xs text-destructive">{contactError}</p>}
+										{contactSuccess && (
+											<p className="text-xs text-green-600 dark:text-green-300">
+												{contactSuccess}
+											</p>
+										)}
 									</div>
-									{contactError && <p className="text-xs text-destructive">{contactError}</p>}
-									{contactSuccess && (
-										<p className="text-xs text-green-600 dark:text-green-300">{contactSuccess}</p>
-									)}
+								)}
+							</div>
+
+							{PHONE_AUTH_ENABLED && (
+								<div className="flex justify-end pt-4">
+									<Button onClick={handleUpdateContactInfo} disabled={contactIsLoading}>
+										{contactIsLoading ? (
+											<>
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												Sending code...
+											</>
+										) : (
+											'Update Contact Info'
+										)}
+									</Button>
 								</div>
-							</div>
+							)}
 
-							<div className="flex justify-end pt-4">
-								<Button onClick={handleUpdateContactInfo} disabled={contactIsLoading}>
-									{contactIsLoading ? (
-										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											Sending code...
-										</>
-									) : (
-										'Update Contact Info'
-									)}
-								</Button>
-							</div>
-
-							{contactStep === 'verify' && (
+							{PHONE_AUTH_ENABLED && contactStep === 'verify' && (
 								<div className="rounded-lg border p-4 space-y-4">
 									<div className="text-sm text-muted-foreground">
 										Enter the 6-digit code sent to {getDialCodeForCountry(phoneCountry)} {phone}.
@@ -788,14 +897,19 @@ export function SettingsPage() {
 							<div className="flex items-center justify-between p-4 border rounded-lg">
 								<div className="space-y-0.5">
 									<div className="font-medium">Password</div>
-									<div className="text-sm text-muted-foreground">Verify by OTP before updating.</div>
+									<div className="text-sm text-muted-foreground">
+										Enter your current password to set a new one.
+									</div>
 								</div>
 								<Button
 									variant="outline"
 									onClick={() => {
 										setPasswordError('');
 										setPasswordSuccess('');
-										setPasswordStep('request');
+										setCurrentPassword('');
+										setNewPassword('');
+										setConfirmNewPassword('');
+										setPasswordStep('change');
 									}}
 								>
 									Change Password

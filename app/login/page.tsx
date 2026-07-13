@@ -22,6 +22,7 @@ import {
 	isSupportedPhoneCountry,
 	validatePhoneByCountry,
 } from '@/lib/phone';
+import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
 
 type LoginMode = 'login' | 'forgot' | 'reset';
 
@@ -683,21 +684,23 @@ function LoginContent() {
 					</form>
 				) : (
 					<div className="space-y-4">
-						<Tabs
-							value={loginMethod}
-							onValueChange={value => {
-								setLoginMethod(value as 'email' | 'phone');
-								setError('');
-								setSuccessMessage('');
-								setOtpCode(EMPTY_OTP);
-							}}
-							className="w-full"
-						>
-							<TabsList className="grid w-full grid-cols-2 mb-4">
-								<TabsTrigger value="email">Email OTP</TabsTrigger>
-								<TabsTrigger value="phone">Phone OTP</TabsTrigger>
-							</TabsList>
-						</Tabs>
+						{PHONE_AUTH_ENABLED && (
+							<Tabs
+								value={loginMethod}
+								onValueChange={value => {
+									setLoginMethod(value as 'email' | 'phone');
+									setError('');
+									setSuccessMessage('');
+									setOtpCode(EMPTY_OTP);
+								}}
+								className="w-full"
+							>
+								<TabsList className="grid w-full grid-cols-2 mb-4">
+									<TabsTrigger value="email">Email OTP</TabsTrigger>
+									<TabsTrigger value="phone">Phone OTP</TabsTrigger>
+								</TabsList>
+							</Tabs>
+						)}
 
 						{loginMethod === 'email' ? (
 							<div>
