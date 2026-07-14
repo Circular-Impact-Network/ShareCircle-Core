@@ -198,7 +198,7 @@ model Circle {
   name        String
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
-  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '7 days'")) @map("invite_expires_at")
+  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '30 days'")) @map("invite_expires_at")
   avatarUrl   String?  @map("avatar_url")
   avatarPath  String?  @map("avatar_path")
   createdById String   @map("created_by")
@@ -438,6 +438,8 @@ model BorrowRequest {
   requesterId String              @map("requester_id")
   ownerId     String              @map("owner_id")
   message     String?             @db.Text
+  // Optional occasion the borrow is for (e.g. "Wedding", "Camping trip"). Free text.
+  event       String?             @db.Text
   desiredFrom DateTime            @map("desired_from")
   desiredTo   DateTime            @map("desired_to")
   status      BorrowRequestStatus @default(PENDING)
@@ -497,6 +499,8 @@ model BorrowTransaction {
   returnedAt      DateTime?                @map("returned_at")
   status          BorrowTransactionStatus  @default(ACTIVE)
   returnNote      String?                  @map("return_note") @db.Text
+  // Occasion carried over from the borrow request (e.g. "Wedding"). Free text.
+  event           String?                  @db.Text
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 

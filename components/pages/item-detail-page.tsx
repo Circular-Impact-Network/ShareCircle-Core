@@ -35,6 +35,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ItemCard } from '@/components/cards/item-card';
 import { EditItemModal } from '@/components/modals/edit-item-modal';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
 	Dialog,
@@ -55,6 +56,10 @@ import {
 	useGetQueueEntriesQuery,
 	useGetTransactionsQuery,
 	useExtendBorrowMutation,
+	useConfirmHandoffMutation,
+	useConfirmReceiptMutation,
+	useMarkAsReturnedMutation,
+	useConfirmReturnMutation,
 } from '@/lib/redux/api/borrowApi';
 import { PageShell } from '@/components/ui/page';
 import { isBorrowOverdue } from '@/lib/borrow-ui';
@@ -82,6 +87,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [isArchiving, setIsArchiving] = useState(false);
 	const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
 	const [borrowMessage, setBorrowMessage] = useState('');
+	const [borrowEvent, setBorrowEvent] = useState('');
 	const [desiredFrom, setDesiredFrom] = useState<Date | undefined>(undefined);
 	const [desiredTo, setDesiredTo] = useState<Date | undefined>(undefined);
 
@@ -106,6 +112,34 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	// Borrow/extend mutations
 	const [createBorrowRequest, { isLoading: isCreatingRequest }] = useCreateBorrowRequestMutation();
 	const [extendBorrow, { isLoading: isExtending }] = useExtendBorrowMutation();
+
+	// Borrow lifecycle mutations — surfaced inline so actions live where the item is viewed,
+	// not only on the Activity screen.
+	const [confirmHandoff] = useConfirmHandoffMutation();
+	const [confirmReceipt] = useConfirmReceiptMutation();
+	const [markAsReturned] = useMarkAsReturnedMutation();
+	const [confirmReturn] = useConfirmReturnMutation();
+	const [processingAction, setProcessingAction] = useState(false);
+
+	const runLifecycleAction = async (
+		action: () => Promise<unknown>,
+		success: { title: string; description?: string },
+		fallbackError: string,
+	) => {
+		setProcessingAction(true);
+		try {
+			await action();
+			toast({ title: success.title, description: success.description });
+		} catch (error) {
+			const msg =
+				error && typeof error === 'object' && 'data' in error
+					? (error.data as { error?: string })?.error || fallbackError
+					: fallbackError;
+			toast({ title: msg, variant: 'destructive' });
+		} finally {
+			setProcessingAction(false);
+		}
+	};
 
 	// Check if user already has a pending request
 	const hasPendingRequest = existingRequests.some(r => r.status === 'PENDING');
@@ -221,6 +255,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			const result = await createBorrowRequest({
 				itemId,
 				message: borrowMessage.trim() || undefined,
+				event: borrowEvent.trim() || undefined,
 				desiredFrom: format(desiredFrom, 'yyyy-MM-dd'),
 				desiredTo: format(desiredTo, 'yyyy-MM-dd'),
 				joinQueue,
@@ -229,6 +264,7 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 			// Close modal and reset state immediately on success
 			setShowBorrowModal(false);
 			setBorrowMessage('');
+			setBorrowEvent('');
 			setDesiredFrom(undefined);
 			setDesiredTo(undefined);
 
@@ -670,6 +706,41 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 									<Trash2 className="h-4 w-4" />
 									Delete
 								</Button>
+								{activeBorrow?.borrowRequestId && activeBorrow.status === 'ACTIVE' && (
+									<Button
+										className="gap-2"
+										disabled={processingAction}
+										onClick={() =>
+											runLifecycleAction(
+												() => confirmHandoff(activeBorrow.borrowRequestId).unwrap(),
+												{
+													title: 'Handoff confirmed!',
+													description: 'Borrower has been notified.',
+												},
+												'Failed to confirm handoff',
+											)
+										}
+									>
+										{processingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+										Confirm Item Handed Off
+									</Button>
+								)}
+								{activeBorrow?.borrowRequestId && activeBorrow.status === 'RETURN_PENDING' && (
+									<Button
+										className="gap-2"
+										disabled={processingAction}
+										onClick={() =>
+											runLifecycleAction(
+												() => confirmReturn(activeBorrow.borrowRequestId).unwrap(),
+												{ title: 'Return confirmed!', description: 'Transaction completed.' },
+												'Failed to confirm return',
+											)
+										}
+									>
+										{processingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+										Confirm Return
+									</Button>
+								)}
 							</>
 						) : (
 							<Button
@@ -694,6 +765,38 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 								disabled={hasPendingRequest || isInQueue}
 							>
 								{itemWithAvailability?.isAvailable !== false ? 'Request to Borrow' : 'Join Queue'}
+							</Button>
+						)}
+						{isCurrentBorrower && activeTransaction?.status === 'LENDER_CONFIRMED' && (
+							<Button
+								className="gap-2"
+								disabled={processingAction}
+								onClick={() =>
+									runLifecycleAction(
+										() => confirmReceipt(activeTransaction.borrowRequestId).unwrap(),
+										{ title: 'Receipt confirmed!', description: 'Lender has been notified.' },
+										'Failed to confirm receipt',
+									)
+								}
+							>
+								{processingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+								Confirm Item Received
+							</Button>
+						)}
+						{isCurrentBorrower && activeTransaction?.status === 'BORROWER_CONFIRMED' && (
+							<Button
+								className="gap-2"
+								disabled={processingAction}
+								onClick={() =>
+									runLifecycleAction(
+										() => markAsReturned({ id: activeTransaction.borrowRequestId }).unwrap(),
+										{ title: 'Marked as returned', description: 'Waiting for owner confirmation.' },
+										'Failed to mark as returned',
+									)
+								}
+							>
+								{processingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+								Mark as Returned
 							</Button>
 						)}
 						{isCurrentBorrower && (
@@ -786,6 +889,16 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 									placeholder="Pick a date"
 								/>
 							</div>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="event">What&apos;s it for? (optional)</Label>
+							<Input
+								id="event"
+								placeholder="e.g. Wedding, Camping trip, Birthday party"
+								value={borrowEvent}
+								onChange={e => setBorrowEvent(e.target.value)}
+								maxLength={100}
+							/>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="message">Message (optional)</Label>

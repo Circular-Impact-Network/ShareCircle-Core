@@ -94,6 +94,7 @@ export function BorrowRequestCard({
 							</Avatar>
 							<span className="truncate">{request.requester.name || 'Unknown'}</span>
 						</div>
+						{request.event && <p className="mt-1 text-xs font-medium text-primary">For: {request.event}</p>}
 						{request.message && (
 							<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
 								&ldquo;{request.message}&rdquo;

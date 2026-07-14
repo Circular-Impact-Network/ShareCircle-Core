@@ -9,6 +9,7 @@ import { z } from 'zod';
 const createBorrowRequestSchema = z.object({
 	itemId: z.string().min(1, 'Item ID is required'),
 	message: z.string().max(500, 'Message must be 500 characters or fewer').optional(),
+	event: z.string().max(100, 'Event must be 100 characters or fewer').optional(),
 	desiredFrom: z.string().min(1, 'Start date is required'),
 	desiredTo: z.string().min(1, 'End date is required'),
 	joinQueue: z.boolean().optional().default(false),
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
 				{ status: 400 },
 			);
 		}
-		const { itemId, message, desiredFrom, desiredTo, joinQueue } = parsed.data;
+		const { itemId, message, event, desiredFrom, desiredTo, joinQueue } = parsed.data;
 
 		// Fetch item and user circles in parallel (independent queries)
 		const [item, userCircleIds] = await Promise.all([
@@ -307,6 +308,7 @@ export async function POST(req: NextRequest) {
 				requesterId: userId,
 				ownerId: item.ownerId,
 				message: message?.trim() || null,
+				event: event?.trim() || null,
 				desiredFrom: new Date(desiredFrom),
 				desiredTo: new Date(desiredTo),
 				status: BorrowRequestStatus.PENDING,
