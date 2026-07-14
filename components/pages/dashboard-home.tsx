@@ -15,6 +15,7 @@ import { DashboardItemSkeleton } from '@/components/ui/skeletons';
 import { useGetRecentThreadsQuery } from '@/lib/redux/api/messagesApi';
 import { useGetHomeSummaryQuery } from '@/lib/redux/api/homeApi';
 import { NoCircleState } from '@/components/ui/no-circle-state';
+import { ImpactPanel } from '@/components/impact/impact-panel';
 
 export function DashboardHome() {
 	const router = useRouter();
@@ -159,6 +160,8 @@ export function DashboardHome() {
 						</Button>
 					</div>
 				</form>
+
+				<ImpactPanel />
 
 				<div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
 					<Card className="flex flex-col border-border/60">

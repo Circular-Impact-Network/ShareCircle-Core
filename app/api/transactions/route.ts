@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BorrowTransactionStatus } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
+import { getTransactionImpacts } from '@/lib/impact';
 
 // GET /api/transactions - Get user's borrow transactions (as borrower or owner)
 export async function GET(req: NextRequest) {
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
 					select: {
 						id: true,
 						message: true,
+						event: true,
 						desiredFrom: true,
 						desiredTo: true,
 					},
@@ -81,6 +83,9 @@ export async function GET(req: NextRequest) {
 				createdAt: 'desc',
 			},
 		});
+
+		// Per-transaction impact from the v_cin_transaction_impact view (one batched query).
+		const impactMap = await getTransactionImpacts(transactions.map(t => t.id));
 
 		// Add signed URLs
 		const transactionsWithUrls = await Promise.all(
@@ -97,6 +102,7 @@ export async function GET(req: NextRequest) {
 						...transaction.item,
 						imageUrl,
 					},
+					impact: impactMap.get(transaction.id) ?? null,
 				};
 			}),
 		);

@@ -69,6 +69,7 @@ import { PageShell } from '@/components/ui/page';
 import { CircleDetailSkeleton, ItemGridSkeleton } from '@/components/ui/skeletons';
 import { PageTabs, PageTabsContent, PageTabsList, PageTabsTrigger } from '@/components/ui/app-tabs';
 import { InfiniteScrollSentinel } from '@/components/ui/infinite-scroll-sentinel';
+import { CircleImpactPanel } from '@/components/impact/circle-impact-panel';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { type ItemRequestFilterValue } from '@/components/app/item-request-filter';
 import { CircleRequestsTab } from './circle-details/CircleRequestsTab';
@@ -733,6 +734,9 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 					</div>
 				)}
 			</div>
+
+			{/* Circle impact */}
+			<CircleImpactPanel circleId={circleId} />
 
 			{/* Items & Requests Section */}
 			<div className="space-y-4">
