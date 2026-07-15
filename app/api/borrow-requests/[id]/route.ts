@@ -229,6 +229,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 						ownerId: borrowRequest.ownerId,
 						startAt: borrowRequest.desiredFrom,
 						dueAt: borrowRequest.desiredTo,
+						event: borrowRequest.event,
 						status: BorrowTransactionStatus.ACTIVE,
 					},
 				});

@@ -72,6 +72,7 @@ export interface BorrowTransaction {
 export interface BorrowRequest {
 	id: string;
 	message: string | null;
+	event: string | null;
 	desiredFrom: string;
 	desiredTo: string;
 	status: BorrowRequestStatus;
@@ -87,6 +88,7 @@ export interface BorrowRequest {
 export interface CreateBorrowRequestInput {
 	itemId: string;
 	message?: string;
+	event?: string;
 	desiredFrom: string;
 	desiredTo: string;
 	joinQueue?: boolean;
@@ -136,9 +138,17 @@ export interface FullTransaction {
 	borrowRequest: {
 		id: string;
 		message: string | null;
+		event: string | null;
 		desiredFrom: string;
 		desiredTo: string;
 	};
+	impact?: {
+		ghgSavedKg: number;
+		weightDivertedKg: number;
+		borrowerSavingsUsd: number;
+		impactConfidence: string | null;
+		hasDataGaps: boolean;
+	} | null;
 }
 
 export interface GetTransactionsFilters {

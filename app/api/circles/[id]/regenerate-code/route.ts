@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
 
-const INVITE_EXPIRY_DAYS = 7;
+const INVITE_EXPIRY_DAYS = 30;
 
 // Generate 8-character alphanumeric invite code
 function generateInviteCode(): string {

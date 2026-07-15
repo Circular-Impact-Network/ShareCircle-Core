@@ -31,6 +31,8 @@ export interface Item {
 	isAvailable?: boolean;
 	borrowedUntil?: string | null;
 	activeBorrow?: {
+		transactionId: string;
+		borrowRequestId: string;
 		borrowerId: string;
 		borrowerName: string | null;
 		borrowerImage: string | null;

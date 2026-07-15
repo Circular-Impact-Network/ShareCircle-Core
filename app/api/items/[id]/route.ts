@@ -72,6 +72,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 					orderBy: { createdAt: 'desc' },
 					take: 1,
 					select: {
+						id: true,
+						borrowRequestId: true,
 						status: true,
 						startAt: true,
 						dueAt: true,
@@ -144,6 +146,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 				// to distinguish a future "Reserved" booking from a "Currently borrowed" one.
 				activeBorrow: item.borrowTransactions[0]
 					? {
+							transactionId: item.borrowTransactions[0].id,
+							borrowRequestId: item.borrowTransactions[0].borrowRequestId,
 							borrowerId: item.borrowTransactions[0].borrower.id,
 							borrowerName: item.borrowTransactions[0].borrower.name,
 							borrowerImage: item.borrowTransactions[0].borrower.image,

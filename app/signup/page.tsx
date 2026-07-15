@@ -26,6 +26,7 @@ import {
 	isSupportedPhoneCountry,
 	validatePhoneByCountry,
 } from '@/lib/phone';
+import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
 
 type SignupMode = 'signup' | 'verify';
 
@@ -550,10 +551,12 @@ function SignupContent() {
 					className="w-full"
 					onValueChange={v => setSignupMethod(v as 'email' | 'phone')}
 				>
-					<TabsList className="grid w-full grid-cols-2 mb-6">
-						<TabsTrigger value="email">Email</TabsTrigger>
-						<TabsTrigger value="phone">Phone</TabsTrigger>
-					</TabsList>
+					{PHONE_AUTH_ENABLED && (
+						<TabsList className="grid w-full grid-cols-2 mb-6">
+							<TabsTrigger value="email">Email</TabsTrigger>
+							<TabsTrigger value="phone">Phone</TabsTrigger>
+						</TabsList>
+					)}
 
 					<form onSubmit={handleSignup} className="space-y-4">
 						<TabsContent value="email" className="space-y-4 mt-0">

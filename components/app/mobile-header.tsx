@@ -56,57 +56,62 @@ export function MobileHeader() {
 					<span className="text-sm font-semibold text-foreground">ShareCircle</span>
 				</Link>
 
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<button
-							type="button"
-							className="flex h-9 w-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							aria-label="Account menu"
-						>
-							<Avatar className="h-8 w-8">
-								<AvatarImage src={userImage || ''} />
-								<AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-									{getInitials(displayName)}
-								</AvatarFallback>
-							</Avatar>
-						</button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-48">
-						<DropdownMenuItem asChild>
-							<Link href="/listings" className="flex items-center gap-2">
-								<List className="h-4 w-4" />
-								My Listings
-							</Link>
-						</DropdownMenuItem>
-						<DropdownMenuItem asChild>
-							<Link href="/activity" className="flex items-center gap-2">
-								<History className="h-4 w-4" />
-								My Activity
-							</Link>
-						</DropdownMenuItem>
-						<DropdownMenuItem asChild>
-							<Link href="/settings" className="flex items-center gap-2">
-								<Settings className="h-4 w-4" />
-								Settings
-							</Link>
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={() => setShowFeedbackModal(true)}
-							className="flex items-center gap-2"
-						>
-							<MessageSquarePlus className="h-4 w-4" />
-							Share feedback
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={handleLogout}
-							className="flex items-center gap-2 text-destructive focus:text-destructive"
-						>
-							<LogOut className="h-4 w-4" />
-							Logout
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+				<div className="flex items-center gap-1">
+					{/* Feedback — surfaced to the left of the profile pic, not buried in the menu */}
+					<button
+						type="button"
+						onClick={() => setShowFeedbackModal(true)}
+						className="flex h-9 w-9 items-center justify-center rounded-full text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+						aria-label="Share feedback"
+					>
+						<MessageSquarePlus className="h-5 w-5" />
+					</button>
+
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								className="flex h-9 w-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label="Account menu"
+							>
+								<Avatar className="h-8 w-8">
+									<AvatarImage src={userImage || ''} />
+									<AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+										{getInitials(displayName)}
+									</AvatarFallback>
+								</Avatar>
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-48">
+							<DropdownMenuItem asChild>
+								<Link href="/listings" className="flex items-center gap-2">
+									<List className="h-4 w-4" />
+									My Listings
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="/activity" className="flex items-center gap-2">
+									<History className="h-4 w-4" />
+									My Activity
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="/settings" className="flex items-center gap-2">
+									<Settings className="h-4 w-4" />
+									Settings
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={handleLogout}
+								className="flex items-center gap-2 text-destructive focus:text-destructive"
+							>
+								<LogOut className="h-4 w-4" />
+								Logout
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 			</header>
 
 			<FeedbackModal open={showFeedbackModal} onOpenChange={setShowFeedbackModal} />

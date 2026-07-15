@@ -130,7 +130,7 @@ export function Sidebar() {
 						</nav>
 					</ScrollArea>
 
-					{/* Feedback */}
+					{/* Feedback — full-width, directly above the profile/logout section */}
 					<div className="px-3 pb-2">
 						<button
 							type="button"
