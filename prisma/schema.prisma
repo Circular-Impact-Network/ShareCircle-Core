@@ -253,6 +253,10 @@ model Item {
   isValueVisible       Boolean   @default(false) @map("is_value_visible")
   // Vector embeddings stored via raw SQL (pgvector)
   embedding    Unsupported("vector(1024)")?
+  // Full-text search vector — a DB-managed GENERATED column (see migration
+  // 20260716120000_readd_items_search_vector). Declared here only so `db push`
+  // never drops it; the generation expression + GIN index live in the DB.
+  search_vector Unsupported("tsvector")?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
