@@ -12,7 +12,7 @@ const createCircleSchema = z.object({
 	description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullish(),
 });
 
-const INVITE_EXPIRY_DAYS = 7;
+const INVITE_EXPIRY_DAYS = 30;
 
 // Generate 8-character alphanumeric invite code
 function generateInviteCode(): string {

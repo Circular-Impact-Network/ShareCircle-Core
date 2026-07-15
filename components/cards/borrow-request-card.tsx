@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Check, CheckCheck, Loader2 } from 'lucide-react';
+import { Check, CheckCheck, Loader2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,8 @@ interface BorrowRequestCardProps {
 	onDecline: (id: string) => void;
 	onConfirmReturn: (id: string) => void;
 	onConfirmHandoff: (id: string) => void;
+	/** Start a direct chat with the requester (to discuss before approving/handing off). */
+	onChat?: (requesterId: string, itemId: string, itemName: string) => void;
 	isLoading: boolean;
 }
 
@@ -23,6 +25,7 @@ export function BorrowRequestCard({
 	onDecline,
 	onConfirmReturn,
 	onConfirmHandoff,
+	onChat,
 	isLoading,
 }: BorrowRequestCardProps) {
 	const router = useRouter();
@@ -91,6 +94,7 @@ export function BorrowRequestCard({
 							</Avatar>
 							<span className="truncate">{request.requester.name || 'Unknown'}</span>
 						</div>
+						{request.event && <p className="mt-1 text-xs font-medium text-primary">For: {request.event}</p>}
 						{request.message && (
 							<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
 								&ldquo;{request.message}&rdquo;
@@ -123,6 +127,32 @@ export function BorrowRequestCard({
 									disabled={isLoading}
 								>
 									Decline
+								</Button>
+								{onChat && (
+									<Button
+										size="sm"
+										variant="outline"
+										data-testid="chat-btn"
+										onClick={() => onChat(request.requester.id, request.item.id, request.item.name)}
+										className="gap-2"
+									>
+										<MessageCircle className="h-4 w-4" />
+										Chat
+									</Button>
+								)}
+							</div>
+						)}
+						{!isPending && onChat && (
+							<div className="mt-3">
+								<Button
+									size="sm"
+									variant="outline"
+									data-testid="chat-btn"
+									onClick={() => onChat(request.requester.id, request.item.id, request.item.name)}
+									className="gap-2"
+								>
+									<MessageCircle className="h-4 w-4" />
+									Chat with {request.requester.name || 'borrower'}
 								</Button>
 							</div>
 						)}

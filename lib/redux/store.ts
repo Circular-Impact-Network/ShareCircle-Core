@@ -8,6 +8,8 @@ import { notificationsApi } from './api/notificationsApi';
 import { messagesApi } from './api/messagesApi';
 import { circlesApi } from './api/circlesApi';
 import { notificationPreferencesApi } from './api/notificationPreferencesApi';
+import { homeApi } from './api/homeApi';
+import { impactApi } from './api/impactApi';
 
 export const store = configureStore({
 	reducer: {
@@ -20,6 +22,8 @@ export const store = configureStore({
 		[messagesApi.reducerPath]: messagesApi.reducer,
 		[circlesApi.reducerPath]: circlesApi.reducer,
 		[notificationPreferencesApi.reducerPath]: notificationPreferencesApi.reducer,
+		[homeApi.reducerPath]: homeApi.reducer,
+		[impactApi.reducerPath]: impactApi.reducer,
 	},
 	middleware: getDefaultMiddleware =>
 		getDefaultMiddleware().concat(
@@ -30,6 +34,8 @@ export const store = configureStore({
 			messagesApi.middleware,
 			circlesApi.middleware,
 			notificationPreferencesApi.middleware,
+			homeApi.middleware,
+			impactApi.middleware,
 		),
 });
 

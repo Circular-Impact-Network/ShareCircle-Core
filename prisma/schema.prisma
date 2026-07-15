@@ -108,6 +108,7 @@ model User {
   country_code      String?
   address           String?
   zip_code          String?
+  state             String?
   country           String?
   profile_media_url String?
   date_of_birth     DateTime? @map("date_of_birth")
@@ -197,7 +198,7 @@ model Circle {
   name        String
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
-  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '7 days'")) @map("invite_expires_at")
+  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '30 days'")) @map("invite_expires_at")
   avatarUrl   String?  @map("avatar_url")
   avatarPath  String?  @map("avatar_path")
   createdById String   @map("created_by")
@@ -437,6 +438,8 @@ model BorrowRequest {
   requesterId String              @map("requester_id")
   ownerId     String              @map("owner_id")
   message     String?             @db.Text
+  // Optional occasion the borrow is for (e.g. "Wedding", "Camping trip"). Free text.
+  event       String?             @db.Text
   desiredFrom DateTime            @map("desired_from")
   desiredTo   DateTime            @map("desired_to")
   status      BorrowRequestStatus @default(PENDING)
@@ -489,10 +492,15 @@ model BorrowTransaction {
   borrowerId      String                   @map("borrower_id")
   ownerId         String                   @map("owner_id")
   borrowedAt      DateTime                 @default(now()) @map("borrowed_at")
+  // Reservation start — from the borrow request's desiredFrom. When in the future the
+  // item is "Reserved" (still available now) rather than "Currently borrowed".
+  startAt         DateTime?                @map("start_at")
   dueAt           DateTime                 @map("due_at")
   returnedAt      DateTime?                @map("returned_at")
   status          BorrowTransactionStatus  @default(ACTIVE)
   returnNote      String?                  @map("return_note") @db.Text
+  // Occasion carried over from the borrow request (e.g. "Wedding"). Free text.
+  event           String?                  @db.Text
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
@@ -613,4 +621,116 @@ model Feedback {
   @@index([userId])
   @@index([createdAt])
   @@map("feedbacks")
+}
+
+// -----------------------------------------------------------------------------
+// Impact / sustainability reference data (CIN = Circular Impact Network).
+// Introspected from the live DB (prisma db pull) — these tables held reference
+// data (emission factors, retail values, transport factors, methodology params)
+// but were missing from the schema, which made `db push`/`migrate dev` want to
+// drop them. They back the deferred Impact-tracking feature (CO2 / waste saved).
+// -----------------------------------------------------------------------------
+
+model cin_data_source_registry {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_key               String                     @unique
+  source_name              String
+  source_url               String
+  publication_date         DateTime?                  @db.Date
+  doi_or_report_id         String?
+  publishing_org           String
+  used_for                 String
+  refresh_frequency_months Int
+  last_reviewed_at         DateTime                   @db.Date
+  next_review_due          DateTime?                  @default(dbgenerated("((last_reviewed_at + ((refresh_frequency_months)::double precision * '1 mon'::interval)))::date")) @db.Date
+  refresh_owner            String?
+  notes                    String?
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  cin_emissions_factors    cin_emissions_factors[]
+  cin_retail_value_factors cin_retail_value_factors[]
+  cin_transport_factors    cin_transport_factors[]
+}
+
+model cin_emissions_factors {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category                 String
+  material                 String?
+  kg_co2e_per_kg           Decimal                  @db.Decimal
+  source_key               String
+  source_name              String
+  source_url               String
+  publication_date         DateTime?                @db.Date
+  doi_or_report_id         String?
+  factor_version           String
+  methodology_notes        String?
+  refresh_frequency_months Int                      @default(12)
+  last_reviewed_at         DateTime                 @db.Date
+  next_refresh_due         DateTime?                @default(dbgenerated("((last_reviewed_at + ((refresh_frequency_months)::double precision * '1 mon'::interval)))::date")) @db.Date
+  valid_from               DateTime                 @db.Date
+  valid_to                 DateTime?                @db.Date
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  cin_data_source_registry cin_data_source_registry @relation(fields: [source_key], references: [source_key], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cin_methodology_config {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  param_key                String
+  param_value              Decimal   @db.Decimal
+  param_description        String?
+  status                   String    @default("proposed")
+  rationale                String?
+  source_url               String?
+  methodology_version      String
+  refresh_frequency_months Int       @default(12)
+  last_reviewed_at         DateTime  @db.Date
+  next_refresh_due         DateTime? @default(dbgenerated("((last_reviewed_at + ((refresh_frequency_months)::double precision * '1 mon'::interval)))::date")) @db.Date
+  valid_from               DateTime  @db.Date
+  valid_to                 DateTime? @db.Date
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model cin_retail_value_factors {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category                 String
+  brand_tier               String?
+  retail_value_low_usd     Decimal                  @db.Decimal
+  retail_value_mid_usd     Decimal                  @db.Decimal
+  retail_value_high_usd    Decimal                  @db.Decimal
+  source_key               String
+  source_name              String
+  source_url               String
+  confidence_level         String                   @default("medium")
+  refresh_frequency_months Int                      @default(3)
+  last_reviewed_at         DateTime                 @db.Date
+  next_refresh_due         DateTime?                @default(dbgenerated("((last_reviewed_at + ((refresh_frequency_months)::double precision * '1 mon'::interval)))::date")) @db.Date
+  factor_version           String
+  valid_from               DateTime                 @db.Date
+  valid_to                 DateTime?                @db.Date
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  cin_data_source_registry cin_data_source_registry @relation(fields: [source_key], references: [source_key], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cin_transport_factors {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transport_mode           String
+  kg_co2e_per_km           Decimal                  @db.Decimal
+  source_key               String
+  source_name              String
+  source_url               String
+  publication_date         DateTime?                @db.Date
+  factor_version           String
+  refresh_frequency_months Int                      @default(12)
+  last_reviewed_at         DateTime                 @db.Date
+  next_refresh_due         DateTime?                @default(dbgenerated("((last_reviewed_at + ((refresh_frequency_months)::double precision * '1 mon'::interval)))::date")) @db.Date
+  valid_from               DateTime                 @db.Date
+  valid_to                 DateTime?                @db.Date
+  created_at               DateTime                 @default(now()) @db.Timestamptz(6)
+  cin_data_source_registry cin_data_source_registry @relation(fields: [source_key], references: [source_key], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model site_config {
+  key        String    @id
+  value      String
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }

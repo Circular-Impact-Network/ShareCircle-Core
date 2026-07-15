@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import type { ChatMessage } from './types';
 
@@ -131,8 +131,14 @@ export function ChatThread({
 					</div>
 				)}
 				{messages.length === 0 && !isLoading ? (
-					<div className="rounded-2xl border border-dashed border-border/70 bg-background/70 px-4 py-10 text-center text-sm text-muted-foreground">
-						No messages yet. Say hello to start the conversation.
+					<div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
+						<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+							<MessageCircle className="h-7 w-7 text-primary" />
+						</div>
+						<div className="space-y-1">
+							<p className="font-medium text-foreground">No messages yet</p>
+							<p className="text-sm text-muted-foreground">Say hello to start the conversation.</p>
+						</div>
 					</div>
 				) : (
 					messages.map(message => (

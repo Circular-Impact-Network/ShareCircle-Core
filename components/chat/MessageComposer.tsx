@@ -2,6 +2,7 @@
 import { Camera, ImagePlus, Send, Smile, X } from 'lucide-react';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { AudioInput } from '@/components/ui/audio-input';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -311,6 +312,12 @@ export function MessageComposer({
 						}
 					}}
 					disabled={disabled}
+				/>
+				<AudioInput
+					aria-label="Record a voice message"
+					disabled={disabled}
+					className="h-9 w-9 rounded-xl"
+					onTranscript={text => onChange(value ? `${value} ${text}` : text)}
 				/>
 				<Button
 					size="icon"

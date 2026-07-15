@@ -12,6 +12,7 @@ import {
 	HandshakeIcon,
 	History,
 	CheckCircle2,
+	Leaf,
 } from 'lucide-react';
 import { RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
@@ -126,6 +127,24 @@ function ActiveTransactionCard({
 							Due: {new Date(transaction.dueAt).toLocaleDateString()}
 							{overdue && ' — overdue'}
 						</p>
+						{transaction.borrowRequest?.event && (
+							<p className="text-xs mt-1 font-medium text-primary">
+								For: {transaction.borrowRequest.event}
+							</p>
+						)}
+						{transaction.impact && transaction.impact.ghgSavedKg > 0 && (
+							<div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+								<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+									<Leaf className="h-3 w-3" />
+									{Math.round(transaction.impact.ghgSavedKg * 10) / 10} kg CO₂ saved
+								</span>
+								{transaction.impact.borrowerSavingsUsd > 0 && (
+									<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+										${Math.round(transaction.impact.borrowerSavingsUsd).toLocaleString()} saved
+									</span>
+								)}
+							</div>
+						)}
 
 						{/* Owner actions */}
 						{role === 'owner' && isActive && onConfirmHandoff && (

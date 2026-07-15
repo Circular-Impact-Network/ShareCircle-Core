@@ -1,4 +1,7 @@
+'use client';
+
 import { useEffect, useRef, useState, createContext, useContext, ReactNode, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
 
@@ -13,11 +16,15 @@ const GlobalPresenceContext = createContext<GlobalPresenceContextType>({
 });
 
 type GlobalPresenceProviderProps = {
-	userId: string | null;
+	/** Optional explicit user id. When omitted, the current session's user id is used —
+	 * lets the provider be mounted app-wide (in the authenticated layout) without prop drilling. */
+	userId?: string | null;
 	children: ReactNode;
 };
 
-export function GlobalPresenceProvider({ userId, children }: GlobalPresenceProviderProps) {
+export function GlobalPresenceProvider({ userId: userIdProp, children }: GlobalPresenceProviderProps) {
+	const { data: session } = useSession();
+	const userId = userIdProp !== undefined ? userIdProp : (session?.user?.id ?? null);
 	const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
 	const [isConnected, setIsConnected] = useState(false);
 	const channelRef = useRef<RealtimeChannel | null>(null);

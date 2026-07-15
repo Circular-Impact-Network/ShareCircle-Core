@@ -1,8 +1,12 @@
 import { memo } from 'react';
-import { Search, Pin, BellOff } from 'lucide-react';
+import { Search, Pin, BellOff, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import { NoCircleState } from '@/components/ui/no-circle-state';
+import { useGlobalPresence } from '@/hooks/useGlobalPresence';
+import { useGetCirclesQuery } from '@/lib/redux/api/circlesApi';
 import { cn } from '@/lib/utils';
 import type { ChatThread } from './types';
 
@@ -23,6 +27,8 @@ export const ChatList = memo(function ChatList({
 	onSelect,
 	isLoading = false,
 }: ChatListProps) {
+	const { onlineUserIds } = useGlobalPresence();
+	const { data: circles = [] } = useGetCirclesQuery();
 	return (
 		<div className="flex h-full w-full shrink-0 flex-col overflow-hidden border-b border-border/70 bg-card/90 md:w-[22rem] md:border-b-0 md:border-r">
 			{/* Header — single row: title left, search right */}
@@ -54,7 +60,20 @@ export const ChatList = memo(function ChatList({
 						</div>
 					))
 				) : threads.length === 0 ? (
-					<div className="px-4 py-12 text-center text-sm text-muted-foreground">No conversations yet.</div>
+					<div className="p-4">
+						{circles.length === 0 ? (
+							<NoCircleState
+								title="No conversations yet"
+								description="You chat with people in your circles. Join or create a circle to start messaging."
+							/>
+						) : (
+							<EmptyState
+								icon={MessageCircle}
+								title="No conversations yet"
+								description="Start a chat from an item or a borrow request and it'll show up here."
+							/>
+						)}
+					</div>
 				) : (
 					threads.map(thread => {
 						const otherUser = thread.participants[0];
@@ -62,6 +81,7 @@ export const ChatList = memo(function ChatList({
 						const isPinned = Boolean(thread.pinnedAt);
 						const isMuted = thread.mutedUntil && new Date(thread.mutedUntil) > new Date();
 						const hasUnread = thread.unreadCount > 0;
+						const isOnline = otherUser ? onlineUserIds.includes(otherUser.id) : false;
 
 						return (
 							<button
@@ -92,6 +112,12 @@ export const ChatList = memo(function ChatList({
 										<span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-card">
 											<Pin className="h-2.5 w-2.5 text-muted-foreground" />
 										</span>
+									)}
+									{isOnline && (
+										<span
+											className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
+											aria-label="Online"
+										/>
 									)}
 								</div>
 

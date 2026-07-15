@@ -336,6 +336,7 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 				categories,
 				tags,
 				circleIds: selectedCircleIds,
+				previousCircleIds: item?.circles.map(circle => circle.id) ?? [],
 				estimatedWeightKg,
 				estimatedNewPriceUsd,
 				isValueVisible,

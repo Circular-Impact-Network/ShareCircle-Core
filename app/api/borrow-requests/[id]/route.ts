@@ -219,14 +219,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					data: { status: BorrowRequestStatus.APPROVED },
 				});
 
-				// Create borrow transaction
+				// Create borrow transaction. startAt carries the requested start date so the UI can
+				// distinguish a future "Reserved" booking from a "Currently borrowed" one.
 				const transaction = await tx.borrowTransaction.create({
 					data: {
 						borrowRequestId: id,
 						itemId: borrowRequest.itemId,
 						borrowerId: borrowRequest.requesterId,
 						ownerId: borrowRequest.ownerId,
+						startAt: borrowRequest.desiredFrom,
 						dueAt: borrowRequest.desiredTo,
+						event: borrowRequest.event,
 						status: BorrowTransactionStatus.ACTIVE,
 					},
 				});

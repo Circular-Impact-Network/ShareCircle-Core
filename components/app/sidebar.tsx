@@ -62,7 +62,7 @@ export function Sidebar() {
 		if (typeof navigator !== 'undefined' && navigator.serviceWorker.controller) {
 			navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_RUNTIME_CACHES' });
 		}
-		await signOut({ callbackUrl: '/' });
+		await signOut({ callbackUrl: '/login' });
 	};
 
 	const getInitials = (name: string) => {
@@ -130,7 +130,7 @@ export function Sidebar() {
 						</nav>
 					</ScrollArea>
 
-					{/* Feedback */}
+					{/* Feedback — full-width, directly above the profile/logout section */}
 					<div className="px-3 pb-2">
 						<button
 							type="button"
