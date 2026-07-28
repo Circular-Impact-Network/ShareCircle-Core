@@ -158,7 +158,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOwn, onRet
 						{parseMessageContent(message.body, highlight, isOwn)}
 					</p>
 				)}
-				<div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] opacity-75">
+				<div className="mt-1.5 flex items-center justify-end gap-1.5 text-3xs opacity-75">
 					<span>
 						{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 					</span>

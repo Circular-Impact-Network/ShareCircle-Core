@@ -277,7 +277,7 @@ export function DashboardHome() {
 												<p className="line-clamp-1 text-sm font-medium text-foreground">
 													{otherUser?.name || 'Unknown'}
 												</p>
-												<span className="shrink-0 text-[11px] text-muted-foreground">
+												<span className="shrink-0 text-2xs text-muted-foreground">
 													{thread.lastMessageAt
 														? formatDistanceToNow(new Date(thread.lastMessageAt), {
 																addSuffix: true,
@@ -289,7 +289,7 @@ export function DashboardHome() {
 												{thread.lastMessage?.body || 'Start a conversation'}
 											</p>
 											{hasUnread ? (
-												<p className="mt-1 text-[11px] font-medium text-primary">
+												<p className="mt-1 text-2xs font-medium text-primary">
 													{thread.unreadCount} unread{' '}
 													{thread.unreadCount === 1 ? 'message' : 'messages'}
 												</p>

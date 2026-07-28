@@ -4,6 +4,8 @@ import { Leaf, DollarSign, HandshakeIcon, Users, Crown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useGetCircleImpactQuery } from '@/lib/redux/api/impactApi';
+import { formatMoney } from '@/lib/currency';
+import { usePreferences } from '@/app/providers';
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
@@ -34,6 +36,7 @@ function initials(name: string | null) {
 export function CircleImpactPanel({ circleId }: { circleId: string }) {
 	const { data, isLoading } = useGetCircleImpactQuery(circleId);
 	const summary = data?.summary;
+	const { currency, fxRates } = usePreferences();
 
 	return (
 		<Card className="border-border/60">
@@ -60,7 +63,7 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 						<Metric
 							icon={<DollarSign className="h-3.5 w-3.5" />}
 							label="Money saved"
-							value={`$${Math.round(summary.borrowerSavingsUsd).toLocaleString()}`}
+							value={formatMoney(summary.borrowerSavingsUsd, currency, fxRates)}
 						/>
 						<Metric
 							icon={<Leaf className="h-3.5 w-3.5" />}
@@ -95,7 +98,7 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 										<th className="px-2 py-2 text-right font-medium">Lends</th>
 										<th className="px-2 py-2 text-right font-medium">Borrows</th>
 										<th className="px-2 py-2 text-right font-medium">CO₂ (kg)</th>
-										<th className="py-2 pl-2 text-right font-medium">Saved ($)</th>
+										<th className="py-2 pl-2 text-right font-medium">Saved</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -104,7 +107,7 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 											<td className="py-2 pr-2">
 												<div className="flex items-center gap-2">
 													<Avatar className="h-6 w-6">
-														<AvatarFallback className="text-[10px]">
+														<AvatarFallback className="text-3xs">
 															{initials(m.userName)}
 														</AvatarFallback>
 													</Avatar>
@@ -120,7 +123,7 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 												{Math.round(m.ghgSavedKg * 10) / 10}
 											</td>
 											<td className="py-2 pl-2 text-right tabular-nums">
-												{Math.round(m.savingsUsd).toLocaleString()}
+												{formatMoney(m.savingsUsd, currency, fxRates)}
 											</td>
 										</tr>
 									))}

@@ -43,7 +43,7 @@ export function PageTabsTrigger({ className, children, badge, ...props }: PageTa
 				{badge === undefined || badge === null ? null : (
 					<Badge
 						variant="secondary"
-						className="h-4 min-w-[16px] px-1 text-[10px] sm:h-5 sm:min-w-[20px] sm:px-1.5 sm:text-[11px]"
+						className="h-4 min-w-[16px] px-1 text-3xs sm:h-5 sm:min-w-[20px] sm:px-1.5 sm:text-2xs"
 					>
 						{badge}
 					</Badge>

@@ -97,6 +97,11 @@
 	/* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
 	--font-sans: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback';
 	--font-display: 'Poppins', sans-serif;
+	/* Sub-xs steps, in rem so they follow the root font size set by the Appearance
+	   preference (lib/preferences.ts). These replace the hardcoded text-[10px] /
+	   text-[11px] arbitrary values, which are absolute px and would not scale. */
+	--text-2xs: 0.6875rem; /* 11px at a 16px root */
+	--text-3xs: 0.625rem; /* 10px at a 16px root */
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);

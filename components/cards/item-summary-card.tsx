@@ -59,12 +59,12 @@ export function ItemSummaryCard({
 							{item.name}
 						</h3>
 						{borrowStatus && (
-							<Badge variant="secondary" className="shrink-0 text-[10px]">
+							<Badge variant="secondary" className="shrink-0 text-3xs">
 								{borrowStatus}
 							</Badge>
 						)}
 						{item.isAvailable === false && !borrowStatus && (
-							<Badge variant="outline" className="shrink-0 text-[10px] text-amber-600">
+							<Badge variant="outline" className="shrink-0 text-3xs text-amber-600">
 								Borrowed
 							</Badge>
 						)}
@@ -96,13 +96,13 @@ export function ItemSummaryCard({
 				<div className="flex min-h-6 items-center gap-2 text-sm text-muted-foreground">
 					<Avatar className="h-5 w-5">
 						<AvatarImage src={item.owner.image || undefined} />
-						<AvatarFallback className="text-[10px]">
+						<AvatarFallback className="text-3xs">
 							{item.owner.name?.[0]?.toUpperCase() || '?'}
 						</AvatarFallback>
 					</Avatar>
 					<span className="truncate">{item.owner.name || 'Unknown'}</span>
 					{item.isOwner ? (
-						<Badge variant="outline" className="shrink-0 text-[10px]">
+						<Badge variant="outline" className="shrink-0 text-3xs">
 							You
 						</Badge>
 					) : null}
