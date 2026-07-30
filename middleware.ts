@@ -35,23 +35,31 @@ export async function middleware(request: NextRequest) {
 		/^\/requests$/,
 		/^\/settings$/,
 		/^\/dashboard(\/.*)?$/,
+		// Invite landing. It joins a circle on mount, so it must sit behind the same email
+		// verification and profile-completion gates as the rest of the app — otherwise an
+		// invite link is a way to become a circle member with no age or location on file.
+		// The gates preserve ?code= via callbackUrl, so the join still completes afterwards.
+		/^\/join$/,
 	];
 
 	// Check if current path is a protected route
 	const isProtectedRoute = protectedRoutePatterns.some(pattern => pattern.test(pathname));
 	const isCompleteProfile = pathname === '/complete-profile';
+	// Query string included: a bare pathname silently dropped ?code= from /join, so anyone
+	// bounced through login or profile completion lost the invite they clicked.
+	const returnTo = `${pathname}${request.nextUrl.search}`;
 
 	// /complete-profile requires authentication
 	if (isCompleteProfile && !token) {
 		const loginUrl = new URL('/login', request.url);
-		loginUrl.searchParams.set('callbackUrl', pathname);
+		loginUrl.searchParams.set('callbackUrl', returnTo);
 		return NextResponse.redirect(loginUrl);
 	}
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {
 		const loginUrl = new URL('/login', request.url);
-		loginUrl.searchParams.set('callbackUrl', pathname);
+		loginUrl.searchParams.set('callbackUrl', returnTo);
 		return NextResponse.redirect(loginUrl);
 	}
 
@@ -79,14 +87,17 @@ export async function middleware(request: NextRequest) {
 			const verifyUrl = new URL('/signup', request.url);
 			verifyUrl.searchParams.set('mode', 'verify');
 			verifyUrl.searchParams.set('email', token.email as string);
+			if (pathname !== '/home') verifyUrl.searchParams.set('callbackUrl', returnTo);
 			return NextResponse.redirect(verifyUrl);
 		}
 
-		// Profile completion gate: users missing required profile data (e.g. Google
-		// sign-ups that skip date of birth) must complete it before using the app.
+		// Profile completion gate: date of birth and location are mandatory at signup, but a
+		// Google sign-up has neither and older accounts predate the requirement. Both are
+		// enforced here rather than only on the signup form, so there is no route into the app
+		// that leaves them unset — see isProfileComplete in lib/auth.ts.
 		if (token.emailVerified && token.profileComplete === false) {
 			const completeUrl = new URL('/complete-profile', request.url);
-			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', pathname);
+			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', returnTo);
 			return NextResponse.redirect(completeUrl);
 		}
 	}

@@ -8,7 +8,9 @@ const completeProfileSchema = z.object({
 	dateOfBirth: z.string().min(1, 'Date of birth is required'),
 	latitude: z.number().min(-90).max(90).nullish(),
 	longitude: z.number().min(-180).max(180).nullish(),
-	city: z.string().trim().max(120).nullish(),
+	// Required: location is mandatory and the client has no manual input, so a missing city
+	// means detection was bypassed rather than declined.
+	city: z.string().trim().min(1, 'Location is required.').max(120),
 	state: z.string().trim().max(120).nullish(),
 	zipCode: z.string().trim().max(20).nullish(),
 	countryName: z.string().trim().max(120).nullish(),
@@ -47,7 +49,9 @@ export async function POST(req: NextRequest) {
 				date_of_birth: dob,
 				...(latitude != null && { latitude }),
 				...(longitude != null && { longitude }),
-				...(city && { city }),
+				// Unconditional: `city` is what the profile-completion gate checks, so a spread
+				// that could skip it would loop the user back to this form forever.
+				city,
 				...(state && { state }),
 				...(zipCode && { zip_code: zipCode }),
 				...(countryName && { country: countryName }),
