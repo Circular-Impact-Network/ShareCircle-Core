@@ -18,10 +18,33 @@ type OtpInputProps = {
 // Previously duplicated verbatim across app/login/page.tsx and app/signup/page.tsx.
 export function OtpInput({ value, onChange, disabled, onComplete, autoFocus }: OtpInputProps) {
 	const refs = useRef<(HTMLInputElement | null)[]>([]);
+	// The last code we auto-submitted. Without this, onComplete fired on *every* keystroke
+	// while the code was full, so editing a digit re-submitted the same code — the second
+	// request found the OTP row already consumed and reported "Invalid verification code"
+	// over a verification that had in fact succeeded.
+	const lastSubmittedRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		if (autoFocus) refs.current[0]?.focus();
 	}, [autoFocus]);
+
+	const submitIfComplete = (digits: string[]) => {
+		const code = digits.join('');
+		const isComplete = code.length === 6 && digits.every(d => d !== '');
+
+		if (!isComplete) {
+			// Incomplete again — allow the same code to be submitted afresh later.
+			lastSubmittedRef.current = null;
+			return;
+		}
+
+		if (lastSubmittedRef.current === code) {
+			return;
+		}
+
+		lastSubmittedRef.current = code;
+		onComplete?.(code);
+	};
 
 	const setDigit = (index: number, digit: string) => {
 		if (!/^\d*$/.test(digit)) return;
@@ -33,10 +56,7 @@ export function OtpInput({ value, onChange, disabled, onComplete, autoFocus }: O
 			refs.current[index + 1]?.focus();
 		}
 
-		const code = next.join('');
-		if (code.length === 6 && next.every(d => d !== '')) {
-			onComplete?.(code);
-		}
+		submitIfComplete(next);
 	};
 
 	const onKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -51,7 +71,7 @@ export function OtpInput({ value, onChange, disabled, onComplete, autoFocus }: O
 		if (pasted.length === 6) {
 			const next = pasted.split('');
 			onChange(next);
-			onComplete?.(pasted);
+			submitIfComplete(next);
 		}
 	};
 

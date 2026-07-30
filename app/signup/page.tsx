@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -27,6 +27,10 @@ import {
 	validatePhoneByCountry,
 } from '@/lib/phone';
 import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { getPasswordRequirementsText, isPasswordAcceptable } from '@/lib/password-validation';
+import { shouldNavigateAfterSignIn, signInError, signInWithTimeout } from '@/lib/auth-client';
 
 type SignupMode = 'signup' | 'verify';
 
@@ -45,7 +49,9 @@ function SignupContent() {
 	const [countryName, setCountryName] = useState('');
 	const [latitude, setLatitude] = useState<number | null>(null);
 	const [longitude, setLongitude] = useState<number | null>(null);
-	const { locate, isLocating } = useGeolocation();
+	const [locationError, setLocationError] = useState<string | null>(null);
+	const [approximateLocation, setApproximateLocation] = useState(false);
+	const { locate, isLocating, error: geoError } = useGeolocation();
 	const [verificationMethod, setVerificationMethod] = useState<'email' | 'phone'>('email');
 	const [verificationPhone, setVerificationPhone] = useState('');
 	const [verificationCountry, setVerificationCountry] = useState<SupportedPhoneCountry>('IN');
@@ -91,6 +97,9 @@ function SignupContent() {
 			setIsResending(false);
 			setResendCooldown(0);
 			setCode(EMPTY_OTP);
+			// Belt-and-braces: returning to the signup form must always leave it usable, even
+			// if some future path forgets to clear isLoading before switching modes.
+			setIsLoading(false);
 		}
 	}, [mode]);
 
@@ -110,6 +119,23 @@ function SignupContent() {
 		const queryString = query.toString();
 		router.push(queryString ? `/signup?${queryString}` : '/signup');
 		setMode(nextMode);
+	};
+
+	/**
+	 * Location is required and has no manual input, so submission blocks until detection
+	 * succeeds. Checked AFTER the field validations: reporting a missing location before a
+	 * mistyped password would bury the error the user can actually act on.
+	 */
+	const ensureLocationPresent = (): boolean => {
+		if (city.trim()) {
+			return true;
+		}
+		setError('We need your location to continue. Tap Retry next to Location.');
+		setIsLoading(false);
+		if (!isLocating) {
+			void handleUseLocation();
+		}
+		return false;
 	};
 
 	const handleSignup = async (e: React.FormEvent) => {
@@ -137,8 +163,12 @@ function SignupContent() {
 					return;
 				}
 
-				if (password.length < 6) {
-					setError('Password must be at least 6 characters');
+				// Same rule set the API enforces. The old `length < 6` check let a password
+				// through that /api/auth/signup then rejected with a 400, so the form looked
+				// broken; the live checklist under the field means this branch is now a
+				// backstop rather than the user's first hint that anything is wrong.
+				if (!isPasswordAcceptable(password)) {
+					setError(getPasswordRequirementsText());
 					setIsLoading(false);
 					return;
 				}
@@ -161,6 +191,10 @@ function SignupContent() {
 					return;
 				}
 
+				if (!ensureLocationPresent()) {
+					return;
+				}
+
 				// Call signup API
 				const response = await fetch('/api/auth/signup', {
 					method: 'POST',
@@ -174,7 +208,7 @@ function SignupContent() {
 						dateOfBirth: dob ? format(dob, 'yyyy-MM-dd') : undefined,
 						latitude: latitude ?? undefined,
 						longitude: longitude ?? undefined,
-						city: city.trim() || undefined,
+						city: city.trim(),
 						state: stateRegion.trim() || undefined,
 						zipCode: zipCode.trim() || undefined,
 						countryName: countryName.trim() || undefined,
@@ -191,6 +225,10 @@ function SignupContent() {
 
 				// If email verification is required, switch to verify mode
 				if (data.requiresVerification) {
+					// Must clear isLoading before returning: every field and the submit button are
+					// disabled={isLoading}, so leaving it set made "Back to signup" a dead form that
+					// only a hard reload could recover.
+					setIsLoading(false);
 					setVerificationMethod('email');
 					updateMode('verify', { email });
 					// data.emailSent === false means the OTP email couldn't be sent (e.g. mail not
@@ -206,13 +244,10 @@ function SignupContent() {
 				}
 
 				// Auto sign in after successful signup (if no verification required)
-				const signInResult = await signIn('credentials', {
-					email,
-					password,
-					redirect: false,
-				});
+				const signInResult = await signInWithTimeout({ email, password });
 
-				if (signInResult?.error) {
+				if (!shouldNavigateAfterSignIn(signInResult)) {
+					console.error('Post-signup sign-in failed:', signInError(signInResult));
 					setError('Account created but login failed. Please try logging in.');
 					setIsLoading(false);
 					return;
@@ -239,6 +274,10 @@ function SignupContent() {
 					return;
 				}
 
+				if (!ensureLocationPresent()) {
+					return;
+				}
+
 				const response = await fetch('/api/auth/signup', {
 					method: 'POST',
 					headers: {
@@ -251,7 +290,7 @@ function SignupContent() {
 						dateOfBirth: dob ? format(dob, 'yyyy-MM-dd') : undefined,
 						latitude: latitude ?? undefined,
 						longitude: longitude ?? undefined,
-						city: city.trim() || undefined,
+						city: city.trim(),
 						state: stateRegion.trim() || undefined,
 						zipCode: zipCode.trim() || undefined,
 						countryName: countryName.trim() || undefined,
@@ -284,11 +323,17 @@ function SignupContent() {
 		}
 	};
 
+	/**
+	 * Deliberately NOT gated on the terms checkbox.
+	 *
+	 * That checkbox belongs to the email form below it, and gating Google on it was pure
+	 * confusion: the button looked broken for anyone who hadn't scrolled past a form they
+	 * weren't using. Google sign-ups always land on /complete-profile (they have no date of
+	 * birth, so `profileComplete` is false and the middleware redirects them), and that page
+	 * carries its own terms checkbox which blocks its submit. Acceptance is still captured
+	 * before the user can reach the app — just at the step that actually applies to them.
+	 */
 	const handleGoogleLogin = async () => {
-		if (!agreedToPolicies) {
-			setError('Please accept the Terms of Service and Privacy Policy to continue.');
-			return;
-		}
 		setIsGoogleLoading(true);
 		try {
 			await signIn('google', { callbackUrl });
@@ -297,19 +342,38 @@ function SignupContent() {
 		}
 	};
 
-	const handleUseLocation = async () => {
+	const handleUseLocation = useCallback(async () => {
 		const result = await locate();
-		if (!result) {
-			setError('Unable to retrieve your location. You can enter your city manually.');
+		if (!result?.city) {
+			// The hook's message names the actual cause (blocked permission vs offline vs
+			// unsupported); the old generic copy pointed at a manual input that no longer exists.
+			setLocationError(geoError ?? 'We could not detect your location. Please try again.');
 			return;
 		}
+		setLocationError(null);
+		setApproximateLocation(result.approximate);
 		setLatitude(result.latitude);
 		setLongitude(result.longitude);
-		if (result.city) setCity(result.city);
-		if (result.state) setStateRegion(result.state);
-		if (result.zipCode) setZipCode(result.zipCode);
-		if (result.country) setCountryName(result.country);
-	};
+		setCity(result.city);
+		setStateRegion(result.state);
+		setZipCode(result.zipCode);
+		setCountryName(result.country);
+	}, [locate, geoError]);
+
+	// Detect on mount. Location is required, so waiting for the user to press a button
+	// (the old behaviour) just meant most people never triggered detection at all.
+	//
+	// Reads modeParam, not `mode`: on a /signup?mode=verify URL the state setter that flips
+	// `mode` hasn't been applied yet when this effect runs, so gating on `mode` fired a
+	// geolocation permission prompt over the OTP screen.
+	useEffect(() => {
+		if (modeParam === 'verify' || mode !== 'signup' || city || isLocating) {
+			return;
+		}
+		void handleUseLocation();
+		// Intentionally mount-only: re-running on every city/isLocating change would loop.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleVerify = async (verificationCode?: string) => {
 		const codeToVerify = verificationCode || code.join('');
@@ -325,19 +389,17 @@ function SignupContent() {
 		try {
 			if (verificationMethod === 'phone') {
 				setVerificationStatus('signing-in');
-				const signInResult = await signIn('credentials', {
+				// Same bounded wait as the email path below — an unbounded await here strands
+				// the user on "Signing you in…" for exactly the same reason.
+				const signInResult = await signInWithTimeout({
 					phone: verificationPhone,
 					country: verificationCountry,
 					code: codeToVerify,
-					redirect: false,
 				});
 
-				if (signInResult?.error) {
-					setError(
-						signInResult.error === 'CredentialsSignin'
-							? 'Invalid code. Please try again.'
-							: signInResult.error,
-					);
+				if (!shouldNavigateAfterSignIn(signInResult)) {
+					const reason = signInError(signInResult);
+					setError(!reason || reason === 'CredentialsSignin' ? 'Invalid code. Please try again.' : reason);
 					setIsVerifying(false);
 					setVerificationStatus('idle');
 					return;
@@ -369,21 +431,29 @@ function SignupContent() {
 				return;
 			}
 
+			// Past this point the email IS verified — the server has already written
+			// emailVerified. Whatever happens next must end in a navigation, never in an
+			// indefinite spinner.
 			setVerificationStatus('signing-in');
 
 			if (password) {
-				const signInResult = await signIn('credentials', {
-					email,
-					password,
-					redirect: false,
-				});
+				// Bounded wait — see signInWithTimeout for why an unbounded one hangs here.
+				const signInOutcome = await signInWithTimeout({ email, password });
 
-				if (signInResult?.ok) {
+				if (shouldNavigateAfterSignIn(signInOutcome)) {
 					window.location.href = callbackUrl;
 					return;
 				}
+
+				// A genuine credential failure. Don't strand the user on the verify screen with a
+				// code that has already been consumed — hand off to login, which shows the
+				// "Email verified successfully" notice.
+				console.error('Post-verification sign-in failed:', signInError(signInOutcome));
 			}
 
+			// No password in state: the page was reloaded, or reached via /verify-email or the
+			// middleware redirect. Verification still succeeded, so send them to login rather
+			// than leaving the spinner up.
 			window.location.href = '/login?verified=true';
 		} catch {
 			setError('An error occurred. Please try again.');
@@ -551,12 +621,20 @@ function SignupContent() {
 					className="w-full"
 					onValueChange={v => setSignupMethod(v as 'email' | 'phone')}
 				>
-					{PHONE_AUTH_ENABLED && (
-						<TabsList className="grid w-full grid-cols-2 mb-6">
-							<TabsTrigger value="email">Email</TabsTrigger>
-							<TabsTrigger value="phone">Phone</TabsTrigger>
-						</TabsList>
-					)}
+					{/* The Phone tab stays visible but disabled until the SMS provider is live, so
+					    the missing option reads as "not yet" rather than as a broken page. */}
+					<TabsList className="grid w-full grid-cols-2 mb-6">
+						<TabsTrigger value="email">Email</TabsTrigger>
+						<TabsTrigger
+							value="phone"
+							disabled={!PHONE_AUTH_ENABLED}
+							data-testid="phone-signup-tab"
+							className="gap-1.5"
+						>
+							Phone
+							{!PHONE_AUTH_ENABLED && <ComingSoonPill />}
+						</TabsTrigger>
+					</TabsList>
 
 					<form onSubmit={handleSignup} className="space-y-4">
 						<TabsContent value="email" className="space-y-4 mt-0">
@@ -593,6 +671,10 @@ function SignupContent() {
 									className="w-full"
 									disabled={isLoading}
 								/>
+								{/* Live, as-you-type. The rules used to only surface after a failed
+								    submit — and the submit that surfaced them was the API's, not
+								    the form's, so it read as a random rejection. */}
+								<PasswordRequirements password={password} />
 							</div>
 
 							<div>
@@ -604,6 +686,11 @@ function SignupContent() {
 									className="w-full"
 									disabled={isLoading}
 								/>
+								{confirmPassword.length > 0 && password !== confirmPassword && (
+									<p className="mt-1.5 text-2xs text-destructive" data-testid="confirm-mismatch">
+										Passwords do not match yet.
+									</p>
+								)}
 							</div>
 						</TabsContent>
 
@@ -676,44 +763,54 @@ function SignupContent() {
 							<p className="text-xs text-muted-foreground mt-1">You must be at least 13 years old.</p>
 						</div>
 
-						{/* Location — optional, shared for both signup methods */}
+						{/* Location — required, always detected automatically. There is deliberately no
+						    text input: a typed city cannot be trusted for matching people to nearby
+						    circles, and the detection chain (GPS, then IP) always yields something on a
+						    publicly-routable network. */}
 						<div>
-							<label className="block text-sm font-medium mb-2">
-								Location <span className="text-muted-foreground text-xs">(optional)</span>
-							</label>
-							<div className="flex gap-2">
-								<Input
-									type="text"
-									placeholder="Your city"
-									value={city}
-									onChange={e => setCity(e.target.value)}
-									className="flex-1"
-									disabled={isLoading}
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									size="icon"
-									onClick={handleUseLocation}
-									disabled={isLoading || isLocating}
-									title="Use my location"
-								>
-									{isLocating ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<LocateFixed className="h-4 w-4" />
-									)}
-								</Button>
+							<label className="block text-sm font-medium mb-2">Location</label>
+							<div
+								className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2.5"
+								data-testid="signup-location"
+							>
+								{isLocating ? (
+									<>
+										<Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+										<span className="text-sm text-muted-foreground">Detecting your location…</span>
+									</>
+								) : city ? (
+									<>
+										<MapPin className="h-4 w-4 shrink-0 text-emerald-600" />
+										<span className="text-sm font-medium" data-testid="signup-location-value">
+											{[city, stateRegion, countryName].filter(Boolean).join(', ')}
+										</span>
+									</>
+								) : (
+									<>
+										<MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+										<span className="text-sm text-muted-foreground">Location not detected yet</span>
+									</>
+								)}
+								{!isLocating && (
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="ml-auto shrink-0 gap-1.5"
+										onClick={handleUseLocation}
+										disabled={isLoading}
+										data-testid="signup-location-retry"
+									>
+										<LocateFixed className="h-3.5 w-3.5" />
+										{city ? 'Update' : 'Retry'}
+									</Button>
+								)}
 							</div>
-							{latitude && longitude && (
-								<p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-									<MapPin className="h-3 w-3" />
-									Location captured
-									{city ? ` · ${city}` : ''}
-								</p>
-							)}
+							{locationError && <p className="text-xs text-destructive mt-1">{locationError}</p>}
 							<p className="text-xs text-muted-foreground mt-1">
-								Click the pin icon to auto-detect, or type your city manually.
+								{approximateLocation && city
+									? 'Approximate location from your network. Allow location access for a more precise result.'
+									: 'Detected automatically so we can connect you with circles nearby.'}
 							</p>
 						</div>
 
@@ -777,7 +874,8 @@ function SignupContent() {
 					variant="outline"
 					className="w-full h-11"
 					onClick={handleGoogleLogin}
-					disabled={isGoogleLoading || isLoading || !agreedToPolicies}
+					disabled={isGoogleLoading || isLoading}
+					data-testid="google-signup-btn"
 				>
 					{isGoogleLoading ? (
 						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -800,6 +898,10 @@ function SignupContent() {
 					)}
 					Sign up with Google
 				</Button>
+
+				<p className="mt-3 text-center text-2xs text-muted-foreground">
+					You&apos;ll confirm the Terms of Service and Privacy Policy on the next step.
+				</p>
 
 				<p className="text-center text-muted-foreground mt-6">
 					Already have an account?{' '}
