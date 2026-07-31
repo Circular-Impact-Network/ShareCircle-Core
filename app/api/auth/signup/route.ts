@@ -3,10 +3,34 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { validatePassword, getPasswordRequirementsText } from '@/lib/password-validation';
-import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { generateOTP, isEmailConfigured, sendOTPEmail } from '@/lib/email';
 import { sendOtpSms } from '@/lib/sms';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from '@/lib/phone';
 import { getOtpIdentifier, hashOtp, normalizeEmail } from '@/lib/otp';
+import { z } from 'zod';
+
+/**
+ * Signup payload. This route previously did a raw `as` cast with no validation at all.
+ *
+ * `city` is required: location is mandatory at signup and the client has no manual input,
+ * so an absent city means the detection chain was bypassed. `latitude`/`longitude` stay
+ * optional because the IP fallback may only resolve a city.
+ */
+const signupSchema = z.object({
+	name: z.string().trim().min(1).max(120).optional(),
+	email: z.string().trim().max(320).optional(),
+	password: z.string().max(200).optional(),
+	phoneNumber: z.string().trim().max(32).optional(),
+	country: z.string().trim().max(8).optional(),
+	dateOfBirth: z.string().trim().max(32).optional(),
+	latitude: z.number().min(-90).max(90).optional(),
+	longitude: z.number().min(-180).max(180).optional(),
+	city: z.string().trim().min(1, 'Location is required to sign up.').max(120),
+	state: z.string().trim().max(120).optional(),
+	zipCode: z.string().trim().max(32).optional(),
+	// Geocoded country NAME (distinct from `country`, which is the phone country CODE).
+	countryName: z.string().trim().max(120).optional(),
+});
 
 export async function POST(req: NextRequest) {
 	try {
@@ -16,21 +40,14 @@ export async function POST(req: NextRequest) {
 			return rateLimitResponse(rateLimitResult);
 		}
 
-		const body = (await req.json()) as {
-			name?: string;
-			email?: string;
-			password?: string;
-			phoneNumber?: string;
-			country?: string;
-			dateOfBirth?: string;
-			latitude?: number;
-			longitude?: number;
-			city?: string;
-			state?: string;
-			zipCode?: string;
-			// Geocoded country NAME (distinct from `country`, which is the phone country CODE).
-			countryName?: string;
-		};
+		const parsedBody = signupSchema.safeParse(await req.json());
+		if (!parsedBody.success) {
+			return NextResponse.json(
+				{ error: parsedBody.error.issues[0]?.message || 'Invalid signup details' },
+				{ status: 400 },
+			);
+		}
+		const body = parsedBody.data;
 		const normalizedEmail = body.email ? normalizeEmail(body.email) : '';
 		const normalizedName = body.name?.trim() || 'User';
 		const normalizedCountry = body.country?.toUpperCase() || '';
@@ -114,12 +131,14 @@ export async function POST(req: NextRequest) {
 				...(emailVerified && { emailVerified }),
 				...(phoneVerified && { phoneVerified }),
 				...(body.dateOfBirth && { date_of_birth: new Date(body.dateOfBirth) }),
-				...(body.latitude !== undefined && { latitude: body.latitude }),
-				...(body.longitude !== undefined && { longitude: body.longitude }),
-				...(body.city && { city: body.city }),
-				...(body.state && { state: body.state }),
-				...(body.zipCode && { zip_code: body.zipCode }),
-				...(body.countryName && { country: body.countryName }),
+				// Written unconditionally where present: the old truthiness spreads silently
+				// dropped a literal 0 latitude/longitude (equator / prime meridian).
+				latitude: body.latitude ?? null,
+				longitude: body.longitude ?? null,
+				city: body.city,
+				state: body.state ?? null,
+				zip_code: body.zipCode ?? null,
+				country: body.countryName ?? null,
 			},
 			select: {
 				id: true,
@@ -171,7 +190,7 @@ export async function POST(req: NextRequest) {
 				await prisma.testOtp.create({ data: { email: normalizedEmail, otp } });
 			}
 
-			if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+			if (isEmailConfigured()) {
 				try {
 					await sendOTPEmail(normalizedEmail, otp, 'email_verification');
 					emailSent = true;
@@ -179,7 +198,7 @@ export async function POST(req: NextRequest) {
 					console.error('Failed to send OTP email:', emailError);
 				}
 			} else {
-				console.warn('GMAIL credentials not configured - OTP email not sent');
+				console.warn('Email is not configured (RESEND_API_KEY) - OTP email not sent');
 			}
 		}
 

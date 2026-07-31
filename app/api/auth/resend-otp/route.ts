@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
-import { generateOTP, sendOTPEmail } from '@/lib/email';
+import { generateOTP, isEmailConfigured, sendOTPEmail } from '@/lib/email';
 import { sendOtpSms } from '@/lib/sms';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from '@/lib/phone';
 import { getOtpIdentifier, hashOtp, normalizeEmail, OtpPurpose } from '@/lib/otp';
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 			});
 
 			// Send OTP email
-			if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+			if (isEmailConfigured()) {
 				try {
 					await sendOTPEmail(normalizedEmail, otp, otpPurpose);
 				} catch (emailError) {
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 					);
 				}
 			} else {
-				console.warn('GMAIL credentials not configured - OTP email not sent');
+				console.warn('Email is not configured (RESEND_API_KEY) - OTP email not sent');
 				return NextResponse.json(
 					{ error: 'Email service is not configured. Please try again later.' },
 					{ status: 500 },
