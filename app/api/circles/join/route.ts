@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { queueBroadcast } from '@/lib/notify';
 import { JoinType, MemberRole } from '@prisma/client';
+import { isInviteExpired } from '@/lib/invite';
 
 // POST /api/circles/join - Join a circle via code or link
 export async function POST(req: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid invite code. Circle not found.' }, { status: 404 });
 		}
 
-		if (circle.inviteExpiresAt && circle.inviteExpiresAt.getTime() <= Date.now()) {
+		if (isInviteExpired(circle.inviteExpiresAt)) {
 			return NextResponse.json(
 				{ error: 'This invite has expired. Please ask for a new invite code.' },
 				{ status: 410 },
