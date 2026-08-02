@@ -13,6 +13,7 @@ import {
 	History,
 	CheckCircle2,
 	Leaf,
+	ShieldAlert,
 } from 'lucide-react';
 import { RequestCardListSkeleton } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { getAnyBorrowStatusPresentation, isBorrowOverdue, toBadgeProps } from '@/lib/borrow-ui';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
+import { formatMoney } from '@/lib/currency';
+import { usePreferences } from '@/app/providers';
 
 type TabType = 'active' | 'pending' | 'queue' | 'history' | 'requests';
 
@@ -72,6 +76,7 @@ function ActiveTransactionCard({
 	isLoading?: boolean;
 }) {
 	const router = useRouter();
+	const { currency, fxRates } = usePreferences();
 	const isActive = transaction.status === 'ACTIVE';
 	const isLenderConfirmed = transaction.status === 'LENDER_CONFIRMED';
 	const isBorrowerConfirmed = transaction.status === 'BORROWER_CONFIRMED';
@@ -103,6 +108,12 @@ function ActiveTransactionCard({
 							>
 								{transaction.item.name}
 							</p>
+							{/* Borrowed vs Lent used to be conveyed only by the group heading above,
+							    so any scrolled card was role-ambiguous — this is the "borrowed status
+							    is not visible" report. Now it is on the card itself. */}
+							<Badge variant="outline" data-testid="transaction-role">
+								{role === 'borrower' ? 'Borrowed' : 'Lent'}
+							</Badge>
 							{getStatusBadge(transaction.status)}
 							{overdue && (
 								<Badge variant="destructive" className="gap-1">
@@ -115,7 +126,7 @@ function ActiveTransactionCard({
 							<span>{role === 'borrower' ? 'From:' : 'To:'}</span>
 							<Avatar className="h-5 w-5">
 								<AvatarImage src={otherPerson?.image || undefined} />
-								<AvatarFallback className="text-[10px]">
+								<AvatarFallback className="text-3xs">
 									{otherPerson?.name?.[0]?.toUpperCase() || '?'}
 								</AvatarFallback>
 							</Avatar>
@@ -134,13 +145,13 @@ function ActiveTransactionCard({
 						)}
 						{transaction.impact && transaction.impact.ghgSavedKg > 0 && (
 							<div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-								<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+								<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-2xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
 									<Leaf className="h-3 w-3" />
 									{Math.round(transaction.impact.ghgSavedKg * 10) / 10} kg CO₂ saved
 								</span>
 								{transaction.impact.borrowerSavingsUsd > 0 && (
-									<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-										${Math.round(transaction.impact.borrowerSavingsUsd).toLocaleString()} saved
+									<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">
+										{formatMoney(transaction.impact.borrowerSavingsUsd, currency, fxRates)} saved
 									</span>
 								)}
 							</div>
@@ -225,6 +236,23 @@ function ActiveTransactionCard({
 								Waiting for owner to confirm return
 							</p>
 						)}
+
+						{/* Signposts a planned feature. Permanently disabled — no handler, no
+						    tooltip, no modal; Button's disabled:pointer-events-none makes it
+						    untappable. Sits below the primary action for this role. */}
+						<div className="mt-2">
+							<Button
+								size="sm"
+								variant="outline"
+								disabled
+								className="gap-2"
+								data-testid="raise-concern-btn"
+							>
+								<ShieldAlert className="h-4 w-4" />
+								Raise a concern
+								<ComingSoonPill />
+							</Button>
+						</div>
 					</div>
 				</div>
 			</CardContent>
@@ -261,7 +289,7 @@ function PendingRequestCard({ request }: { request: BorrowRequest }) {
 							<span>From:</span>
 							<Avatar className="h-5 w-5">
 								<AvatarImage src={request.owner?.image || undefined} />
-								<AvatarFallback className="text-[10px]">
+								<AvatarFallback className="text-3xs">
 									{request.owner?.name?.[0]?.toUpperCase() || '?'}
 								</AvatarFallback>
 							</Avatar>
@@ -313,7 +341,7 @@ function QueueEntryCard({ entry }: { entry: BorrowQueueEntry }) {
 							<span>Owner:</span>
 							<Avatar className="h-5 w-5">
 								<AvatarImage src={entry.item.owner?.image || undefined} />
-								<AvatarFallback className="text-[10px]">
+								<AvatarFallback className="text-3xs">
 									{entry.item.owner?.name?.[0]?.toUpperCase() || '?'}
 								</AvatarFallback>
 							</Avatar>
@@ -497,10 +525,12 @@ export function MyActivityPage() {
 	// History = completed transactions
 	const borrowedHistory = borrowerTransactions.filter(t => t.status === 'COMPLETED');
 	const lentHistory = ownerTransactions.filter(t => t.status === 'COMPLETED');
-	const visibleActiveTransactions = useProgressivePagination({
-		items: [...activeBorrowed, ...activeLent],
-		pageSize: 8,
-	});
+	// Paginated per group, NOT over the concatenation. A single shared window meant that with
+	// 8+ borrowed items the whole window was borrowed rows, so the "Items I've Lent Out (n)"
+	// heading rendered with zero cards beneath it — lenders could not see their own lent
+	// items' status at all until they scrolled to trigger the sentinel.
+	const visibleActiveBorrowed = useProgressivePagination({ items: activeBorrowed, pageSize: 8 });
+	const visibleActiveLent = useProgressivePagination({ items: activeLent, pageSize: 8 });
 	const visiblePendingRequests = useProgressivePagination({ items: pendingRequests, pageSize: 8 });
 	const visibleQueueEntries = useProgressivePagination({ items: activeQueueEntries, pageSize: 8 });
 	const visibleBorrowedHistory = useProgressivePagination({ items: borrowedHistory, pageSize: 8 });
@@ -583,20 +613,16 @@ export function MyActivityPage() {
 										<ArrowUpRight className="h-4 w-4 rotate-180" />
 										Items I&apos;m Borrowing ({activeBorrowed.length})
 									</h3>
-									{activeBorrowed
-										.filter(tx =>
-											visibleActiveTransactions.visibleItems.some(item => item.id === tx.id),
-										)
-										.map(tx => (
-											<ActiveTransactionCard
-												key={tx.id}
-												transaction={tx}
-												role="borrower"
-												onMarkReturned={handleMarkReturned}
-												onConfirmReceipt={handleConfirmReceipt}
-												isLoading={processingId === tx.borrowRequestId}
-											/>
-										))}
+									{visibleActiveBorrowed.visibleItems.map(tx => (
+										<ActiveTransactionCard
+											key={tx.id}
+											transaction={tx}
+											role="borrower"
+											onMarkReturned={handleMarkReturned}
+											onConfirmReceipt={handleConfirmReceipt}
+											isLoading={processingId === tx.borrowRequestId}
+										/>
+									))}
 								</div>
 							)}
 
@@ -607,25 +633,29 @@ export function MyActivityPage() {
 										<ArrowUpRight className="h-4 w-4" />
 										Items I&apos;ve Lent Out ({activeLent.length})
 									</h3>
-									{activeLent
-										.filter(tx =>
-											visibleActiveTransactions.visibleItems.some(item => item.id === tx.id),
-										)
-										.map(tx => (
-											<ActiveTransactionCard
-												key={tx.id}
-												transaction={tx}
-												role="owner"
-												onConfirmHandoff={handleConfirmHandoff}
-												onConfirmReturn={handleConfirmReturn}
-												isLoading={processingId === tx.borrowRequestId}
-											/>
-										))}
+									{visibleActiveLent.visibleItems.map(tx => (
+										<ActiveTransactionCard
+											key={tx.id}
+											transaction={tx}
+											role="owner"
+											onConfirmHandoff={handleConfirmHandoff}
+											onConfirmReturn={handleConfirmReturn}
+											isLoading={processingId === tx.borrowRequestId}
+										/>
+									))}
 								</div>
 							)}
 							<InfiniteScrollSentinel
-								hasMore={visibleActiveTransactions.hasMore}
-								onLoadMore={visibleActiveTransactions.loadMore}
+								hasMore={visibleActiveBorrowed.hasMore || visibleActiveLent.hasMore}
+								onLoadMore={() => {
+									// Extend whichever groups still have more; they page independently.
+									if (visibleActiveBorrowed.hasMore) {
+										visibleActiveBorrowed.loadMore();
+									}
+									if (visibleActiveLent.hasMore) {
+										visibleActiveLent.loadMore();
+									}
+								}}
 								enabled={activeTab === 'active'}
 								label="Loading more activity"
 							/>
