@@ -11,6 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import {
 	Moon,
+	Type,
+	Scale,
+	Coins,
 	Smartphone,
 	Mail,
 	Camera,
@@ -36,6 +39,12 @@ import {
 	validatePhoneByCountry,
 } from '@/lib/phone';
 import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
+import { FONT_SIZES, type FontSizeKey } from '@/lib/preferences';
+import { CURRENCIES, type CurrencyCode } from '@/lib/currency';
+import type { WeightUnit } from '@/lib/units';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { getPasswordRequirementsText, isPasswordAcceptable } from '@/lib/password-validation';
 import {
 	selectUserImage,
 	selectUserName,
@@ -56,7 +65,7 @@ function getCountryFromDialCode(dialCode: string | null | undefined): SupportedP
 }
 
 export function SettingsPage() {
-	const { theme, toggleTheme } = useTheme();
+	const { theme, toggleTheme, fontSize, setFontSize, weightUnit, setWeightUnit, currency, setCurrency } = useTheme();
 	const [activeTab, setActiveTab] = useState('profile');
 	const { installStatus, updateStatus, install, checkForUpdates, applyUpdate } = usePWAInstall();
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -297,8 +306,10 @@ export function SettingsPage() {
 			setPasswordError('Please fill in all fields.');
 			return;
 		}
-		if (newPassword.length < 8) {
-			setPasswordError('Password must be at least 8 characters.');
+		// Full rule set, matching the API. A length-only check let a password through that
+		// /api/user/change-password and /api/auth/reset-password then rejected with a 400.
+		if (!isPasswordAcceptable(newPassword)) {
+			setPasswordError(getPasswordRequirementsText());
 			return;
 		}
 		if (newPassword !== confirmNewPassword) {
@@ -442,8 +453,10 @@ export function SettingsPage() {
 			return;
 		}
 
-		if (newPassword.length < 8) {
-			setPasswordError('Password must be at least 8 characters.');
+		// Full rule set, matching the API. A length-only check let a password through that
+		// /api/user/change-password and /api/auth/reset-password then rejected with a 400.
+		if (!isPasswordAcceptable(newPassword)) {
+			setPasswordError(getPasswordRequirementsText());
 			return;
 		}
 
@@ -519,7 +532,7 @@ export function SettingsPage() {
 							className="mt-2"
 							disabled={passwordIsLoading}
 						/>
-						<p className="text-xs text-muted-foreground mt-1">Must be at least 8 characters.</p>
+						<PasswordRequirements password={newPassword} confirmPassword={confirmNewPassword} />
 					</div>
 					<div>
 						<Label className="text-sm">Confirm New Password</Label>
@@ -566,7 +579,7 @@ export function SettingsPage() {
 							className="mt-2"
 							disabled={passwordIsLoading}
 						/>
-						<p className="text-xs text-muted-foreground mt-1">Must be at least 8 characters.</p>
+						<PasswordRequirements password={newPassword} confirmPassword={confirmNewPassword} />
 					</div>
 					<div>
 						<Label className="text-sm">Confirm New Password</Label>
@@ -777,7 +790,7 @@ export function SettingsPage() {
 									</p>
 								</div>
 
-								{PHONE_AUTH_ENABLED && (
+								{PHONE_AUTH_ENABLED ? (
 									<div className="space-y-2">
 										<Label htmlFor="phone">Phone Number</Label>
 										<div className="flex gap-2">
@@ -823,6 +836,29 @@ export function SettingsPage() {
 												{contactSuccess}
 											</p>
 										)}
+									</div>
+								) : (
+									/* Phone auth is not live yet. Show the field greyed out rather than hiding it,
+									   so the absence reads as "not yet" instead of "broken/missing". */
+									<div className="space-y-2 opacity-60" data-testid="phone-coming-soon">
+										<div className="flex items-center gap-2">
+											<Label htmlFor="phone">Phone Number</Label>
+											<ComingSoonPill />
+										</div>
+										<div className="relative">
+											<Smartphone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+											<Input
+												id="phone"
+												value=""
+												readOnly
+												disabled
+												placeholder="Not available yet"
+												className="pl-9 bg-muted"
+											/>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											Phone number sign-in is coming soon.
+										</p>
 									</div>
 								)}
 							</div>
@@ -940,11 +976,11 @@ export function SettingsPage() {
 				<PageTabsContent value="appearance" className="space-y-6">
 					<Card>
 						<CardHeader>
-							<CardTitle>Appearance</CardTitle>
+							<CardTitle>Theme &amp; display</CardTitle>
 							<CardDescription>Customize how ShareCircle looks on your device.</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-6">
-							<div className="flex items-center justify-between">
+							<div className="flex items-center justify-between gap-4">
 								<div className="space-y-0.5">
 									<div className="font-medium flex items-center gap-2">
 										<Moon className="w-4 h-4" />
@@ -955,6 +991,97 @@ export function SettingsPage() {
 									</div>
 								</div>
 								<Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+							</div>
+
+							<div className="flex items-center justify-between gap-4">
+								<div className="space-y-0.5">
+									<Label htmlFor="font-size-select" className="font-medium flex items-center gap-2">
+										<Type className="w-4 h-4" />
+										Text size
+									</Label>
+									<div className="text-sm text-muted-foreground">
+										Scales text and spacing across the whole app
+									</div>
+								</div>
+								<Select value={fontSize} onValueChange={value => setFontSize(value as FontSizeKey)}>
+									<SelectTrigger
+										id="font-size-select"
+										className="w-32 shrink-0"
+										data-testid="font-size-select"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{FONT_SIZES.map(option => (
+											<SelectItem key={option.key} value={option.key}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Units &amp; currency</CardTitle>
+							<CardDescription>
+								How weights and prices are shown to you. Item data itself is unchanged.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-6">
+							<div className="flex items-center justify-between gap-4">
+								<div className="space-y-0.5">
+									<Label htmlFor="weight-unit-select" className="font-medium flex items-center gap-2">
+										<Scale className="w-4 h-4" />
+										Weight unit
+									</Label>
+									<div className="text-sm text-muted-foreground">
+										Used wherever an item weight is displayed
+									</div>
+								</div>
+								<Select value={weightUnit} onValueChange={value => setWeightUnit(value as WeightUnit)}>
+									<SelectTrigger
+										id="weight-unit-select"
+										className="w-32 shrink-0"
+										data-testid="weight-unit-select"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="kg">Kilograms</SelectItem>
+										<SelectItem value="lbs">Pounds</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="flex items-center justify-between gap-4">
+								<div className="space-y-0.5">
+									<Label htmlFor="currency-select" className="font-medium flex items-center gap-2">
+										<Coins className="w-4 h-4" />
+										Currency
+									</Label>
+									<div className="text-sm text-muted-foreground">
+										Prices are estimates converted from USD at current rates
+									</div>
+								</div>
+								<Select value={currency} onValueChange={value => setCurrency(value as CurrencyCode)}>
+									<SelectTrigger
+										id="currency-select"
+										className="w-32 shrink-0"
+										data-testid="currency-select"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{CURRENCIES.map(option => (
+											<SelectItem key={option.code} value={option.code}>
+												{option.code} ({option.symbol})
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
 						</CardContent>
 					</Card>

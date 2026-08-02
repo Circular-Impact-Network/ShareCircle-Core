@@ -239,13 +239,16 @@ export function NotificationPreferencesPanel() {
 						</span>
 					</div>
 
+					{/* One master row, two channel toggles — the In-app / Push columns already say
+					    which is which, so splitting this into two rows (each with a dead spacer
+					    filling the other column) only added noise. */}
 					<div className="flex min-h-11 items-center gap-3 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 sm:px-4">
 						<div className="min-w-0 flex-1 space-y-0.5">
-							<Label htmlFor="global-in-app" className="text-sm font-medium">
-								All notifications (in-app)
-							</Label>
+							<div className="text-sm font-medium">All notifications</div>
 							<p className="text-xs text-muted-foreground">
-								Toasts and entries in your notifications list.
+								{pushMasterDisabled
+									? 'Toasts and list entries in the app. For push, fix device push above or your browser permission.'
+									: 'Toasts and list entries in the app, plus background alerts on devices where push is enabled.'}
 							</p>
 						</div>
 						<div className="flex w-14 shrink-0 justify-end sm:w-16">
@@ -256,21 +259,6 @@ export function NotificationPreferencesPanel() {
 								aria-label="All in-app notifications"
 							/>
 						</div>
-						<div className="w-14 shrink-0 sm:w-16" />
-					</div>
-
-					<div className="flex min-h-11 items-center gap-3 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 sm:px-4">
-						<div className="min-w-0 flex-1 space-y-0.5">
-							<Label htmlFor="global-push" className="text-sm font-medium">
-								All notifications (push)
-							</Label>
-							<p className="text-xs text-muted-foreground">
-								{pushMasterDisabled
-									? 'Fix device push above or browser permission to use push toggles.'
-									: 'Background alerts on devices where push is enabled.'}
-							</p>
-						</div>
-						<div className="w-14 shrink-0 sm:w-16" />
 						<div className="flex w-14 shrink-0 justify-end sm:w-16">
 							<Switch
 								id="global-push"
@@ -314,7 +302,7 @@ export function NotificationPreferencesPanel() {
 										</CollapsibleTrigger>
 										<div className="flex shrink-0 items-center justify-end gap-6 sm:gap-10 pl-6 sm:pl-0">
 											<div className="flex flex-col items-center gap-1">
-												<span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
+												<span className="text-3xs font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
 													In-app
 												</span>
 												<Switch
@@ -326,7 +314,7 @@ export function NotificationPreferencesPanel() {
 												/>
 											</div>
 											<div className="flex flex-col items-center gap-1">
-												<span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
+												<span className="text-3xs font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
 													Push
 												</span>
 												<Switch
