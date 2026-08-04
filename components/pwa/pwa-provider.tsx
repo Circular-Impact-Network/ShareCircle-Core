@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { cn } from '@/lib/utils';
 import { isIosBrowser, isStandaloneDisplayMode } from '@/lib/push-client';
+import { useDeviceKind } from '@/hooks/useDeviceKind';
 
 type BeforeInstallPromptEvent = Event & {
 	prompt: () => Promise<void>;
@@ -23,10 +24,14 @@ export function PWAProvider() {
 	const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [isInstalled, setIsInstalled] = useState(false);
+	// 'unknown' until hydrated — the install card is mobile-only, and defaulting to 'mobile'
+	// would flash it on desktop for a frame.
+	const deviceKind = useDeviceKind();
 	const isRefreshingRef = useRef(false);
 	const waitingWorkerRef = useRef<ServiceWorker | null>(null);
 
 	const shouldShowOfflineBanner = useMemo(() => !isOnline, [isOnline]);
+	const isMobile = deviceKind === 'mobile';
 
 	// Keep ref in sync so the visibilitychange handler always has the latest value.
 	useEffect(() => {
@@ -265,7 +270,10 @@ export function PWAProvider() {
 					</div>
 				)}
 
-				{!isInstalled && installPrompt && showInstallPrompt && (
+				{/* Install prompts are phone-only: the manifest is portrait/standalone and the
+				    experience is designed for a home-screen app, so desktop users were being
+				    nudged toward an install they do not want. */}
+				{isMobile && !isInstalled && installPrompt && showInstallPrompt && (
 					<div className="pointer-events-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
 						<div className="flex items-start gap-3">
 							<div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
@@ -298,7 +306,7 @@ export function PWAProvider() {
 					</div>
 				)}
 
-				{!isInstalled && !installPrompt && showIosPrompt && (
+				{isMobile && !isInstalled && !installPrompt && showIosPrompt && (
 					<div className="pointer-events-auto rounded-2xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur">
 						<div className="flex items-start gap-3">
 							<div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
