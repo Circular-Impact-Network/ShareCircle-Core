@@ -176,10 +176,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 			});
 
 			if (duplicateName) {
-				return NextResponse.json(
-					{ error: 'A circle with this name already exists.' },
-					{ status: 409 },
-				);
+				return NextResponse.json({ error: 'A circle with this name already exists.' }, { status: 409 });
 			}
 		}
 

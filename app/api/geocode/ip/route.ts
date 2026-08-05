@@ -75,10 +75,7 @@ export async function GET(request: Request) {
 
 	if (!ip || !isPubliclyRoutable(ip)) {
 		// Local development and private networks land here — expected, not an error.
-		return NextResponse.json(
-			{ error: 'Location cannot be determined from this network.' },
-			{ status: 422 },
-		);
+		return NextResponse.json({ error: 'Location cannot be determined from this network.' }, { status: 422 });
 	}
 
 	try {
@@ -103,10 +100,7 @@ export async function GET(request: Request) {
 		};
 
 		if (!data.success || !data.city) {
-			return NextResponse.json(
-				{ error: 'Location cannot be determined from this network.' },
-				{ status: 422 },
-			);
+			return NextResponse.json({ error: 'Location cannot be determined from this network.' }, { status: 422 });
 		}
 
 		const result: IpGeocodeResponse = {

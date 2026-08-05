@@ -50,7 +50,11 @@ export async function GET() {
 
 		return NextResponse.json(
 			{ rates, stale: false },
-			{ headers: { 'Cache-Control': `public, max-age=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}` } },
+			{
+				headers: {
+					'Cache-Control': `public, max-age=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
+				},
+			},
 		);
 	} catch (error) {
 		console.error('FX rate fetch failed, serving fallback rates:', error);

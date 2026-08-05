@@ -58,7 +58,8 @@ export function convertFromUsd(usd: number, currency: CurrencyCode, rates: FxRat
 	const rate = rates[currency];
 	// A missing or nonsensical rate must not silently produce NaN/0 — fall back to the
 	// bundled table, and finally to USD (rate 1) so the number stays meaningful.
-	const safeRate = typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : (FALLBACK_RATES[currency] ?? 1);
+	const safeRate =
+		typeof rate === 'number' && Number.isFinite(rate) && rate > 0 ? rate : (FALLBACK_RATES[currency] ?? 1);
 	return usd * safeRate;
 }
 
@@ -66,7 +67,11 @@ export function convertFromUsd(usd: number, currency: CurrencyCode, rates: FxRat
  * Formats a USD amount in the user's chosen currency. Whole units only — these are rough
  * retail estimates, so cents are noise.
  */
-export function formatMoney(usd: number | null | undefined, currency: CurrencyCode, rates: FxRates = FALLBACK_RATES): string {
+export function formatMoney(
+	usd: number | null | undefined,
+	currency: CurrencyCode,
+	rates: FxRates = FALLBACK_RATES,
+): string {
 	if (usd === null || usd === undefined || !Number.isFinite(usd)) {
 		return '—';
 	}

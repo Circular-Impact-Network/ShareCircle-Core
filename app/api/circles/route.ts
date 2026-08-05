@@ -228,10 +228,7 @@ export async function POST(req: NextRequest) {
 				// Two concurrent creates with the same name — the pre-check above passed for both,
 				// the unique index caught the loser. Same message, so the race is invisible.
 				if (code === 'P2002') {
-					return NextResponse.json(
-						{ error: 'You already have a circle with this name.' },
-						{ status: 409 },
-					);
+					return NextResponse.json({ error: 'You already have a circle with this name.' }, { status: 409 });
 				}
 				throw err;
 			}
