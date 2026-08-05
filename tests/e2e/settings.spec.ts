@@ -420,27 +420,61 @@ test.describe('settings and profile', () => {
 			await expect(changePasswordButton).toBeVisible({ timeout: 5000 });
 		});
 
-		test('clicking change password shows verification flow', async ({ page }) => {
+		/**
+		 * This test used to click "Change Password" and expect a "Send Verification Code" button.
+		 * That is not the flow: "Change Password" sets passwordStep to 'change' and renders the
+		 * current/new/confirm form. The send-code step is 'request', reached from "Forgot current
+		 * password?". The test had been asserting a flow that does not exist — it went unnoticed
+		 * because the e2e suite could not run at all between 2026-07-31 and 2026-08-05.
+		 */
+		test('change password opens the change form, and forgot-password opens the code flow', async ({ page }) => {
 			await page.goto('/settings');
 			await page.waitForLoadState('networkidle');
 
-			// Navigate to Account tab
 			const accountTab = page.getByRole('tab', { name: /Account/i });
 			await expect(accountTab).toBeVisible({ timeout: 5000 });
 			await accountTab.click();
 			await page.waitForTimeout(500);
 
-			// Click change password
 			const changePasswordButton = page.getByRole('button', { name: /Change Password/i });
-			if (await changePasswordButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-				await changePasswordButton.click();
-				await page.waitForTimeout(500);
+			await expect(changePasswordButton).toBeVisible({ timeout: 5000 });
+			await changePasswordButton.click();
 
-				// Should show verification flow with send code button
-				const sendCodeButton = page.getByRole('button', { name: /Send.*Verification.*Code/i });
-				const hasVerification = await sendCodeButton.isVisible({ timeout: 3000 }).catch(() => false);
+			// Step 'change': the in-place form, requiring the current password.
+			await expect(page.getByRole('button', { name: /Update Password/i })).toBeVisible({ timeout: 5000 });
+			await expect(page.getByText(/Current Password/i).first()).toBeVisible();
 
-				expect(hasVerification).toBeTruthy();
+			// Step 'request': the OTP path for users who cannot supply the current password.
+			await page.getByRole('button', { name: /Forgot current password/i }).click();
+			await expect(page.getByRole('button', { name: /Send.*Verification.*Code/i })).toBeVisible({
+				timeout: 5000,
+			});
+		});
+
+		/**
+		 * Requirement (2026-08-05): password requirements must be live rather than appearing on
+		 * submit. Settings has two password forms and both were checking length only while the
+		 * API enforced four character classes on top.
+		 */
+		test('the change password form shows live requirements as the user types', async ({ page }) => {
+			await page.goto('/settings');
+			await page.waitForLoadState('networkidle');
+
+			await page.getByRole('tab', { name: /Account/i }).click();
+			await page.getByRole('button', { name: /Change Password/i }).click();
+			await expect(page.getByRole('button', { name: /Update Password/i })).toBeVisible({ timeout: 5000 });
+
+			await expect(page.getByTestId('password-requirements')).toHaveCount(0);
+
+			// The second password field is the new password (the first is the current one).
+			const newPassword = page.locator('input[type="password"]').nth(1);
+			await newPassword.fill('abc');
+			await expect(page.getByTestId('password-requirements')).toBeVisible();
+			await expect(page.getByTestId('password-rule-length')).toHaveAttribute('data-met', 'false');
+
+			await newPassword.fill('Password123!');
+			for (const rule of ['length', 'uppercase', 'lowercase', 'number', 'special']) {
+				await expect(page.getByTestId(`password-rule-${rule}`)).toHaveAttribute('data-met', 'true');
 			}
 		});
 	});

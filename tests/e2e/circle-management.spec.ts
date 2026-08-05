@@ -182,6 +182,88 @@ test.describe('circle management', () => {
 				}
 			}
 		});
+
+		test('opening the invite panel does NOT rotate the invite code', async ({ page, request }) => {
+			// THE REGRESSION THIS GUARDS: handleInviteToggle used to call handleRegenerateCode()
+			// on open, so every time an admin viewed the invite panel the code changed and every
+			// link they had already shared started failing with "Invalid invite code".
+			const response = await request.post('/api/circles', {
+				data: { name: `Invite Stability Circle ${Date.now()}` },
+			});
+			expect(response.ok()).toBeTruthy();
+			const circle = (await response.json()) as { id: string; inviteCode: string };
+			const originalCode = circle.inviteCode;
+
+			await page.goto(`/circles/${circle.id}`);
+			await page.waitForLoadState('networkidle');
+
+			// Open (and reopen) the invite/share panel a few times.
+			//
+			// Targets a stable testid, filtered to the visible one. The mobile and desktop
+			// headers both render an invite toggle and Tailwind hides one with `display:none`,
+			// so it stays in the DOM: a `getByRole(/Invite|Share/).first()` selector resolved to
+			// the hidden copy and this test timed out on every run instead of guarding anything.
+			const shareButton = page.getByTestId('circle-invite-toggle').filter({ visible: true }).first();
+			await expect(shareButton).toBeVisible({ timeout: 10_000 });
+
+			for (let i = 0; i < 3; i++) {
+				await shareButton.click();
+				await page.waitForTimeout(400);
+			}
+
+			// Three clicks leaves the panel open. Assert that independently of the code value, so
+			// a rotated code fails on the explicit check below rather than here with a confusing
+			// "text not found" message.
+			await expect(page.getByText('Invite Code', { exact: false }).first()).toBeVisible({ timeout: 10_000 });
+
+			const after = await request.get(`/api/circles/${circle.id}`);
+			expect(after.ok()).toBeTruthy();
+			const afterCircle = (await after.json()) as { inviteCode: string };
+			expect(afterCircle.inviteCode).toBe(originalCode);
+		});
+
+		test('a freshly created invite is not already expired', async ({ request }) => {
+			// Reported symptom: a just-created link reporting an expiry date in the past.
+			const response = await request.post('/api/circles', {
+				data: { name: `Invite Expiry Circle ${Date.now()}` },
+			});
+			expect(response.ok()).toBeTruthy();
+			const circle = (await response.json()) as { id: string; inviteExpiresAt: string };
+
+			const expiresAt = new Date(circle.inviteExpiresAt).getTime();
+			expect(Number.isNaN(expiresAt)).toBe(false);
+			expect(expiresAt).toBeGreaterThan(Date.now());
+
+			// 2-day window, allowing a little slack for clock/latency.
+			const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+			expect(expiresAt - Date.now()).toBeLessThanOrEqual(twoDaysMs + 60_000);
+			expect(expiresAt - Date.now()).toBeGreaterThan(twoDaysMs - 10 * 60_000);
+		});
+	});
+
+	test.describe('circle name uniqueness', () => {
+		test('rejects a second circle with the same name from the same user', async ({ request }) => {
+			const name = `Unique Circle ${Date.now()}`;
+
+			const first = await request.post('/api/circles', { data: { name } });
+			expect(first.ok()).toBeTruthy();
+
+			const second = await request.post('/api/circles', { data: { name } });
+			expect(second.status()).toBe(409);
+			const body = (await second.json()) as { error: string };
+			expect(body.error).toMatch(/already have a circle with this name/i);
+		});
+
+		test('comparison ignores case and surrounding whitespace', async ({ request }) => {
+			const name = `Case Circle ${Date.now()}`;
+
+			const first = await request.post('/api/circles', { data: { name } });
+			expect(first.ok()).toBeTruthy();
+
+			// Otherwise "Family" vs "family " is a trivial loophole around the constraint.
+			const second = await request.post('/api/circles', { data: { name: `  ${name.toUpperCase()}  ` } });
+			expect(second.status()).toBe(409);
+		});
 	});
 
 	test.describe('member management', () => {
