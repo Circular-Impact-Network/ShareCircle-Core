@@ -1,5 +1,5 @@
-/* global console */
 // Run once: node scripts/generate-icons.mjs
+// Node globals for scripts/** are declared in eslint.config.mjs.
 import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
