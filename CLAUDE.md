@@ -108,26 +108,51 @@ npm run test:e2e:ui      # Playwright UI mode
 
 ## Migrations & Deployment
 
-**Migrations apply automatically on deploy.** `package.json` has:
+**Migrations apply automatically on deploy.** Vercel serves **staging**; Hostinger serves **main/production**. Two independent paths, because Hostinger's start command is configured in hPanel and cannot be overridden from this repo:
 
 ```json
-"prestart": "prisma migrate deploy"
+"prestart":    "prisma migrate deploy",
+"postinstall": "prisma generate && node scripts/migrate-on-deploy.mjs"
 ```
 
-npm runs `prestart` immediately before `start`, so any host that boots the app with
-`npm start` applies pending migrations first. Two requirements:
+**`prestart`** runs immediately before `start`, so a host booting with `npm start` migrates
+first. It requires the start command to actually be `npm start` — a custom `next start -p 3003`
+bypasses npm lifecycle scripts entirely and migrations silently never run.
 
-1. **The host's start command must be `npm start`.** A custom command like
-   `next start -p 3003` bypasses `prestart` entirely and migrations will silently never run.
-2. **`DIRECT_URL` must be set on the host.** `migrate deploy` needs a direct (non-pooled)
-   connection; the pgbouncer URL in `DATABASE_URL` will not work for DDL.
+**`postinstall`** is the belt to that brace, because Hostinger's start command lives in hPanel
+and no file in this repo can override it. Every deploy must install dependencies, so this path
+cannot be skipped. `scripts/migrate-on-deploy.mjs` guards itself narrowly and logs which guard
+fired:
 
-Deliberately in `prestart`, not `build`: a build step may run in a container with no database
-access, whereas the runtime always has it. It is safe to run repeatedly (a no-op when there is
-nothing pending) and Prisma takes an advisory lock, so concurrent instances cannot race.
+| Condition                 | Behaviour                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `CI` set                  | skip — Actions' `DIRECT_URL` is the IPv6-only `db.<ref>.supabase.co`, unreachable from IPv4 runners |
+| `VERCEL` set              | skip — Vercel serves staging, whose schema is managed separately                                    |
+| `NODE_ENV` ≠ `production` | skip — a developer's `npm install` must never migrate a database as a side effect                   |
+| no `DIRECT_URL`           | **fail** — the pgbouncer URL in `DATABASE_URL` cannot run DDL                                       |
+| otherwise                 | apply, and fail the deploy if it errors                                                             |
 
-If a migration fails, the app will not start. That is intentional — serving traffic against a
+Both paths are safe together: `migrate deploy` no-ops when nothing is pending and Prisma takes a
+Postgres advisory lock, so concurrent instances cannot race.
+
+Deliberately **not** in `build`: on Vercel that would migrate whichever database a preview's env
+points at, and a build container may have no database access at all.
+
+`instrumentation.ts` would be the ideal hook — it runs on server boot regardless of start command
+— but it does not work here. This project builds with `next build --webpack`, and webpack refuses
+to bundle `node:child_process` for the edge-runtime compilation of that file, including behind a
+dynamic import in a second module.
+
+If a migration fails, the deploy fails. That is intentional — serving traffic against a
 half-migrated schema is worse than being down.
+
+**Verifying after a deploy.** `.env` holds `PROD_DB_URL` / `PROD_DIRECT_URL`, so prod state can be
+read without touching the host:
+
+```bash
+set -a; . ./.env; set +a
+DATABASE_URL="$PROD_DB_URL" DIRECT_URL="$PROD_DIRECT_URL" npx prisma migrate status
+```
 
 ### Baselining an existing database
 
