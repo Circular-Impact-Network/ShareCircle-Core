@@ -34,7 +34,7 @@ The email system checks these conditions before sending emails:
 
 - `E2E_AUTO_VERIFY=true` - Set automatically by Playwright tests
 - `SKIP_EMAIL=true` - Manual flag to disable emails (useful for local development)
-- Missing `GMAIL_USER` or `GMAIL_APP_PASSWORD` - Emails are skipped
+- Missing `RESEND_API_KEY` - Emails are skipped (logged to the console instead)
 
 #### Logs:
 
