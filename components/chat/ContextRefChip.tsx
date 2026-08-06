@@ -32,7 +32,7 @@ export function ContextRefChip({ contextRef, variant, onClick, onClear }: Contex
 
 	const iconColor = !isComposer && isOwn ? 'text-primary-foreground' : 'text-primary';
 	const labelColor = !isComposer && isOwn ? 'text-primary-foreground/80' : 'text-primary';
-	const labelSize = isComposer ? 'text-[11px]' : 'text-[10px]';
+	const labelSize = isComposer ? 'text-2xs' : 'text-3xs';
 	const titleSize = isComposer ? 'text-sm' : 'text-xs';
 
 	const body = (

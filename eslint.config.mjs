@@ -51,6 +51,19 @@ export default [
 			],
 		},
 	},
+	// Deploy/maintenance scripts run in plain Node, not the browser, so the base config's
+	// browser globals leave `process` and `console` undefined under no-undef.
+	{
+		files: ['scripts/**/*.{js,mjs,ts}'],
+		languageOptions: {
+			globals: {
+				process: 'readonly',
+				console: 'readonly',
+				__dirname: 'readonly',
+				Buffer: 'readonly',
+			},
+		},
+	},
 	// Playwright + Vitest use patterns that don't always match browser React rules
 	{
 		files: ['tests/**/*.{ts,tsx}'],

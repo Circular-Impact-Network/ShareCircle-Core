@@ -52,12 +52,12 @@ export function BottomNav() {
 							aria-current={active ? 'page' : undefined}
 						>
 							{count > 0 && (
-								<span className="absolute right-[calc(50%-10px)] top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-white">
+								<span className="absolute right-[calc(50%-10px)] top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-3xs font-semibold leading-none text-white">
 									{count > 99 ? '99+' : count}
 								</span>
 							)}
 							<Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
-							<span className={cn('text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>
+							<span className={cn('text-3xs leading-none', active ? 'font-semibold' : 'font-medium')}>
 								{tab.label}
 							</span>
 						</Link>

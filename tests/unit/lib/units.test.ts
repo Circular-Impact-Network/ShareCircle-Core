@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatWeight, defaultWeightUnit, isApparelOrShoes } from '@/lib/units';
+import { formatWeight, isApparelOrShoes } from '@/lib/units';
 
-// Weight is stored in kg; these helpers drive the display-only kg/lbs toggle on item detail.
+// Weight is stored in kg; formatWeight renders it in whichever unit the user picked in
+// Settings → Appearance. (defaultWeightUnit was removed: it derived the unit from
+// User.country_code, which holds a phone dial code, so its 'US' check never matched.)
 describe('formatWeight', () => {
 	it('renders kg unchanged', () => {
 		expect(formatWeight(10, 'kg')).toBe('10 kg');
@@ -13,21 +15,6 @@ describe('formatWeight', () => {
 		expect(formatWeight(10, 'lbs')).toBe('22 lbs'); // 22.0462 → 22
 		expect(formatWeight(1, 'lbs')).toBe('2.2 lbs'); // 2.20462 → 2.2
 		expect(formatWeight(0, 'lbs')).toBe('0 lbs');
-	});
-});
-
-describe('defaultWeightUnit', () => {
-	it('returns lbs for the US (case-insensitive)', () => {
-		expect(defaultWeightUnit('US')).toBe('lbs');
-		expect(defaultWeightUnit('us')).toBe('lbs');
-	});
-
-	it('returns kg for everything else and for missing country', () => {
-		expect(defaultWeightUnit('IN')).toBe('kg');
-		expect(defaultWeightUnit('GB')).toBe('kg');
-		expect(defaultWeightUnit(null)).toBe('kg');
-		expect(defaultWeightUnit(undefined)).toBe('kg');
-		expect(defaultWeightUnit('')).toBe('kg');
 	});
 });
 

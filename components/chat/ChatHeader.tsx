@@ -89,7 +89,7 @@ export function ChatHeader({
 								<p className="truncate text-sm font-semibold leading-tight text-foreground">
 									{user?.name || 'Unknown'}
 								</p>
-								<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+								<div className="flex items-center gap-1.5 text-2xs text-muted-foreground">
 									<span
 										className={`h-1.5 w-1.5 shrink-0 rounded-full ${
 											isTyping

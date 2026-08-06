@@ -8,6 +8,8 @@
 
 import { test, expect } from '@playwright/test';
 
+import { signupPayload } from './helpers/test-data';
+
 const TEST_SECRET = process.env.TEST_CLEANUP_SECRET ?? '';
 
 async function getTestOtp(baseURL: string, email: string): Promise<string | null> {
@@ -107,7 +109,7 @@ test.describe('OTP email verification', () => {
 			const res = await fetch(`${base}/api/auth/signup`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: `OTP Wrong User ${ts}`, email, password }),
+				body: JSON.stringify(signupPayload({ name: `OTP Wrong User ${ts}`, email, password })),
 			});
 			if (!res.ok) {
 				test.skip();
@@ -152,7 +154,7 @@ test.describe('OTP email verification', () => {
 			const res = await fetch(`${base}/api/auth/signup`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: `OTP Resend User ${ts}`, email, password }),
+				body: JSON.stringify(signupPayload({ name: `OTP Resend User ${ts}`, email, password })),
 			});
 			if (!res.ok) {
 				test.skip();

@@ -10,7 +10,7 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
-import { TestAPI } from './helpers/test-data';
+import { TestAPI, signupPayload } from './helpers/test-data';
 
 // ─── Group I: feedback / cleanup / unread-count ───────────────────────────────
 
@@ -134,11 +134,10 @@ test.describe('J46 — rate limit auth signup', () => {
 		const statuses: number[] = [];
 		for (let i = 0; i < 6; i++) {
 			const res = await anonContext.request.post('/api/auth/signup', {
-				data: {
-					name: 'Rate Limit Test',
-					email,
-					password,
-				},
+				// Must be a payload the schema accepts, or every call returns 400 and the rate
+				// limit is never reached — the assertion below then soft-skips and this test
+				// silently stops covering anything.
+				data: signupPayload({ name: 'Rate Limit Test', email, password }),
 			});
 			statuses.push(res.status());
 		}

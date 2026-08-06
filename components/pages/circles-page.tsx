@@ -109,14 +109,14 @@ export function CirclesPage() {
 								style={{ zIndex: members.length - idx }}
 							>
 								<AvatarImage src={member.image || undefined} alt={member.name || 'Member'} />
-								<AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+								<AvatarFallback className="text-3xs">{getInitials(member.name)}</AvatarFallback>
 							</Avatar>
 						</TooltipTrigger>
 						<TooltipContent>{member.name || 'Member'}</TooltipContent>
 					</Tooltip>
 				))}
 				{remaining > 0 && (
-					<div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground">
+					<div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-3xs font-semibold text-muted-foreground">
 						+{remaining}
 					</div>
 				)}
@@ -266,7 +266,7 @@ export function CirclesPage() {
 										<div className="flex items-center gap-2 min-w-0">
 											<Avatar className="h-7 w-7 flex-shrink-0">
 												<AvatarImage src={circle.createdBy.image || undefined} />
-												<AvatarFallback className="text-[10px]">
+												<AvatarFallback className="text-3xs">
 													{getInitials(circle.createdBy.name)}
 												</AvatarFallback>
 											</Avatar>

@@ -154,6 +154,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 			return NextResponse.json({ error: 'Only admins can update circle details' }, { status: 403 });
 		}
 
+		// Renaming must respect the same per-creator uniqueness as creating. Scoped to the
+		// circle's creator (not the acting admin), matching the DB index.
+		if (name !== undefined) {
+			const circleToRename = await prisma.circle.findUnique({
+				where: { id },
+				select: { createdById: true },
+			});
+
+			if (!circleToRename) {
+				return NextResponse.json({ error: 'Circle not found' }, { status: 404 });
+			}
+
+			const duplicateName = await prisma.circle.findFirst({
+				where: {
+					createdById: circleToRename.createdById,
+					name: { equals: name.trim(), mode: 'insensitive' },
+					id: { not: id },
+				},
+				select: { id: true },
+			});
+
+			if (duplicateName) {
+				return NextResponse.json({ error: 'A circle with this name already exists.' }, { status: 409 });
+			}
+		}
+
 		const updatedCircle = await prisma.circle.update({
 			where: { id },
 			data: {

@@ -141,7 +141,7 @@ export const ChatList = memo(function ChatList({
 											{thread.lastMessageAt && (
 												<span
 													className={cn(
-														'text-[11px]',
+														'text-2xs',
 														hasUnread
 															? 'font-medium text-primary'
 															: 'text-muted-foreground',
@@ -164,7 +164,7 @@ export const ChatList = memo(function ChatList({
 											{thread.lastMessage?.body || 'Start a conversation'}
 										</p>
 										{hasUnread && (
-											<span className="ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+											<span className="ml-2 flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-3xs font-semibold text-primary-foreground">
 												{thread.unreadCount > 99 ? '99+' : thread.unreadCount}
 											</span>
 										)}

@@ -11,8 +11,32 @@
  *  A7. "Responded" indicator is icon-only (no visible text)
  */
 
+import type { Page } from '@playwright/test';
+
 import { test, expect, storageStatePaths } from './fixtures';
 import { TestAPI } from './helpers/test-data';
+
+/**
+ * Finds a request card by its unique title, reloading if it is not there yet.
+ *
+ * A plain `expect(card).toBeVisible({ timeout: 15000 })` was failing in CI with "element(s) not
+ * found". The list is fetched client-side, sorted newest-first and progressively paginated at 8
+ * per page, so a card can legitimately be absent from the first render — the request is created
+ * over the API moments earlier, and on a loaded runner the page can win that race. Retrying with
+ * a reload waits for the data rather than for the DOM, which is the thing actually in question.
+ */
+async function findRequestCard(page: Page, title: string) {
+	const card = page.locator('[data-testid="request-card"]').filter({ hasText: title }).first();
+
+	await expect(async () => {
+		if (await card.isVisible().catch(() => false)) return;
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(card).toBeVisible({ timeout: 5_000 });
+	}).toPass({ timeout: 45_000, intervals: [1_000, 2_000, 3_000] });
+
+	return card;
+}
 
 test.describe('item-request → chat (cross-user)', () => {
 	test('Respond opens chat with context; first message carries contextRef, second does not', async ({ browser }) => {
@@ -32,8 +56,7 @@ test.describe('item-request → chat (cross-user)', () => {
 
 		await user2Page.goto('/notifications?tab=item-requests');
 		// Scope to the exact card matching our unique title so parallel test runs don't collide.
-		const targetCard = user2Page.locator('[data-testid="request-card"]').filter({ hasText: requestTitle }).first();
-		await expect(targetCard).toBeVisible({ timeout: 15000 });
+		const targetCard = await findRequestCard(user2Page, requestTitle);
 		const respondBtn = targetCard.locator('[data-testid="respond-btn"]');
 		await expect(respondBtn).toBeVisible();
 
@@ -93,14 +116,12 @@ test.describe('item-request → chat (cross-user)', () => {
 		await user1Api.createItemRequest({ title, circleIds: [circle.id] });
 
 		await user2Page.goto('/notifications?tab=item-requests');
-		const targetCardA2 = user2Page.locator('[data-testid="request-card"]').filter({ hasText: title }).first();
-		await expect(targetCardA2).toBeVisible({ timeout: 15000 });
+		const targetCardA2 = await findRequestCard(user2Page, title);
 		await targetCardA2.locator('[data-testid="respond-btn"]').click();
 		await user2Page.waitForURL(/\/messages\//, { timeout: 20000 });
 
 		await user2Page.goto('/notifications?tab=item-requests');
-		const card = user2Page.locator('[data-testid="request-card"]').filter({ hasText: title }).first();
-		await expect(card).toBeVisible({ timeout: 15000 });
+		const card = await findRequestCard(user2Page, title);
 		await expect(card.locator('[data-testid="chat-btn"]')).toBeVisible();
 		await expect(card.locator('[data-testid="respond-btn"]')).toHaveCount(0);
 		await expect(card.locator('[data-testid="ignore-btn"]')).toHaveCount(0);

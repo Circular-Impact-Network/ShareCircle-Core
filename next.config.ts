@@ -59,6 +59,13 @@ const withPWA = withPWAInit({
 					},
 				},
 			},
+			// The manifest is generated per-request from the user agent (see
+			// app/manifest.webmanifest/route.ts) and must never be served from a cache, or a
+			// stale copy could keep offering install on desktop after this shipped.
+			{
+				urlPattern: ({ url }: { url: URL }) => url.pathname === '/manifest.webmanifest',
+				handler: 'NetworkOnly',
+			},
 			...runtimeCaching,
 		],
 	},
@@ -69,7 +76,12 @@ const securityHeaders = [
 	{ key: 'X-Frame-Options', value: 'DENY' },
 	{ key: 'X-XSS-Protection', value: '1; mode=block' },
 	{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-	{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+	// geolocation=(self): signup needs the Geolocation API on our own origin. An empty
+	// allowlist — geolocation=() — disables the API outright, so getCurrentPosition never
+	// prompts and fires the error callback immediately (Chrome/Safari; Firefox ignores the
+	// policy for geolocation, which is why this only broke for some users). Same-origin
+	// only; embedded frames still cannot use it.
+	{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
 	{
 		key: 'Strict-Transport-Security',
 		value: 'max-age=63072000; includeSubDomains; preload',

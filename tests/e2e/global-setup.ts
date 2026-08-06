@@ -3,6 +3,8 @@ import { chromium, request, type FullConfig } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
 
+import { signupPayload } from './helpers/test-data';
+
 type CreatedUser = {
 	key: 'user1' | 'user2';
 	id: string;
@@ -74,15 +76,9 @@ export default async function globalSetup(config: FullConfig) {
 
 	for (const user of rawUsers) {
 		const response = await api.post('/api/auth/signup', {
-			data: {
-				name: user.name,
-				email: user.email,
-				password: user.password,
-				// Real email signup collects date of birth (required), which marks the
-				// profile complete. Without it the profile-completion gate would redirect
-				// these test users to /complete-profile and block every authenticated route.
-				dateOfBirth: '1990-01-01',
-			},
+			// Date of birth and location are both mandatory and both feed the
+			// profile-completion gate — see signupPayload for why they cannot be omitted.
+			data: signupPayload({ name: user.name, email: user.email, password: user.password }),
 		});
 
 		if (!response.ok()) {

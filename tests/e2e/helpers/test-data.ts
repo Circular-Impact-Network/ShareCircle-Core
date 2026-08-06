@@ -41,6 +41,29 @@ export const testData = {
 	email: () => `e2e-${Date.now()}@test.local`,
 };
 
+/**
+ * A signup payload the API will actually accept.
+ *
+ * Location became mandatory on 2026-08-05: `signupSchema` requires `city`, and
+ * `isProfileComplete` in lib/auth.ts requires both `city` and `date_of_birth` before the
+ * middleware will let a session reach any authenticated route. Four separate specs were posting
+ * signups without them — global-setup failed the whole run with a 400, while two OTP specs and
+ * a rate-limit spec called `test.skip()` on the failure and quietly stopped testing anything.
+ *
+ * Every e2e signup goes through here so a fifth call site cannot reintroduce that.
+ */
+export function signupPayload(overrides: { name: string; email: string; password: string; [key: string]: unknown }) {
+	return {
+		dateOfBirth: '1990-01-01',
+		city: 'Austin',
+		state: 'Texas',
+		countryName: 'United States',
+		latitude: 30.2672,
+		longitude: -97.7431,
+		...overrides,
+	};
+}
+
 // Helper class for API operations
 export class TestAPI {
 	constructor(private request: APIRequestContext) {}

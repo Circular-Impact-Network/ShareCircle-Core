@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Loader2, Plus, Upload, X } from 'lucide-react';
+import { Camera, Loader2, Lock, Plus, Upload, X } from 'lucide-react';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import {
 	useCleanupImageMutation,
 	useGetItemQuery,
@@ -498,6 +499,19 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 								</label>
 							</div>
 						)}
+
+						{/* Display-only signpost, mirroring the item page and the create form. Not a
+						    form field and deliberately not interactive. */}
+						<div
+							className="flex items-center gap-2 text-xs text-muted-foreground opacity-60"
+							aria-disabled="true"
+							data-testid="security-deposit-row"
+						>
+							<Lock className="h-3.5 w-3.5 shrink-0" />
+							<span>Security deposit</span>
+							<span>Not set yet</span>
+							<ComingSoonPill />
+						</div>
 
 						<div className="space-y-2">
 							<Label>Main image</Label>

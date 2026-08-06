@@ -1,4 +1,3 @@
-import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -6,29 +5,13 @@ import { prisma } from '@/lib/prisma';
 import { JoinType, MemberRole } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
 import { z } from 'zod';
+import { getInviteExpiryDate } from '@/lib/invite';
+import { generateInviteCode } from '@/lib/invite-server';
 
 const createCircleSchema = z.object({
 	name: z.string().trim().min(1, 'Circle name is required').max(100, 'Circle name must be less than 100 characters'),
 	description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullish(),
 });
-
-const INVITE_EXPIRY_DAYS = 30;
-
-// Generate 8-character alphanumeric invite code
-function generateInviteCode(): string {
-	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding similar characters like 0/O, 1/I/L
-	let code = '';
-	for (let i = 0; i < 8; i++) {
-		code += chars[randomInt(0, chars.length)];
-	}
-	return code;
-}
-
-const getInviteExpiryDate = () => {
-	const expiresAt = new Date();
-	expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
-	return expiresAt;
-};
 
 // GET /api/circles - List user's circles with member count
 export async function GET() {
@@ -164,6 +147,22 @@ export async function POST(req: NextRequest) {
 		}
 		const { name, description } = parsed.data;
 
+		// A user's own circle names must be unambiguous, so they are unique per creator,
+		// compared case- and whitespace-insensitively. Two different users may still both have
+		// a circle called "Family". The DB carries a matching functional unique index
+		// (see migration 20260731090000_circle_name_unique_per_creator) which closes the race
+		// this check alone would leave open.
+		const duplicateName = await prisma.circle.findFirst({
+			where: {
+				createdById: userId,
+				name: { equals: name.trim(), mode: 'insensitive' },
+			},
+			select: { id: true },
+		});
+		if (duplicateName) {
+			return NextResponse.json({ error: 'You already have a circle with this name.' }, { status: 409 });
+		}
+
 		// Generate unique invite code
 		let inviteCode = generateInviteCode();
 		let codeExists = true;
@@ -225,6 +224,11 @@ export async function POST(req: NextRequest) {
 					txAttempt++;
 					await new Promise(r => setTimeout(r, 300 * txAttempt));
 					continue;
+				}
+				// Two concurrent creates with the same name — the pre-check above passed for both,
+				// the unique index caught the loser. Same message, so the race is invisible.
+				if (code === 'P2002') {
+					return NextResponse.json({ error: 'You already have a circle with this name.' }, { status: 409 });
 				}
 				throw err;
 			}

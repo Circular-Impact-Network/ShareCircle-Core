@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dropzone } from '@/components/ui/dropzone';
-import { Upload, Camera, Loader2, Sparkles, X, Check, ImageIcon, Plus, Info } from 'lucide-react';
+import { Upload, Camera, Loader2, Lock, Sparkles, X, Check, ImageIcon, Plus, Info } from 'lucide-react';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import { useToast } from '@/hooks/useToast';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -643,6 +644,8 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 
 	// Check if we're in a loading state
 	const isLoading = state === 'uploading' || state === 'detecting' || state === 'analyzing' || state === 'saving';
+	// Only changes the copy — the weight/price fields render either way.
+	const hasAiEstimate = estimatedWeightKg !== null || estimatedNewPriceUsd !== null;
 
 	return (
 		<Dialog open={open} onOpenChange={open ? handleClose : onOpenChange}>
@@ -1062,78 +1065,98 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 								</div>
 							</div>
 
-							{/* AI Estimates */}
-							{(estimatedWeightKg !== null || estimatedNewPriceUsd !== null) && (
-								<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-									<div className="flex items-center gap-1.5">
-										<Sparkles className="h-3.5 w-3.5 text-primary" />
-										<Label className="text-xs uppercase tracking-wide text-muted-foreground">
-											AI Estimates
-										</Label>
-									</div>
-									<div className="grid grid-cols-2 gap-3">
-										<div className="space-y-1.5">
-											<Label htmlFor="weight" className="text-xs text-muted-foreground">
-												Weight (kg)
-											</Label>
-											<Input
-												id="weight"
-												type="number"
-												min="0"
-												step="0.1"
-												value={estimatedWeightKg ?? ''}
-												onChange={e =>
-													setEstimatedWeightKg(
-														e.target.value === '' ? null : parseFloat(e.target.value),
-													)
-												}
-												placeholder="e.g. 1.2"
-												className="h-9"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<Label htmlFor="price" className="text-xs text-muted-foreground">
-												Est. retail price (USD)
-											</Label>
-											<Input
-												id="price"
-												type="number"
-												min="0"
-												step="1"
-												value={estimatedNewPriceUsd ?? ''}
-												onChange={e =>
-													setEstimatedNewPriceUsd(
-														e.target.value === '' ? null : parseFloat(e.target.value),
-													)
-												}
-												placeholder="e.g. 120"
-												className="h-9"
-											/>
-										</div>
-									</div>
-									<div className="flex items-start gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30 px-2.5 py-2 text-xs text-blue-700 dark:text-blue-400">
-										<Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-										<span>AI suggested — edit if needed. Weight is always shown to borrowers.</span>
-									</div>
-									{estimatedNewPriceUsd !== null && (
-										<div className="flex items-center gap-2 pt-1">
-											<Switch
-												id="value-visibility-create"
-												checked={isValueVisible}
-												onCheckedChange={setIsValueVisible}
-											/>
-											<label
-												htmlFor="value-visibility-create"
-												className="cursor-pointer select-none text-xs text-muted-foreground"
-											>
-												{isValueVisible
-													? 'Price visible to borrowers'
-													: 'Price hidden from borrowers (only you can see it)'}
-											</label>
-										</div>
-									)}
+							{/* Weight & price. Rendered unconditionally: this block used to be gated on
+							    the AI having returned at least one estimate, so whenever analysis
+							    returned nulls or was rate limited the user could not enter a weight or
+							    price at all and had to save and then re-open the item in Edit. The Edit
+							    modal has always shown these fields unconditionally. */}
+							<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+								<div className="flex items-center gap-1.5">
+									<Sparkles className="h-3.5 w-3.5 text-primary" />
+									<Label className="text-xs uppercase tracking-wide text-muted-foreground">
+										{hasAiEstimate ? 'AI Estimates' : 'Weight & Value'}
+									</Label>
 								</div>
-							)}
+								<div className="grid grid-cols-2 gap-3">
+									<div className="space-y-1.5">
+										<Label htmlFor="weight" className="text-xs text-muted-foreground">
+											Weight (kg)
+										</Label>
+										<Input
+											id="weight"
+											type="number"
+											min="0"
+											step="0.1"
+											value={estimatedWeightKg ?? ''}
+											onChange={e =>
+												setEstimatedWeightKg(
+													e.target.value === '' ? null : parseFloat(e.target.value),
+												)
+											}
+											placeholder="e.g. 1.2"
+											className="h-9"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="price" className="text-xs text-muted-foreground">
+											Est. retail price (USD)
+										</Label>
+										<Input
+											id="price"
+											type="number"
+											min="0"
+											step="1"
+											value={estimatedNewPriceUsd ?? ''}
+											onChange={e =>
+												setEstimatedNewPriceUsd(
+													e.target.value === '' ? null : parseFloat(e.target.value),
+												)
+											}
+											placeholder="e.g. 120"
+											className="h-9"
+										/>
+									</div>
+								</div>
+								<div className="flex items-start gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30 px-2.5 py-2 text-xs text-blue-700 dark:text-blue-400">
+									<Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+									<span>
+										{hasAiEstimate
+											? 'AI suggested — edit if needed. Weight is always shown to borrowers.'
+											: 'Optional, but helps borrowers. Weight is always shown to borrowers.'}
+									</span>
+								</div>
+								{/* No longer gated on an AI price: the toggle has to be reachable when the
+									    user types a price in themselves. */}
+								<div className="flex items-center gap-2 pt-1">
+									<Switch
+										id="value-visibility-create"
+										checked={isValueVisible}
+										onCheckedChange={setIsValueVisible}
+									/>
+									<label
+										htmlFor="value-visibility-create"
+										className="cursor-pointer select-none text-xs text-muted-foreground"
+									>
+										{isValueVisible
+											? 'Price visible to borrowers'
+											: 'Price hidden from borrowers (only you can see it)'}
+									</label>
+								</div>
+
+								{/* Display-only signpost, mirroring the item page. Not a form field and
+									    deliberately not interactive — owners need to know deposits are
+									    planned rather than something they forgot to fill in. */}
+								<div
+									className="flex items-center gap-2 pt-1 text-xs text-muted-foreground opacity-60"
+									aria-disabled="true"
+									data-testid="security-deposit-row"
+								>
+									<Lock className="h-3.5 w-3.5 shrink-0" />
+									<span>Security deposit</span>
+									<span>Not set yet</span>
+									<ComingSoonPill />
+								</div>
+							</div>
 
 							{/* Circle Selection */}
 							<div className="space-y-3">

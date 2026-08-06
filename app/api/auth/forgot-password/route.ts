@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
-import { generateResetToken, sendPasswordResetEmail } from '@/lib/email';
+import { generateResetToken, isEmailConfigured, sendPasswordResetEmail } from '@/lib/email';
 import { normalizeEmail } from '@/lib/otp';
 
 export async function POST(req: NextRequest) {
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 		// Always return success message to prevent email enumeration
 		const successMessage = 'If an account exists with this email, you will receive a password reset link.';
 
-		if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-			console.warn('GMAIL credentials not configured - password reset email not sent');
+		if (!isEmailConfigured()) {
+			console.warn('Email is not configured (RESEND_API_KEY) - password reset email not sent');
 			return NextResponse.json(
 				{ error: 'Email service is not configured. Please try again later.' },
 				{ status: 500 },

@@ -26,8 +26,17 @@ export default defineConfig({
 		? {}
 		: {
 				webServer: {
-					// CI: use the production build (npm run build runs first in ci.yml); Local: dev server with HMR.
-					command: process.env.CI ? 'npm run start' : 'npm run dev',
+					// CI: serve the production build (npm run build runs first in ci.yml).
+					// Local: dev server with HMR.
+					//
+					// `next start` directly, NOT `npm run start`, and only here. `npm start` fires
+					// the `prestart` hook -> `prisma migrate deploy`, which connects over
+					// DIRECT_URL. Supabase's direct endpoint (db.<ref>.supabase.co:5432) resolves
+					// to IPv6 only and GitHub-hosted runners are IPv4-only, so that connection
+					// cannot succeed and the web server failed to boot with P1001. The CI database
+					// is already migrated, so there is nothing for it to do here anyway. Deploy
+					// targets that boot with `npm start` still get migrations applied.
+					command: process.env.CI ? 'npx next start -p 3003' : 'npm run dev',
 					url: baseURL,
 					reuseExistingServer: !process.env.CI, // Always start fresh in CI; reuse locally for speed.
 					timeout: 120_000,

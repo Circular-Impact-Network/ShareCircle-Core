@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+import { isDesktopDevice } from '@/lib/device';
+
 export type PWAInstallStatus = 'checking' | 'installable' | 'installed' | 'unsupported';
 export type PWAUpdateStatus = 'none' | 'checking' | 'downloading' | 'ready';
 
@@ -33,6 +35,13 @@ export function usePWAInstall() {
 		const handlePrompt = (e: Event) => {
 			e.preventDefault();
 			setDeferredPrompt(e as BeforeInstallPromptEvent);
+			// Installing is offered on phones only — the manifest is portrait/standalone and
+			// the app is designed as a home-screen experience. Desktop reports 'unsupported'
+			// so the Settings install row stays hidden there.
+			if (isDesktopDevice()) {
+				setInstallStatus('unsupported');
+				return;
+			}
 			if (!isStandalone) setInstallStatus('installable');
 		};
 		window.addEventListener('beforeinstallprompt', handlePrompt);

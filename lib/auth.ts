@@ -7,6 +7,27 @@ import { prisma } from './prisma';
 import { getOtpIdentifier, hashOtp, normalizeEmail, timingSafeEqualHex } from './otp';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from './phone';
 
+/**
+ * Bump whenever the definition of "complete profile" below changes.
+ *
+ * `profileComplete` is cached in the JWT and was only refreshed when absent, so widening the
+ * rule would not have applied to anyone already holding a token: an existing user with a date
+ * of birth but no location would keep sailing past the gate until their next sign-in. The
+ * version stamp forces exactly one re-read per outstanding token.
+ *
+ * 2 — date of birth AND location (city), since both are mandatory at signup.
+ */
+const PROFILE_RULE_VERSION = 2;
+
+/**
+ * A profile is complete once both mandatory fields are captured. Location counts only when
+ * it resolved to a city — latitude/longitude alone are not usable for matching people to
+ * circles nearby, and the IP fallback can return coordinates with no place name.
+ */
+function isProfileComplete(user: { date_of_birth: Date | null; city: string | null }): boolean {
+	return user.date_of_birth != null && (user.city?.trim() ?? '') !== '';
+}
+
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma),
 	secret: process.env.NEXTAUTH_SECRET,
@@ -250,21 +271,25 @@ export const authOptions: NextAuthOptions = {
 				token.image = user.image;
 			}
 
-			// Fetch emailVerified + profile completion (date_of_birth) from DB on
-			// sign-in, update, or whenever either value isn't cached in the token.
+			// Fetch emailVerified + profile completion from DB on sign-in, update, whenever
+			// either value isn't cached in the token, or when the completeness rule has been
+			// widened since this token was minted.
 			if (
 				trigger === 'signIn' ||
 				trigger === 'update' ||
 				!token.emailVerified ||
-				token.profileComplete === undefined
+				token.emailVerifiedUnconfirmed ||
+				token.profileComplete === undefined ||
+				token.profileRuleVersion !== PROFILE_RULE_VERSION
 			) {
 				// Retry up to 3 times to handle transient Prisma Accelerate connection errors
-				let dbUser: { emailVerified: Date | null; date_of_birth: Date | null } | null = null;
+				let dbUser: { emailVerified: Date | null; date_of_birth: Date | null; city: string | null } | null =
+					null;
 				for (let attempt = 0; attempt < 3; attempt++) {
 					try {
 						dbUser = await prisma.user.findUnique({
 							where: { id: token.id as string },
-							select: { emailVerified: true, date_of_birth: true },
+							select: { emailVerified: true, date_of_birth: true, city: true },
 						});
 						break;
 					} catch (err) {
@@ -286,11 +311,16 @@ export const authOptions: NextAuthOptions = {
 						dbUser.emailVerified = verifiedAt;
 					}
 					token.emailVerified = dbUser.emailVerified;
-					// Profile is "complete" once date of birth is captured (required field).
-					token.profileComplete = dbUser.date_of_birth != null;
+					token.profileComplete = isProfileComplete(dbUser);
+					token.profileRuleVersion = PROFILE_RULE_VERSION;
+					delete token.emailVerifiedUnconfirmed;
 				} else if (trigger === 'signIn') {
-					// authorize() already verified email — don't null it out if DB is transiently unreachable
+					// authorize() already verified email — don't null it out if DB is transiently
+					// unreachable, or a legitimate user gets bounced to verification over a blip.
+					// Flag it so the next token refresh re-reads from the DB instead of trusting
+					// this assumed value for the whole session.
 					token.emailVerified = (token.emailVerified as Date | null) ?? new Date();
+					token.emailVerifiedUnconfirmed = true;
 				}
 				// else: leave cached values unchanged (don't null out on transient DB errors)
 			}

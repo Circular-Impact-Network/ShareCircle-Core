@@ -173,3 +173,6 @@ vite.config.ts.timestamp-*
 graphify-out/*
 .mcp.json
 .playwright-mcp/*
+
+# Maintainer-only devlog
+DEVLOG.md

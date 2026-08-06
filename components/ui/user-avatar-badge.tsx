@@ -10,7 +10,7 @@ interface UserAvatarBadgeProps {
 
 const sizeClasses = {
 	xs: { avatar: 'h-4 w-4', fallback: 'text-[8px]' },
-	sm: { avatar: 'h-5 w-5', fallback: 'text-[10px]' },
+	sm: { avatar: 'h-5 w-5', fallback: 'text-3xs' },
 	md: { avatar: 'h-6 w-6', fallback: 'text-xs' },
 };
 
