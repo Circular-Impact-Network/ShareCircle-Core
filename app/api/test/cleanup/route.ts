@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Same pattern the sibling test routes enforce (create-session, get-otp).
+const TEST_EMAIL_PATTERN = /^e2e\+.+@example\.com$/i;
+
 export async function POST(req: NextRequest) {
 	/**
 	 * Matches the guard on the sibling test routes (create-session, get-otp). This one used the
@@ -31,12 +34,28 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'No emails provided' }, { status: 400 });
 		}
 
-		const deletedForEmails = emails.length
-			? (await prisma.user.deleteMany({ where: { email: { in: emails } } })).count
+		/**
+		 * Constrain deletions to the documented test-account pattern.
+		 *
+		 * The sweep branch below has always been scoped to `e2e+`, but this explicit-emails path
+		 * accepted anything, so the shared secret was the only thing between this endpoint and a
+		 * cascading delete of any real account by email address. The sibling test routes
+		 * (create-session, get-otp) both enforce this exact regex; this one did not — the same
+		 * "guarded one call site, not the class" pattern that left the production check wrong for
+		 * six months.
+		 */
+		const deletableEmails = emails.filter(email => TEST_EMAIL_PATTERN.test(email));
+		const rejected = emails.length - deletableEmails.length;
+		if (rejected > 0) {
+			console.warn(`Test cleanup: ignored ${rejected} email(s) outside the ${TEST_EMAIL_PATTERN} pattern.`);
+		}
+
+		const deletedForEmails = deletableEmails.length
+			? (await prisma.user.deleteMany({ where: { email: { in: deletableEmails } } })).count
 			: 0;
 
-		if (emails.length) {
-			await prisma.testOtp.deleteMany({ where: { email: { in: emails } } });
+		if (deletableEmails.length) {
+			await prisma.testOtp.deleteMany({ where: { email: { in: deletableEmails } } });
 		}
 
 		/**

@@ -116,7 +116,9 @@ jobs:
         needs: [lint, type-check, unit-tests, build]
         env:
             PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_URL }}
-            TEST_CLEANUP_SECRET: ${{ secrets.TEST_CLEANUP_SECRET }}
+            # No TEST_CLEANUP_SECRET: remote runs skip globalSetup/globalTeardown entirely
+            # (playwright.config.ts), so nothing here calls the test endpoints. Withholding it
+            # also means this job cannot reach /api/test/cleanup on a deployed environment.
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
@@ -145,7 +147,9 @@ jobs:
         needs: [lint, type-check, unit-tests, build]
         env:
             PLAYWRIGHT_BASE_URL: ${{ secrets.PRODUCTION_URL }}
-            TEST_CLEANUP_SECRET: ${{ secrets.TEST_CLEANUP_SECRET }}
+            # Deliberately no TEST_CLEANUP_SECRET. smoke.spec.ts is read-only, and handing this
+            # job the secret was one env-var copy away from arming /api/test/cleanup — a
+            # cascading user delete — against the production database.
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
