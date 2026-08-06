@@ -8,6 +8,7 @@ import { sendOtpSms } from '@/lib/sms';
 import { isSupportedPhoneCountry, validatePhoneByCountry } from '@/lib/phone';
 import { getOtpIdentifier, hashOtp, normalizeEmail } from '@/lib/otp';
 import { z } from 'zod';
+import { validateDateOfBirth } from '@/lib/age-policy';
 
 /**
  * Signup payload. This route previously did a raw `as` cast with no validation at all.
@@ -22,7 +23,9 @@ const signupSchema = z.object({
 	password: z.string().max(200).optional(),
 	phoneNumber: z.string().trim().max(32).optional(),
 	country: z.string().trim().max(8).optional(),
-	dateOfBirth: z.string().trim().max(32).optional(),
+	// Required and age-checked. It feeds the profile-completion gate, so accepting an
+	// unvalidated string here let an under-13 account through with profileComplete true.
+	dateOfBirth: z.string().trim().min(1, 'Date of birth is required.').max(32),
 	latitude: z.number().min(-90).max(90).optional(),
 	longitude: z.number().min(-180).max(180).optional(),
 	city: z.string().trim().min(1, 'Location is required to sign up.').max(120),
@@ -48,6 +51,16 @@ export async function POST(req: NextRequest) {
 			);
 		}
 		const body = parsedBody.data;
+
+		// Age is enforced here, not only on the form. `lib/age-policy.ts` is the single definition
+		// shared with /api/user/complete-profile, which previously claimed to mirror this route
+		// while this route had no check at all.
+		const dateOfBirthResult = validateDateOfBirth(body.dateOfBirth);
+		if ('error' in dateOfBirthResult) {
+			return NextResponse.json({ error: dateOfBirthResult.error }, { status: 400 });
+		}
+		const dateOfBirthValue = dateOfBirthResult.date;
+
 		const normalizedEmail = body.email ? normalizeEmail(body.email) : '';
 		const normalizedName = body.name?.trim() || 'User';
 		const normalizedCountry = body.country?.toUpperCase() || '';
@@ -130,7 +143,7 @@ export async function POST(req: NextRequest) {
 				country_code: dialCode,
 				...(emailVerified && { emailVerified }),
 				...(phoneVerified && { phoneVerified }),
-				...(body.dateOfBirth && { date_of_birth: new Date(body.dateOfBirth) }),
+				date_of_birth: dateOfBirthValue,
 				// Written unconditionally where present: the old truthiness spreads silently
 				// dropped a literal 0 latitude/longitude (equator / prime meridian).
 				latitude: body.latitude ?? null,
