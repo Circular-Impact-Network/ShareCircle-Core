@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { queueBroadcast } from '@/lib/notify';
 import { JoinType, MemberRole } from '@prisma/client';
 import { isInviteExpired } from '@/lib/invite';
+import { RATE_LIMITS, checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
 
 // POST /api/circles/join - Join a circle via code or link
 export async function POST(req: NextRequest) {
@@ -17,6 +18,14 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
+
+		// 18 sibling routes rate limit; this one did not, while returning distinct 404/410/400
+		// responses that form a clean oracle for probing invite codes.
+		const rateLimit = checkRateLimit(getClientIdentifier(req, userId), 'circles-join', RATE_LIMITS.auth);
+		if (!rateLimit.success) {
+			return rateLimitResponse(rateLimit);
+		}
+
 		const body = await req.json();
 		const { code, joinType } = body;
 

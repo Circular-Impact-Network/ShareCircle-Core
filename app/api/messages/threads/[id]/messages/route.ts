@@ -17,7 +17,10 @@ const sendMessageSchema = z
 			.array(
 				z.object({
 					type: z.literal('IMAGE'),
-					url: z.string().min(1),
+					// Was an unbounded free string rendered straight into <img src>. A ~50MB base64
+					// data: URI hung the recipient's browser, and an /api/... value turned the render
+					// into an authenticated GET beacon.
+					url: z.string().min(1).max(2048).url('Attachment url must be an absolute URL'),
 					path: z.string().optional(),
 				}),
 			)

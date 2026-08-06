@@ -131,6 +131,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return NextResponse.json({ error: 'Only the requester can cancel this request' }, { status: 403 });
 		}
 
+		/**
+		 * `status` arrived straight from the body and was assigned without ever being checked
+		 * against the enum, so any circle member could close, re-open, or falsely mark as
+		 * fulfilled a request belonging to someone else — and re-fire ITEM_REQUEST_FULFILLED on
+		 * every call. Only CANCELLED was restricted, to the requester.
+		 */
+		if (status !== undefined && !Object.values(ItemRequestStatus).includes(status)) {
+			return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+		}
+
+		// Terminal states are terminal: nothing reopens a finished request.
+		if (status !== undefined && itemRequest.status !== ItemRequestStatus.OPEN) {
+			return NextResponse.json({ error: 'This request has already been closed' }, { status: 409 });
+		}
+
+		// Marking something fulfilled is the requester's call, not any member's.
+		if (status === ItemRequestStatus.FULFILLED && itemRequest.requesterId !== userId) {
+			return NextResponse.json({ error: 'Only the requester can mark this request fulfilled' }, { status: 403 });
+		}
+
 		// Update the item request
 		const updateData: { status?: ItemRequestStatus; fulfilledBy?: string } = {};
 
