@@ -13,10 +13,22 @@ let browserClient: SupabaseClient | null = null;
 let realtimeAuth: Promise<void> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * After a failed token fetch, refuse further attempts for this long.
+ *
+ * Without it, clearing `realtimeAuth` on failure meant the *next* subscriber immediately tried
+ * again — and there are several subscribers per authenticated page. A persistently failing
+ * endpoint (a missing SUPABASE_JWT_SECRET, say) therefore turned every page load into a burst of
+ * doomed requests against the very server that was already struggling.
+ */
+const AUTH_RETRY_COOLDOWN_MS = 30_000;
+let authRetryBlockedUntil = 0;
+
 /** For use in tests only — resets the singleton so each test gets a fresh client. */
 export function resetBrowserSupabaseClient() {
 	browserClient = null;
 	realtimeAuth = null;
+	authRetryBlockedUntil = 0;
 	if (refreshTimer) {
 		clearTimeout(refreshTimer);
 		refreshTimer = null;
@@ -55,8 +67,10 @@ async function applyRealtimeToken(client: SupabaseClient): Promise<void> {
 	refreshTimer = setTimeout(() => {
 		realtimeAuth = applyRealtimeToken(client).catch(error => {
 			console.error('Failed to refresh realtime token:', error);
-			// Clear so the next subscriber retries rather than awaiting a permanently rejected promise.
+			// Clear so a later subscriber retries rather than awaiting a permanently rejected
+			// promise — subject to the same cooldown as a first-time failure.
 			realtimeAuth = null;
+			authRetryBlockedUntil = Date.now() + AUTH_RETRY_COOLDOWN_MS;
 		});
 	}, msUntilRefresh);
 }
@@ -74,11 +88,18 @@ async function applyRealtimeToken(client: SupabaseClient): Promise<void> {
  * fallback: the previous behaviour — public channels — is the vulnerability being closed.
  */
 export function ensureRealtimeAuth(client: SupabaseClient): Promise<void> {
-	if (!realtimeAuth) {
-		realtimeAuth = applyRealtimeToken(client).catch(error => {
-			realtimeAuth = null; // allow a later subscriber to retry
-			throw error;
-		});
+	if (realtimeAuth) {
+		return realtimeAuth;
 	}
+
+	if (Date.now() < authRetryBlockedUntil) {
+		return Promise.reject(new Error('Realtime authorisation is cooling down after a recent failure'));
+	}
+
+	realtimeAuth = applyRealtimeToken(client).catch(error => {
+		realtimeAuth = null; // allow a later subscriber to retry, once the cooldown has passed
+		authRetryBlockedUntil = Date.now() + AUTH_RETRY_COOLDOWN_MS;
+		throw error;
+	});
 	return realtimeAuth;
 }
