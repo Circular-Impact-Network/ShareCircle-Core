@@ -3,6 +3,7 @@ import { getEffectiveNotificationChannels } from '@/lib/notification-preferences
 import { sendPushToUser } from '@/lib/push';
 import { supabaseAdmin } from '@/lib/supabase';
 import { NotificationType, NotificationStatus, Prisma, type Notification } from '@prisma/client';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 interface CreateNotificationParams {
 	userId: string;
@@ -57,7 +58,7 @@ export async function createNotification({
 		});
 
 		try {
-			const channel = supabaseAdmin.channel(`notifications:${userId}`);
+			const channel = supabaseAdmin.channel(`notifications:${userId}`, PRIVATE_CHANNEL);
 			await channel.send({
 				type: 'broadcast',
 				event: 'new_notification',
@@ -170,7 +171,7 @@ interface BroadcastItemRequestParams {
  */
 export async function broadcastItemRequest({ circleId, request }: BroadcastItemRequestParams) {
 	try {
-		const channel = supabaseAdmin.channel(`circle-requests:${circleId}`);
+		const channel = supabaseAdmin.channel(`circle-requests:${circleId}`, PRIVATE_CHANNEL);
 		await channel.send({
 			type: 'broadcast',
 			event: 'new_item_request',
@@ -202,7 +203,7 @@ export async function broadcastStatusChange(
 	data?: Record<string, unknown>,
 ) {
 	try {
-		const channel = supabaseAdmin.channel(`notifications:${userId}`);
+		const channel = supabaseAdmin.channel(`notifications:${userId}`, PRIVATE_CHANNEL);
 		await channel.send({
 			type: 'broadcast',
 			event,

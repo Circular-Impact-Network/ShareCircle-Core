@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUserIdOrResponse } from '../../_utils';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 // POST /api/messages/threads/[id]/read - mark read
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,7 +67,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 		// Broadcast receipt updates to other participants
 		if (unreadReceipts.length > 0) {
 			try {
-				const channel = supabaseAdmin.channel(`messages:${conversationId}`);
+				const channel = supabaseAdmin.channel(`messages:${conversationId}`, PRIVATE_CHANNEL);
 				for (const receipt of unreadReceipts) {
 					await channel.send({
 						type: 'broadcast',
@@ -88,7 +89,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
 		// Broadcast to user's channel to update unread count in sidebar
 		try {
-			const userChannel = supabaseAdmin.channel(`user:${userId}:messages`);
+			const userChannel = supabaseAdmin.channel(`user:${userId}:messages`, PRIVATE_CHANNEL);
 			await userChannel.send({
 				type: 'broadcast',
 				event: 'messages_read',

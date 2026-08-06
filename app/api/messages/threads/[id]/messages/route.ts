@@ -7,6 +7,7 @@ import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 import { contextRefSchema, resolveContextRef } from '@/lib/chat-context-ref';
 import { z } from 'zod';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 const sendMessageSchema = z
 	.object({
@@ -141,7 +142,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			// Broadcast delivery receipts to sender (single batched send)
 			if (undeliveredReceipts.length > 0) {
 				try {
-					const channel = supabaseAdmin.channel(`messages:${id}`);
+					const channel = supabaseAdmin.channel(`messages:${id}`, PRIVATE_CHANNEL);
 					await channel.send({
 						type: 'broadcast',
 						event: 'receipt_update',
