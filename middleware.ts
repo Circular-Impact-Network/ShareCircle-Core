@@ -120,7 +120,15 @@ export const config = {
 		 * - _next/image (image optimization files)
 		 * - favicon.ico (browser icon)
 		 * - public folder files
+		 * - files with a known static-asset extension
+		 *
+		 * That last clause used to be `.*\..*` — any path containing a dot at all. `/items/abc.def`,
+		 * `/messages/x.y` and `/circles/a.b` all match real [id] routes and all contain a dot, so
+		 * middleware never ran for them and `app/(authenticated)/layout.tsx` performs no check of
+		 * its own ("trusts middleware.ts to gate auth"). The app shell therefore rendered for a
+		 * signed-out visitor, defeating the stated purpose of this file — no flash before redirect
+		 * on shareable item links.
 		 */
-		'/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
+		'/((?!api|_next/static|_next/image|favicon.ico|public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|mjs|map|woff|woff2|ttf|otf|txt|xml|webmanifest)$).*)',
 	],
 };
