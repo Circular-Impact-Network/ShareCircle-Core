@@ -8,6 +8,7 @@ import { Prisma, BorrowTransactionStatus } from '@prisma/client';
 import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 import { queueBroadcast } from '@/lib/notify';
+import { findForeignStoragePaths } from '@/lib/storage-paths';
 
 export const maxDuration = 60;
 
@@ -157,7 +158,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 						}
 					: null,
 				estimatedWeightKg: item.estimatedWeightKg,
-				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+				// "Price hidden from borrowers" has to be enforced here, not only where it is
+				// rendered. The UI gate in components/pages/item-detail-page.tsx hides the figure
+				// from the page but the value was still in the JSON, so any circle member could
+				// read it straight out of the network tab — the toggle promised a privacy control
+				// the API did not implement.
+				estimatedNewPriceUsd: item.ownerId === userId || item.isValueVisible ? item.estimatedNewPriceUsd : null,
 				isValueVisible: item.isValueVisible,
 			},
 			{ status: 200 },
@@ -194,6 +200,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			estimatedNewPriceUsd,
 			isValueVisible,
 		} = body;
+
+		/**
+		 * Storage keys must live under the caller's own `${userId}/` prefix.
+		 *
+		 * Without this, the two-step below permanently destroyed another user's file: PATCH with
+		 * `mediaPaths: [victimPath]` to store it on your own item, then PATCH with `mediaPaths: []`
+		 * — the "delete old media files" block further down diffs the two and calls `deleteImage`
+		 * with the service-role key, which bypasses RLS. Victim paths are handed out by
+		 * `GET /api/items`, which returns `mediaPaths` for every item in your circles.
+		 */
+		const submittedPaths = [
+			...(typeof imagePath === 'string' ? [imagePath] : []),
+			...(Array.isArray(mediaPaths)
+				? (mediaPaths as unknown[]).filter((p): p is string => typeof p === 'string')
+				: []),
+		];
+		const foreignPaths = findForeignStoragePaths(submittedPaths, userId);
+		if (foreignPaths.length > 0) {
+			return NextResponse.json({ error: 'You can only attach your own uploads' }, { status: 403 });
+		}
 
 		// Validate user-provided imageUrl is from our Supabase storage (SSRF prevention)
 		if (imageUrl && typeof imageUrl === 'string') {
