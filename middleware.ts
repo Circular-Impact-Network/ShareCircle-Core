@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+import { safeRedirectPath } from '@/lib/safe-redirect';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
@@ -73,10 +75,7 @@ export async function middleware(request: NextRequest) {
 		}
 		// Check for callbackUrl first
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	// Check email verification for authenticated users on protected routes
@@ -105,10 +104,7 @@ export async function middleware(request: NextRequest) {
 	// If the profile is already complete, keep users out of the onboarding step
 	if (token && isCompleteProfile && token.profileComplete === true) {
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	return NextResponse.next();

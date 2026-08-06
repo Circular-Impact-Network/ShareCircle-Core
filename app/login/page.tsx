@@ -27,6 +27,7 @@ import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { getPasswordRequirementsText, isPasswordAcceptable } from '@/lib/password-validation';
 import { shouldNavigateAfterSignIn, signInError, signInWithTimeout } from '@/lib/auth-client';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 type LoginMode = 'login' | 'forgot' | 'reset';
 
@@ -53,7 +54,7 @@ function LoginContent() {
 	const [lastLoginMethod, setLastLoginMethod] = useState('');
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const callbackUrl = searchParams.get('callbackUrl') || '/home';
+	const callbackUrl = safeRedirectPath(searchParams.get('callbackUrl'));
 	const verified = searchParams.get('verified');
 	const modeParam = searchParams.get('mode');
 	const tokenParam = searchParams.get('token');
