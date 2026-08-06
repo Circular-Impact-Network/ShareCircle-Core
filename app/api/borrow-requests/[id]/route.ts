@@ -129,10 +129,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 				return NextResponse.json({ error: 'Only the requester can cancel this request' }, { status: 403 });
 			}
 
-			const updatedRequest = await prisma.borrowRequest.update({
-				where: { id },
+			// Guarded on status so the write itself decides the race. The PENDING check above ran
+			// on a row read earlier in this handler; between that read and this write the owner
+			// can have approved, and an unguarded update would then produce a CANCELLED request
+			// with a live ACTIVE transaction and an item stuck unavailable forever.
+			const cancelled = await prisma.borrowRequest.updateMany({
+				where: { id, status: BorrowRequestStatus.PENDING, requesterId: userId },
 				data: { status: BorrowRequestStatus.CANCELLED },
 			});
+
+			if (cancelled.count === 0) {
+				return NextResponse.json({ error: 'Request has already been processed' }, { status: 409 });
+			}
+
+			const updatedRequest = await prisma.borrowRequest.findUnique({ where: { id } });
 
 			return NextResponse.json(updatedRequest, { status: 200 });
 		}
@@ -143,12 +153,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		}
 
 		if (action === 'decline') {
-			const updatedRequest = await prisma.borrowRequest.update({
-				where: { id },
+			// Same guard as cancel: the PENDING check ran on an earlier read, so the transition
+			// has to be conditional on the row still being PENDING at write time.
+			const declined = await prisma.borrowRequest.updateMany({
+				where: { id, status: BorrowRequestStatus.PENDING },
 				data: {
 					status: BorrowRequestStatus.DECLINED,
 					declineNote: declineNote?.trim() || null,
 				},
+			});
+
+			if (declined.count === 0) {
+				return NextResponse.json({ error: 'Request has already been processed' }, { status: 409 });
+			}
+
+			const updatedRequest = await prisma.borrowRequest.findUniqueOrThrow({
+				where: { id },
 				include: {
 					item: {
 						select: {
@@ -204,20 +224,37 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 			// Use transaction to update request, create transaction, and mark item unavailable
 			const result = await prisma.$transaction(async tx => {
-				// Re-check availability inside transaction to prevent TOCTOU race
-				const freshItem = await tx.item.findUnique({
-					where: { id: borrowRequest.itemId },
-					select: { isAvailable: true },
+				/**
+				 * Claim the item with the write itself.
+				 *
+				 * The previous version read with findUnique and then updated. Prisma's interactive
+				 * transactions run at READ COMMITTED and a plain SELECT takes no row lock, so two
+				 * concurrent approvals for the same item both saw isAvailable: true and both
+				 * proceeded — two ACTIVE transactions, two borrowers, one physical item. The
+				 * @unique on borrowRequestId does not catch it because the request ids differ.
+				 *
+				 * A conditional UPDATE is atomic: exactly one of the racers matches the
+				 * `isAvailable: true` predicate and the other gets count === 0.
+				 */
+				const claimed = await tx.item.updateMany({
+					where: { id: borrowRequest.itemId, isAvailable: true },
+					data: { isAvailable: false },
 				});
-				if (!freshItem?.isAvailable) {
+				if (claimed.count === 0) {
 					throw new Error('ITEM_UNAVAILABLE');
 				}
 
-				// Update borrow request status
-				const updatedRequest = await tx.borrowRequest.update({
-					where: { id },
+				// Same treatment for the request itself, so approve-racing-approve on one request
+				// cannot create two transactions for it.
+				const claimedRequest = await tx.borrowRequest.updateMany({
+					where: { id, status: BorrowRequestStatus.PENDING },
 					data: { status: BorrowRequestStatus.APPROVED },
 				});
+				if (claimedRequest.count === 0) {
+					throw new Error('REQUEST_NOT_PENDING');
+				}
+
+				const updatedRequest = await tx.borrowRequest.findUniqueOrThrow({ where: { id } });
 
 				// Create borrow transaction. startAt carries the requested start date so the UI can
 				// distinguish a future "Reserved" booking from a "Currently borrowed" one.
@@ -234,11 +271,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 					},
 				});
 
-				// Mark item as unavailable
-				await tx.item.update({
-					where: { id: borrowRequest.itemId },
-					data: { isAvailable: false },
-				});
+				// The item was already marked unavailable by the conditional claim above — that
+				// write is what won the race, so repeating it here would be redundant.
 
 				return { updatedRequest, transaction };
 			});
@@ -286,6 +320,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 	} catch (error) {
 		if (error instanceof Error && error.message === 'ITEM_UNAVAILABLE') {
 			return NextResponse.json({ error: 'Item is no longer available' }, { status: 409 });
+		}
+		if (error instanceof Error && error.message === 'REQUEST_NOT_PENDING') {
+			return NextResponse.json({ error: 'Request has already been processed' }, { status: 409 });
 		}
 		console.error('Update borrow request error:', error);
 		return NextResponse.json({ error: 'Failed to update borrow request' }, { status: 500 });
