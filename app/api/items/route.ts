@@ -10,14 +10,10 @@ import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstIma
 import { queueBroadcast } from '@/lib/notify';
 import { z } from 'zod';
 import { findForeignStoragePaths } from '@/lib/storage-paths';
+import { isOwnSupabaseUrl } from '@/lib/supabase-url';
 
-const isSupabaseUrl = (url: string) => {
-	try {
-		return new URL(url).hostname.endsWith('.supabase.co');
-	} catch {
-		return false;
-	}
-};
+// Pinned to the configured project — see lib/supabase-url.ts.
+const isSupabaseUrl = (url: string) => isOwnSupabaseUrl(url);
 
 const createItemSchema = z.object({
 	name: z.string().trim().min(1, 'Item name is required').max(200, 'Item name must be 200 characters or fewer'),

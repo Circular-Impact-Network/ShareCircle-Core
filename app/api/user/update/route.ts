@@ -3,17 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { isOwnSupabaseUrl } from '@/lib/supabase-url';
 
-const isSupabaseUrl = (url: string) => {
-	try {
-		const hostname = new URL(url).hostname;
-		const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-		const supabaseHost = supabaseUrl ? new URL(supabaseUrl).hostname : '';
-		return hostname.endsWith('.supabase.co') || hostname === supabaseHost;
-	} catch {
-		return false;
-	}
-};
+// Was `endsWith('.supabase.co') || hostname === supabaseHost` — the exact-host arm was already
+// there, but the suffix arm made it redundant and let any Supabase project through.
+const isSupabaseUrl = (url: string) => isOwnSupabaseUrl(url);
 
 const updateUserSchema = z.object({
 	name: z.string().trim().min(1).max(100).optional(),

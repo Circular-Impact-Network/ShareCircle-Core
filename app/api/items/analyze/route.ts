@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { analyzeImage, validateItemInImage } from '@/lib/ai';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
+import { checkOwnSupabaseUrl } from '@/lib/supabase-url';
 
 export const maxDuration = 60;
 
@@ -29,13 +30,13 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
 		}
 
-		// Validate imageUrl is from our Supabase storage to prevent SSRF
-		try {
-			const parsed = new URL(imageUrl);
-			if (!parsed.hostname.endsWith('.supabase.co')) {
-				return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
+		// Must be an object in our own Supabase project, not merely somewhere on supabase.co.
+		const urlCheck = checkOwnSupabaseUrl(imageUrl);
+		if (!urlCheck.ok) {
+			if (urlCheck.reason === 'unconfigured') {
+				console.error('NEXT_PUBLIC_SUPABASE_URL is not set; cannot validate image URLs.');
+				return NextResponse.json({ error: 'Image storage is not configured' }, { status: 500 });
 			}
-		} catch {
 			return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
 		}
 

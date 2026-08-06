@@ -9,6 +9,7 @@ import { getSignedUrl, deleteImage } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 import { queueBroadcast } from '@/lib/notify';
 import { findForeignStoragePaths } from '@/lib/storage-paths';
+import { isOwnSupabaseUrl } from '@/lib/supabase-url';
 
 export const maxDuration = 60;
 
@@ -223,12 +224,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 		// Validate user-provided imageUrl is from our Supabase storage (SSRF prevention)
 		if (imageUrl && typeof imageUrl === 'string') {
-			try {
-				const parsed = new URL(imageUrl);
-				if (!parsed.hostname.endsWith('.supabase.co')) {
-					return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
-				}
-			} catch {
+			if (!isOwnSupabaseUrl(imageUrl)) {
 				return NextResponse.json({ error: 'Invalid image URL' }, { status: 400 });
 			}
 		}
