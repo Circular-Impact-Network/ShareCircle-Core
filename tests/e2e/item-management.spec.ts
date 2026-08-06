@@ -185,6 +185,11 @@ test.describe('item management', () => {
 		});
 
 		test('cannot delete item with an active borrow transaction — returns 409', async ({ request, browser }) => {
+			// Drives a borrow to ACTIVE across two contexts before it can assert the 409. Chronically
+			// at the 60s default — needed retry #2 on the previous run and exhausted all three on the
+			// one after.
+			test.setTimeout(150_000);
+
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Active Borrow Delete Circle ${Date.now()}` });
 			const item = await user1Api.createItem({
