@@ -90,10 +90,14 @@ test.describe('G41 — PATCH isValueVisible', () => {
 		const circle = await api.createCircle({ name: `Value Vis Circle ${Date.now()}` });
 		const item = await api.createItem({ name: `Value Vis Item ${Date.now()}`, circleIds: [circle.id] });
 
-		const toTrue = (await api.updateItem(item.id, { isValueVisible: true })) as { isValueVisible: boolean };
+		const toTrue = (await api.updateItem(item.id, { isValueVisible: true })) as unknown as {
+			isValueVisible: boolean;
+		};
 		expect(toTrue.isValueVisible).toBe(true);
 
-		const toFalse = (await api.updateItem(item.id, { isValueVisible: false })) as { isValueVisible: boolean };
+		const toFalse = (await api.updateItem(item.id, { isValueVisible: false })) as unknown as {
+			isValueVisible: boolean;
+		};
 		expect(toFalse.isValueVisible).toBe(false);
 	});
 });

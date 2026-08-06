@@ -8,6 +8,10 @@ on:
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
+    # Superseded PR pushes are worth cancelling. Note the consequence for pushes to main: two
+    # merges in quick succession will cancel the first run's smoke-production, and a cancelled
+    # run is not a failure - so a broken production deploy can pass unnoticed. Post-deploy
+    # verification should move to its own workflow with cancel-in-progress disabled.
     cancel-in-progress: true
 
 jobs:
@@ -33,7 +37,10 @@ jobs:
                   cache: 'npm'
             - run: npm ci
             - run: npx prisma generate
-            - run: npx tsc --noEmit
+            # Runs both projects. The app tsconfig excludes `tests`, so this job used to be blind
+            # to every spec, fixture and unit test - a third of the TypeScript in the repo, behind
+            # a required status check. Turning it on surfaced 16 pre-existing type errors.
+            - run: npm run type-check
 
     unit-tests:
         runs-on: ubuntu-latest

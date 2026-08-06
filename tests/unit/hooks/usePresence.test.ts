@@ -54,13 +54,13 @@ describe('useTypingIndicator Hook', () => {
 	const currentUser: ChatUser = {
 		id: 'user-1',
 		name: 'Current User',
-		avatar: null,
+		image: null,
 	};
 
 	const otherUser: ChatUser = {
 		id: 'user-2',
 		name: 'Other User',
-		avatar: null,
+		image: null,
 	};
 
 	beforeEach(() => {

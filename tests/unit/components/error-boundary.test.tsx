@@ -94,7 +94,7 @@ describe('ErrorBoundary', () => {
 
 	it('shows error details in development mode', () => {
 		const originalEnv = process.env.NODE_ENV;
-		process.env.NODE_ENV = 'development';
+		(process.env as Record<string, string>).NODE_ENV = 'development';
 
 		render(
 			<ErrorBoundary>
@@ -105,7 +105,7 @@ describe('ErrorBoundary', () => {
 		// Error message should be visible in dev mode
 		expect(screen.getByText(/Test error/)).toBeInTheDocument();
 
-		process.env.NODE_ENV = originalEnv;
+		(process.env as Record<string, string>).NODE_ENV = originalEnv;
 	});
 });
 
