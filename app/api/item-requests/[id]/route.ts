@@ -146,9 +146,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return NextResponse.json({ error: 'This request has already been closed' }, { status: 409 });
 		}
 
-		// Marking something fulfilled is the requester's call, not any member's.
-		if (status === ItemRequestStatus.FULFILLED && itemRequest.requesterId !== userId) {
-			return NextResponse.json({ error: 'Only the requester can mark this request fulfilled' }, { status: 403 });
+		/**
+		 * Fulfilling is deliberately *not* restricted to the requester — the whole flow is that
+		 * another member offers one of their items and the requester receives the
+		 * ITEM_REQUEST_FULFILLED notification. What was missing is any basis for the claim: the
+		 * item was checked only for being in one of the request's circles, not for belonging to
+		 * the caller, so any member could close someone else's request using somebody else's item.
+		 *
+		 * The requester may close their own request; anyone else must back it with an item they own.
+		 */
+		if (status === ItemRequestStatus.FULFILLED && itemRequest.requesterId !== userId && !fulfilledBy) {
+			return NextResponse.json(
+				{ error: 'Provide the item you are fulfilling this request with' },
+				{ status: 400 },
+			);
 		}
 
 		// Update the item request
@@ -159,10 +170,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		}
 
 		if (fulfilledBy && status === ItemRequestStatus.FULFILLED) {
-			// Verify the item exists and belongs to one of the request circles
+			// Verify the item exists, is in one of the request circles, and — the clause that was
+			// missing — belongs to the caller.
 			const item = await prisma.item.findFirst({
 				where: {
 					id: fulfilledBy,
+					ownerId: userId,
 					circles: {
 						some: {
 							circleId: { in: requestCircleIds },
