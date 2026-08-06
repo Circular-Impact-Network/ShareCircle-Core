@@ -37,28 +37,21 @@ export default async function globalSetup(config: FullConfig) {
 	dotenv.config({ path: path.join(process.cwd(), '.env.local'), override: true });
 
 	/**
-	 * DATABASE_URL is only needed when Playwright starts the web server itself — that server reads
-	 * it, and signup hits the database before any mail is sent, so a missing value produces a
-	 * confusing email-shaped error.
+	 * This file never opens a database connection — it drives everything over HTTP. The check is
+	 * on behalf of the Next.js server Playwright is about to start, which does need DATABASE_URL,
+	 * and which fails at signup with an error that looks like an email problem when it is missing.
 	 *
-	 * Against a remote target (the smoke jobs, which run at a deployed staging or production URL)
-	 * this process never touches a database: users are created over HTTP and OTPs come from
-	 * /api/test/get-otp. The deployed app has its own connection. Requiring it here made both
-	 * smoke jobs fail on every run since 2026-04-19, and `smoke-staging` is a required check on
-	 * main — which is why main has not had a green CI run since. Injecting a test DATABASE_URL
-	 * into those jobs would have hidden that rather than fixed it, and for smoke-production it
-	 * would point the runner at a database it must never use.
-	 *
-	 * Mirrors the isRemoteTarget check in playwright.config.ts.
+	 * The old message claimed "(Prisma)", which sent at least one investigation down the wrong
+	 * path. playwright.config.ts only registers this setup for local runs, so reaching here always
+	 * means a local server is in play.
 	 */
-	const isRemoteTarget = !!process.env.PLAYWRIGHT_BASE_URL && !process.env.PLAYWRIGHT_BASE_URL.includes('localhost');
-
-	if (!isRemoteTarget && !process.env.DATABASE_URL?.trim()) {
+	if (!process.env.DATABASE_URL?.trim()) {
 		throw new Error(
-			'E2E global setup requires DATABASE_URL (Prisma). ' +
+			'E2E global setup requires DATABASE_URL: the Next.js server Playwright starts reads it, ' +
+				'and signup hits the database before any mail is sent — so a missing value surfaces as a ' +
+				'misleading email/OTP error. ' +
 				'Locally: ensure .env / .env.local defines DATABASE_URL. ' +
-				'GitHub Actions: set repository secrets TEST_DATABASE_URL and TEST_DIRECT_URL (CI maps them to DATABASE_URL / DIRECT_URL). ' +
-				'This is not an email/SMS issue — signup hits the DB before any mail is sent.',
+				'GitHub Actions: set repository secrets TEST_DATABASE_URL and TEST_DIRECT_URL (CI maps them to DATABASE_URL / DIRECT_URL).',
 		);
 	}
 
