@@ -18,9 +18,11 @@ const mockOn = vi.fn();
 let broadcastHandlers: Record<string, (payload: { payload: unknown }) => void> = {};
 
 vi.mock('@/lib/supabaseBrowser', () => ({
+	// Subscription now waits on this, so the mock has to resolve it or no channel is ever opened.
+	ensureRealtimeAuth: () => Promise.resolve(),
 	createBrowserSupabaseClient: () => ({
-		channel: (name: string) => {
-			mockChannel(name);
+		channel: (name: string, config?: unknown) => {
+			mockChannel(name, config);
 			return {
 				on: (_type: string, { event }: { event: string }, handler: (payload: { payload: unknown }) => void) => {
 					mockOn(event);
@@ -37,6 +39,16 @@ vi.mock('@/lib/supabaseBrowser', () => ({
 		removeChannel: mockRemoveChannel,
 	}),
 }));
+
+/**
+ * The hook awaits ensureRealtimeAuth before opening the channel, so the subscription happens a
+ * microtask after render. Assertions about the channel must let that settle first.
+ */
+async function flushRealtimeAuth() {
+	await act(async () => {
+		await Promise.resolve();
+	});
+}
 
 describe('useTypingIndicator Hook', () => {
 	const currentUser: ChatUser = {
@@ -61,44 +73,51 @@ describe('useTypingIndicator Hook', () => {
 		vi.useRealTimers();
 	});
 
-	it('returns empty typingUserIds initially', () => {
+	it('returns empty typingUserIds initially', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		expect(result.current.typingUserIds).toEqual([]);
 	});
 
-	it('returns sendTyping function', () => {
+	it('returns sendTyping function', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		expect(typeof result.current.sendTyping).toBe('function');
 	});
 
-	it('does not subscribe when conversationId is null', () => {
+	it('does not subscribe when conversationId is null', async () => {
 		renderHook(() => useTypingIndicator(null, currentUser));
+		await flushRealtimeAuth();
 
 		expect(mockChannel).not.toHaveBeenCalled();
 	});
 
-	it('does not subscribe when currentUser is null', () => {
+	it('does not subscribe when currentUser is null', async () => {
 		renderHook(() => useTypingIndicator('conversation-1', null));
+		await flushRealtimeAuth();
 
 		expect(mockChannel).not.toHaveBeenCalled();
 	});
 
-	it('subscribes to typing channel with correct name', () => {
+	it('subscribes to typing channel with correct name', async () => {
 		renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
-		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1');
+		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1', { config: { private: true } });
 	});
 
-	it('subscribes to typing events', () => {
+	it('subscribes to typing events', async () => {
 		renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		expect(mockOn).toHaveBeenCalledWith('typing');
 	});
 
-	it('unsubscribes on unmount', () => {
+	it('unsubscribes on unmount', async () => {
 		const { unmount } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		unmount();
 
@@ -107,6 +126,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('adds user to typingUserIds when typing broadcast received', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Simulate receiving typing broadcast from other user
 		act(() => {
@@ -120,6 +140,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('ignores typing broadcast from current user', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Simulate receiving typing broadcast from current user (should be ignored)
 		act(() => {
@@ -133,6 +154,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('removes user from typingUserIds after timeout', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Simulate receiving typing broadcast
 		act(() => {
@@ -153,6 +175,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('resets timeout when same user sends another typing event', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// First typing event
 		act(() => {
@@ -195,6 +218,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('handles multiple users typing', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Multiple users start typing
 		act(() => {
@@ -213,6 +237,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('does not duplicate user in typingUserIds', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Same user types multiple times
 		act(() => {
@@ -229,6 +254,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('sendTyping broadcasts typing event', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		act(() => {
 			result.current.sendTyping();
@@ -241,8 +267,9 @@ describe('useTypingIndicator Hook', () => {
 		});
 	});
 
-	it('sendTyping does nothing when currentUser is null', () => {
+	it('sendTyping does nothing when currentUser is null', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', null));
+		await flushRealtimeAuth();
 
 		act(() => {
 			result.current.sendTyping();
@@ -253,6 +280,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('clears all timeouts on unmount', async () => {
 		const { result, unmount } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Add some typing users
 		act(() => {
@@ -275,6 +303,7 @@ describe('useTypingIndicator Hook', () => {
 
 	it('handles missing userId in payload gracefully', async () => {
 		const { result } = renderHook(() => useTypingIndicator('conversation-1', currentUser));
+		await flushRealtimeAuth();
 
 		// Simulate malformed payload
 		act(() => {
@@ -287,19 +316,21 @@ describe('useTypingIndicator Hook', () => {
 		expect(result.current.typingUserIds).toEqual([]);
 	});
 
-	it('resubscribes when conversationId changes', () => {
+	it('resubscribes when conversationId changes', async () => {
 		const { rerender } = renderHook(({ conversationId }) => useTypingIndicator(conversationId, currentUser), {
 			initialProps: { conversationId: 'conversation-1' },
 		});
+		await flushRealtimeAuth();
 
-		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1');
+		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-1', { config: { private: true } });
 
 		mockChannel.mockClear();
 		mockRemoveChannel.mockClear();
 
 		rerender({ conversationId: 'conversation-2' });
+		await flushRealtimeAuth();
 
 		expect(mockRemoveChannel).toHaveBeenCalled();
-		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-2');
+		expect(mockChannel).toHaveBeenCalledWith('typing:conversation-2', { config: { private: true } });
 	});
 });
