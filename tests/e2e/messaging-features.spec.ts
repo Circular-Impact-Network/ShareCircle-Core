@@ -259,6 +259,12 @@ test.describe('messaging features', () => {
 		});
 
 		test('C20: server-side search within a thread (?search=)', async ({ request, users, browser }) => {
+			// Sets up a shared circle + thread, sends 3 messages, then runs a server-side search.
+			// The search GET exceeded the 60s default on CI and was torn down with "Request context
+			// disposed". The dev database this runs against has accumulated a lot of test data, so
+			// give the chain headroom rather than have it fail on throughput.
+			test.setTimeout(150_000);
+
 			const api = new TestAPI(request);
 			const threadId = await ensureSharedCircleThread(api, users.user2.id, storageStatePaths.user2, browser);
 

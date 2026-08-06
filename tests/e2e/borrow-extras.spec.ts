@@ -20,6 +20,13 @@ test.describe('B8 — borrower extends due date', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('extends an ACTIVE borrow transaction by 3 days', async ({ request, browser }) => {
+		// ~12 sequential API round-trips (create circle, create item, join, request, approve,
+		// handoff, receive, extend ×2, return ×2). Each is a real request against a cold route.
+		// The 60s default fits locally but not on a shared CI runner, where this timed out during
+		// the final cleanup call with "Request context disposed" — the symptom of the test being
+		// torn down mid-request, not of anything being wrong with the request.
+		test.setTimeout(150_000);
+
 		const user1Api = new TestAPI(request);
 
 		const circle = await user1Api.createCircle({ name: `Extend Circle ${Date.now()}` });
