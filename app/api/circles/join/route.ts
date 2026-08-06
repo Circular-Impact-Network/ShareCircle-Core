@@ -64,11 +64,19 @@ export async function POST(req: NextRequest) {
 
 		if (existingMembership) {
 			if (existingMembership.leftAt) {
-				// User was a member before but left - rejoin
+				// User was a member before but left - rejoin.
+				//
+				// `role` must be reset explicitly. Removal only soft-deletes (it writes `leftAt`
+				// and leaves `role` untouched), so a removed ADMIN whose row still says ADMIN
+				// would regain full admin rights simply by replaying the invite code they already
+				// hold — enough to delete the circle or remove its owner. Anyone rejoining comes
+				// back as a plain member and has to be re-promoted deliberately, which is also
+				// what the response below has always claimed happens.
 				await prisma.circleMember.update({
 					where: { id: existingMembership.id },
 					data: {
 						leftAt: null,
+						role: MemberRole.MEMBER,
 						joinType: joinType === 'LINK' ? JoinType.LINK : JoinType.CODE,
 						joinedAt: new Date(),
 					},

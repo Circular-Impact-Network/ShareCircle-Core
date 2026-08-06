@@ -134,11 +134,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 		if (existingMembership) {
 			if (existingMembership.leftAt) {
-				// Re-activate the membership
+				// Re-activate the membership.
+				//
+				// `role` is reset for the same reason as the invite-code rejoin path in
+				// app/api/circles/join/route.ts: removal leaves the stale role on the row, so
+				// re-adding a previously-removed admin would silently restore ADMIN. An admin
+				// re-adding someone is inviting a member, not reinstating a co-admin.
 				const updatedMember = await prisma.circleMember.update({
 					where: { id: existingMembership.id },
 					data: {
 						leftAt: null,
+						role: MemberRole.MEMBER,
 						joinedAt: new Date(),
 						joinType: JoinType.LINK, // Invited by admin
 					},
