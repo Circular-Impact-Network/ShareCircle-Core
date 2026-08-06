@@ -18,12 +18,21 @@ test.describe('item requests', () => {
 
 		// Verify request appears in the UI
 		// /requests redirects to /notifications?tab=item-requests
-		await page.goto('/notifications?tab=item-requests');
-		// Wait for filter buttons to be visible (confirms React hydrated) before clicking
-		await expect(page.getByRole('button', { name: 'From Others', exact: true })).toBeVisible({ timeout: 15000 });
-		// Click "My Requests" filter pill to show own requests (default shows "From Others" only)
-		await page.getByRole('button', { name: 'My Requests', exact: true }).click();
-		await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 15000 });
+		//
+		// Retry the whole navigate → filter → assert cycle rather than waiting longer on the
+		// final locator. The list is fetched client-side and the request was created over the API
+		// moments earlier, so a single render can legitimately miss it; reloading re-fetches,
+		// which is the thing actually being waited on.
+		await expect(async () => {
+			await page.goto('/notifications?tab=item-requests');
+			// Filter buttons visible confirms React hydrated before we click.
+			await expect(page.getByRole('button', { name: 'From Others', exact: true })).toBeVisible({
+				timeout: 15000,
+			});
+			// "My Requests" shows own requests; the default view is "From Others" only.
+			await page.getByRole('button', { name: 'My Requests', exact: true }).click();
+			await expect(page.getByText(requestTitle).first()).toBeVisible({ timeout: 5000 });
+		}).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 3_000] });
 	});
 
 	test('user can view item requests from their circles', async ({ page }) => {
