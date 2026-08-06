@@ -10,6 +10,11 @@ test.describe('item requests', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('user can create an item request in their circle', async ({ page, request }) => {
+		// The toPass block below is given 60s, which is exactly the suite's default test timeout —
+		// so the retry loop could never run to completion and the test died at the outer budget
+		// instead of reporting whatever the inner assertion actually saw. Give it room.
+		test.setTimeout(150_000);
+
 		// Create circle and item request via API (avoids async dialog timing issues with circles loading)
 		const api = new TestAPI(request);
 		const circle = await api.createCircle({ name: `Request Test Circle ${Date.now()}` });
