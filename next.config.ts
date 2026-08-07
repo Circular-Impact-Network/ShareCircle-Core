@@ -6,11 +6,28 @@ const withPWA = withPWAInit({
 	disable: process.env.NODE_ENV === 'development',
 	register: false,
 	cacheOnFrontEndNav: true,
-	reloadOnOnline: true,
+	// Was `true`, and it reloads the page on every `online` event. On a phone that flaps between
+	// wifi and mobile data that turns into repeated reloads, which reads as the app freezing or
+	// getting stuck. Update handling is explicit in pwa-provider instead.
+	reloadOnOnline: false,
 	fallbacks: {
 		document: '/~offline',
 	},
 	workboxOptions: {
+		// THE CAUSE OF THE POST-DEPLOY ChunkLoadError.
+		//
+		// Without these, a new service worker installs and then *waits* until every tab using the
+		// old one closes. An installed PWA effectively never closes, so users kept running the
+		// previous worker, which served HTML from its own precache — HTML referencing chunk hashes
+		// from a build whose files the deploy had already replaced. The chunk 404s, React never
+		// hydrates, and the page sits on a spinner or throws `ChunkLoadError`.
+		//
+		// `skipWaiting` activates the new worker immediately, `clientsClaim` puts existing tabs
+		// under it, and `cleanupOutdatedCaches` deletes the stale precache rather than leaving it
+		// to serve dead URLs.
+		skipWaiting: true,
+		clientsClaim: true,
+		cleanupOutdatedCaches: true,
 		importScripts: ['/sw-extra.js'],
 		runtimeCaching: [
 			{
@@ -49,7 +66,10 @@ const withPWA = withPWAInit({
 				handler: 'NetworkFirst',
 				options: {
 					cacheName: 'sharecircle-page-cache',
-					networkTimeoutSeconds: 15,
+					// 15s meant a slow phone stared at a blank page for fifteen seconds before the
+					// cache was consulted at all. Five is long enough to prefer the network and
+					// short enough that a bad connection still renders something.
+					networkTimeoutSeconds: 5,
 					expiration: {
 						maxEntries: 40,
 						maxAgeSeconds: 60 * 60,

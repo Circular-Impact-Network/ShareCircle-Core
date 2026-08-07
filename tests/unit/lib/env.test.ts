@@ -11,8 +11,11 @@ const COMPLETE = {
 	SUPABASE_JWT_SECRET: 'jwt',
 	DIRECT_URL: 'postgresql://user:pass@host:5432/db',
 	RESEND_API_KEY: 'resend',
-	VAPID_PUBLIC_KEY: 'pub',
+	// The name lib/push.ts actually reads. This fixture previously said VAPID_PUBLIC_KEY, which
+	// is a variable nothing in the app consumes — the same slip the health check was making.
+	NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'pub',
 	VAPID_PRIVATE_KEY: 'priv',
+	VAPID_SUBJECT: 'mailto:ops@example.com',
 } as unknown as NodeJS.ProcessEnv;
 
 /**
