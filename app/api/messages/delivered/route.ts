@@ -50,12 +50,19 @@ export async function POST(req: NextRequest) {
 			await channel.send({
 				type: 'broadcast',
 				event: 'receipt_update',
+				// Wrapped in `receipts` to match the client and the other two emitters. Sending a
+				// bare receipt here made `payload.receipts` undefined on the client, which threw
+				// inside a setState updater and took the whole chat page down.
 				payload: {
-					id: receipt.id,
-					messageId: receipt.messageId,
-					userId: receipt.userId,
-					deliveredAt: now.toISOString(),
-					readAt: null,
+					receipts: [
+						{
+							id: receipt.id,
+							messageId: receipt.messageId,
+							userId: receipt.userId,
+							deliveredAt: now.toISOString(),
+							readAt: null,
+						},
+					],
 				},
 			});
 			await supabaseAdmin.removeChannel(channel);

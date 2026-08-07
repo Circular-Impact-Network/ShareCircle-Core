@@ -68,19 +68,23 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 		if (unreadReceipts.length > 0) {
 			try {
 				const channel = supabaseAdmin.channel(`messages:${conversationId}`, PRIVATE_CHANNEL);
-				for (const receipt of unreadReceipts) {
-					await channel.send({
-						type: 'broadcast',
-						event: 'receipt_update',
-						payload: {
+				// One batched send carrying `receipts`, matching what the client reads. This used to
+				// emit a bare receipt object per iteration; the client has expected the wrapped array
+				// since a15ce13 (2026-05-07), so every one of these crashed the chat as soon as it
+				// actually arrived. Batching also collapses N broadcasts into one.
+				await channel.send({
+					type: 'broadcast',
+					event: 'receipt_update',
+					payload: {
+						receipts: unreadReceipts.map(receipt => ({
 							id: receipt.id,
 							messageId: receipt.messageId,
 							userId: receipt.userId,
 							deliveredAt: now.toISOString(),
 							readAt: now.toISOString(),
-						},
-					});
-				}
+						})),
+					},
+				});
 				await supabaseAdmin.removeChannel(channel);
 			} catch (broadcastError) {
 				console.error('Failed to broadcast receipt updates:', broadcastError);

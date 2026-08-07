@@ -156,31 +156,25 @@ test.describe('circle management', () => {
 			const circle = (await response.json()) as { id: string; inviteCode: string };
 			const originalCode = circle.inviteCode;
 
-			// Navigate to circle page
+			// Driven through the API rather than the settings UI. The assertion used to sit three
+			// optional guards deep — Settings button visible, then Regenerate button visible, then
+			// `if (updatedResponse.ok())` — so this test reported success on any build where none
+			// of them rendered, which is every build where the feature is broken.
+			const regenerateResponse = await request.post(`/api/circles/${circle.id}/regenerate-code`);
+			expect(
+				regenerateResponse.ok(),
+				`regenerate failed with ${regenerateResponse.status()}: ${await regenerateResponse.text()}`,
+			).toBeTruthy();
+
+			const updatedResponse = await request.get(`/api/circles/${circle.id}`);
+			expect(updatedResponse.ok(), `re-read failed with ${updatedResponse.status()}`).toBeTruthy();
+			const updatedCircle = (await updatedResponse.json()) as { inviteCode: string };
+			expect(updatedCircle.inviteCode).not.toBe(originalCode);
+			expect(updatedCircle.inviteCode).toMatch(/^[A-Z0-9]{8}$/);
+
+			// The circle page must still render after rotation.
 			await page.goto(`/circles/${circle.id}`);
-			await page.waitForLoadState('networkidle');
-
-			// Click settings
-			const settingsButton = page.getByRole('button', { name: /Settings|Manage/i });
-			if (await settingsButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-				await settingsButton.click();
-				await page.waitForTimeout(500);
-
-				// Look for regenerate button
-				const regenerateButton = page.getByRole('button', { name: /Regenerate|New.*Code/i });
-				if (await regenerateButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-					await regenerateButton.click();
-					await page.waitForTimeout(1000);
-
-					// Verify code changed (via API)
-					const updatedResponse = await request.get(`/api/circles/${circle.id}`);
-					if (updatedResponse.ok()) {
-						const updatedCircle = (await updatedResponse.json()) as { inviteCode: string };
-						// New code should be different
-						expect(updatedCircle.inviteCode).not.toBe(originalCode);
-					}
-				}
-			}
+			await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 15_000 });
 		});
 
 		test('opening the invite panel does NOT rotate the invite code', async ({ page, request }) => {

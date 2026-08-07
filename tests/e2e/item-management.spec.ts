@@ -25,16 +25,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Editable Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -70,16 +73,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Description Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -336,16 +342,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Control Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Testing controls',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page

@@ -104,6 +104,9 @@ model User {
   phoneVerified     DateTime? @map("phone_verified")
   image             String?
   hashed_password   String?
+  // Stamped on every password change or reset. Any JWT minted before this instant is refused,
+  // so a stolen session cannot outlive the password it was obtained under.
+  password_changed_at DateTime? @map("password_changed_at")
   phone_number      String?   @unique
   country_code      String?
   address           String?

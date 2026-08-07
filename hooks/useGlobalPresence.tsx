@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, createContext, useContext, ReactNode, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 type GlobalPresenceContextType = {
@@ -64,7 +64,8 @@ export function GlobalPresenceProvider({ userId: userIdProp, children }: GlobalP
 						const online = Object.values(state).flatMap(entries => entries.map(entry => entry.userId));
 						setOnlineUserIds([...new Set(online)]);
 					})
-					.subscribe(async status => {
+					.subscribe(async (status, error) => {
+						reportSubscription('presence:messages')(status, error);
 						if (status === 'SUBSCRIBED') {
 							setIsConnected(true);
 							await presenceChannel.track({ userId });

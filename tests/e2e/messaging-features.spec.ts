@@ -183,13 +183,10 @@ test.describe('messaging features', () => {
 						},
 					},
 				});
-				if (!uploadResponse.ok()) {
-					test.skip(
-						true,
-						`Image upload failed (${uploadResponse.status()}); likely Supabase storage not configured in test env`,
-					);
-					return;
-				}
+				expect(
+					uploadResponse.ok(),
+					`uploadResponse failed with ${uploadResponse.status()}: ${await uploadResponse.text()}`,
+				).toBeTruthy();
 				const payload = (await uploadResponse.json()) as { path: string; url: string };
 				uploadedPath = payload.path;
 				uploadedUrl = payload.url;
@@ -320,13 +317,10 @@ test.describe('messaging features', () => {
 				const threadResponse = await user1Ctx.request.post('/api/messages/threads', {
 					data: { otherUserId: users.user2.id },
 				});
-				if (!threadResponse.ok()) {
-					test.skip(
-						true,
-						`Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`,
-					);
-					return;
-				}
+				expect(
+					threadResponse.ok(),
+					`threadResponse failed with ${threadResponse.status()}: ${await threadResponse.text()}`,
+				).toBeTruthy();
 				const thread = (await threadResponse.json()) as { id: string };
 				const threadId = thread.id;
 				void user1Api;
@@ -404,13 +398,10 @@ test.describe('messaging features', () => {
 				const threadResponse = await user1Ctx.request.post('/api/messages/threads', {
 					data: { otherUserId: users.user2.id },
 				});
-				if (!threadResponse.ok()) {
-					test.skip(
-						true,
-						`Cannot create thread (${threadResponse.status()}); user1/user2 may not share a circle`,
-					);
-					return;
-				}
+				expect(
+					threadResponse.ok(),
+					`threadResponse failed with ${threadResponse.status()}: ${await threadResponse.text()}`,
+				).toBeTruthy();
 				const thread = (await threadResponse.json()) as { id: string };
 				const threadId = thread.id;
 

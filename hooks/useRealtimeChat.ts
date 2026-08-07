@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import type { ChatMessage, MessageReceipt } from '@/components/chat/types';
 
@@ -59,10 +59,18 @@ export function useRealtimeChat({ conversationId, currentUserId, onMessage, onRe
 						onMessageRef.current(message);
 					})
 					.on('broadcast', { event: 'receipt_update' }, payload => {
-						const { receipts } = payload.payload as { receipts: MessageReceipt[] };
+						const { receipts } = (payload.payload ?? {}) as { receipts?: MessageReceipt[] };
+						// A broadcast is untrusted input as far as this component is concerned. The
+						// consumer feeds it straight into a setState updater, so a wrong shape throws
+						// during render and unmounts the whole chat page rather than dropping one
+						// event. Two of the three emitters sent a bare receipt for three months.
+						if (!Array.isArray(receipts)) {
+							console.error('Ignoring receipt_update with no receipts array:', payload.payload);
+							return;
+						}
 						onReceiptsRef.current(receipts);
 					})
-					.subscribe();
+					.subscribe(reportSubscription(`messages:${conversationId}`));
 			})
 			.catch(error => {
 				console.error('Realtime auth failed; live chat updates are disabled:', error);

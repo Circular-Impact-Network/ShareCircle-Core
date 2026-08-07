@@ -4,6 +4,7 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
+import { TestAPI } from './helpers/test-data';
 
 test.describe('borrow queue', () => {
 	test.use({ storageState: storageStatePaths.user1 });
@@ -96,18 +97,19 @@ test.describe('borrow queue', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Queue Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Item for queue testing',
 					circleIds: [circle.id],
 				},
 			});
 
 			// If item creation fails (e.g., requires image/AI), verify page loads instead
-			if (!itemResponse.ok()) {
-				await page.goto('/activity');
-				await page.waitForLoadState('networkidle');
-				await expect(page).toHaveURL(/\/activity/);
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// User2 joins the circle

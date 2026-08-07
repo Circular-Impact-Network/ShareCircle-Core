@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import type { ChatMessage } from '@/components/chat/types';
 
@@ -66,7 +66,7 @@ export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions
 						// Mark the message as delivered (shows double grey tick to sender)
 						markAsDelivered(message.id);
 					})
-					.subscribe();
+					.subscribe(reportSubscription(`user:${userId}:messages`));
 			})
 			.catch(error => {
 				console.error('Realtime auth failed; user message updates are disabled:', error);
