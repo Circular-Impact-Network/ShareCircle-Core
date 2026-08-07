@@ -117,6 +117,11 @@ test.describe('full handoff cycle (ACTIVE → LENDER_CONFIRMED → BORROWER_CONF
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('completes the full formal handoff flow', async ({ request, browser }) => {
+		// Five sequential lifecycle transitions across two browser contexts. It has been landing at
+		// 55-59s against the 60s default, so whether it reports flaky or failed is luck rather than
+		// code. Same budget as the other multi-actor flows in this suite.
+		test.setTimeout(150_000);
+
 		const user1Api = new TestAPI(request);
 
 		const circle = await user1Api.createCircle({ name: `Full Handoff Circle ${Date.now()}` });

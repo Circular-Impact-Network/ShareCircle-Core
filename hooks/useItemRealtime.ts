@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useDispatch } from 'react-redux';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { itemsApi } from '@/lib/redux/api/itemsApi';
 
 /**
@@ -26,18 +28,31 @@ export function useItemRealtime(circleIds: string[]) {
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
 
-		const channels = ids.map(circleId => {
-			const channel = supabase.channel(`circle:${circleId}:items`);
-			for (const event of ITEM_EVENTS) {
-				channel.on('broadcast', { event }, () => {
-					dispatch(itemsApi.util.invalidateTags(['Items', { type: 'CircleItems', id: circleId }]));
+		// Private channels need the socket authorised first, so the fan-out moves into the promise.
+		let channels: RealtimeChannel[] = [];
+		let cancelled = false;
+
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
+
+				channels = ids.map(circleId => {
+					const channel = supabase.channel(`circle:${circleId}:items`, PRIVATE_CHANNEL);
+					for (const event of ITEM_EVENTS) {
+						channel.on('broadcast', { event }, () => {
+							dispatch(itemsApi.util.invalidateTags(['Items', { type: 'CircleItems', id: circleId }]));
+						});
+					}
+					channel.subscribe();
+					return channel;
 				});
-			}
-			channel.subscribe();
-			return channel;
-		});
+			})
+			.catch(error => {
+				console.error('Realtime auth failed; live item updates are disabled:', error);
+			});
 
 		return () => {
+			cancelled = true;
 			channels.forEach(channel => supabase.removeChannel(channel));
 		};
 	}, [key, dispatch]);

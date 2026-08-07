@@ -68,6 +68,29 @@ export function signupPayload(overrides: { name: string; email: string; password
 export class TestAPI {
 	constructor(private request: APIRequestContext) {}
 
+	/**
+	 * The id of the user this request context is authenticated as, cached per instance.
+	 *
+	 * Needed because storage keys are namespaced by owner: `uploadImage` writes
+	 * `${userId}/${Date.now()}.${ext}`, and the item routes now reject any imagePath outside the
+	 * caller's own prefix. A fixed literal like `e2e-test/...` is not a path any real upload could
+	 * produce, so sending one made the fixture unrepresentative of production and — once the
+	 * ownership check landed — a 403.
+	 */
+	private cachedUserId: Promise<string> | null = null;
+
+	private userId(): Promise<string> {
+		if (!this.cachedUserId) {
+			this.cachedUserId = this.request.get('/api/auth/session').then(async res => {
+				if (!res.ok()) throw new Error(`Failed to resolve session user: ${res.status()}`);
+				const session = (await res.json()) as { user?: { id?: string } };
+				if (!session.user?.id) throw new Error('Session has no user id; is this context authenticated?');
+				return session.user.id;
+			});
+		}
+		return this.cachedUserId;
+	}
+
 	async createCircle(data?: { name?: string; description?: string }): Promise<Circle> {
 		const response = await this.request.post('/api/circles', {
 			data: {
@@ -120,9 +143,11 @@ export class TestAPI {
 				circleIds: data.circleIds,
 				categories: data.categories || [],
 				tags: data.tags || [],
-				// Use a fake path so item creation succeeds without a real upload.
+				// A path the caller actually owns, matching the `${userId}/…` shape uploadImage
+				// produces. The object itself does not exist — signing it just yields an empty
+				// URL — which is enough to create an item without a real upload.
 				// No imageUrl = AI listing validation is skipped.
-				imagePath: data.imagePath || `e2e-test/${Date.now()}.jpg`,
+				imagePath: data.imagePath || `${await this.userId()}/${Date.now()}.jpg`,
 			},
 		});
 

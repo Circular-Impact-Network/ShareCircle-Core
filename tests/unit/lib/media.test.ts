@@ -7,6 +7,7 @@ import {
 	getUploadValidationError,
 	isHeicLikeType,
 } from '@/lib/media';
+import { MAX_UPLOAD_BYTES } from '@/lib/upload-rules';
 
 function createFile(name: string, size: number, type: string): File {
 	const buffer = new ArrayBuffer(size);
@@ -15,8 +16,11 @@ function createFile(name: string, size: number, type: string): File {
 
 describe('media utilities', () => {
 	describe('constants', () => {
-		it('MAX_UPLOAD_SIZE_BYTES is 5MB', () => {
-			expect(MAX_UPLOAD_SIZE_BYTES).toBe(5 * 1024 * 1024);
+		it('MAX_UPLOAD_SIZE_BYTES matches the shared upload cap', () => {
+			// Asserted against lib/upload-rules rather than a literal, because the bug this guards
+			// against is the client and the API disagreeing — not the cap being any one number.
+			// It was 5MB here while the item-upload route allowed 10MB.
+			expect(MAX_UPLOAD_SIZE_BYTES).toBe(MAX_UPLOAD_BYTES);
 		});
 
 		it('MAX_MEDIA_ATTACHMENTS is 5', () => {

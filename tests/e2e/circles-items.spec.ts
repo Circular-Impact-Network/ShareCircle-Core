@@ -1,4 +1,5 @@
 import { test, expect, storageStatePaths } from './fixtures';
+import { TestAPI } from './helpers/test-data';
 
 test.describe('circles and items', () => {
 	test.use({ storageState: storageStatePaths.user1 });
@@ -32,24 +33,23 @@ test.describe('circles and items', () => {
 		await expect(user2Page.getByText(circleName).first()).toBeVisible({ timeout: 10000 });
 		await user2Context.close();
 
-		// Add item via API (faster and more reliable than UI flow)
-		const itemRes = await request.post('/api/items', {
-			data: {
-				name: 'Camping Tent',
-				description: 'A reliable tent for weekend trips.',
-				imagePath: 'tests/uploads/item.png',
-				circleIds: [circle.id],
-			},
+		// Add item via API (faster and more reliable than UI flow).
+		//
+		// Goes through TestAPI so the image path is namespaced to the owner, matching what
+		// uploadImage produces; the old literal 'tests/uploads/item.png' is not a path any real
+		// upload could create. TestAPI also throws on failure, where the previous
+		// `if (itemRes.ok()) … else` swallowed a broken create and asserted something trivially
+		// true instead — the test reported green while covering nothing.
+		const api = new TestAPI(request);
+		await api.createItem({
+			name: 'Camping Tent',
+			description: 'A reliable tent for weekend trips.',
+			circleIds: [circle.id],
 		});
 
-		if (itemRes.ok()) {
-			// Verify item appears in listings
-			await page.goto('/listings');
-			await page.waitForLoadState('domcontentloaded');
-			await expect(page.getByText('Camping Tent').first()).toBeVisible({ timeout: 10000 });
-		} else {
-			// Item creation failed - verify circle creation still succeeded
-			await expect(page.getByText(circleName).first()).toBeVisible();
-		}
+		// Verify item appears in listings
+		await page.goto('/listings');
+		await page.waitForLoadState('domcontentloaded');
+		await expect(page.getByText('Camping Tent').first()).toBeVisible({ timeout: 10000 });
 	});
 });

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { validateDateOfBirth } from '@/lib/age-policy';
 
 const completeProfileSchema = z.object({
 	dateOfBirth: z.string().min(1, 'Date of birth is required'),
@@ -31,17 +32,14 @@ export async function POST(req: NextRequest) {
 
 		const { dateOfBirth, latitude, longitude, city, state, zipCode, countryName } = parsed.data;
 
-		const dob = new Date(dateOfBirth);
-		if (Number.isNaN(dob.getTime())) {
-			return NextResponse.json({ error: 'Invalid date of birth' }, { status: 400 });
+		// Shared with /api/auth/signup via lib/age-policy.ts. This block used to be a private copy
+		// whose comment claimed it mirrored signup — signup had no check, so the claim was false
+		// and there was nothing to mirror.
+		const dateOfBirthResult = validateDateOfBirth(dateOfBirth);
+		if ('error' in dateOfBirthResult) {
+			return NextResponse.json({ error: dateOfBirthResult.error }, { status: 400 });
 		}
-
-		// Must be at least 13 years old (mirrors signup)
-		const thirteenYearsAgo = new Date();
-		thirteenYearsAgo.setFullYear(thirteenYearsAgo.getFullYear() - 13);
-		if (dob > thirteenYearsAgo) {
-			return NextResponse.json({ error: 'You must be at least 13 years old.' }, { status: 400 });
-		}
+		const dob = dateOfBirthResult.date;
 
 		await prisma.user.update({
 			where: { id: session.user.id },

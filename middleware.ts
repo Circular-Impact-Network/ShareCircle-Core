@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+import { safeRedirectPath } from '@/lib/safe-redirect';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
@@ -73,10 +75,7 @@ export async function middleware(request: NextRequest) {
 		}
 		// Check for callbackUrl first
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	// Check email verification for authenticated users on protected routes
@@ -105,10 +104,7 @@ export async function middleware(request: NextRequest) {
 	// If the profile is already complete, keep users out of the onboarding step
 	if (token && isCompleteProfile && token.profileComplete === true) {
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	return NextResponse.next();
@@ -124,7 +120,15 @@ export const config = {
 		 * - _next/image (image optimization files)
 		 * - favicon.ico (browser icon)
 		 * - public folder files
+		 * - files with a known static-asset extension
+		 *
+		 * That last clause used to be `.*\..*` — any path containing a dot at all. `/items/abc.def`,
+		 * `/messages/x.y` and `/circles/a.b` all match real [id] routes and all contain a dot, so
+		 * middleware never ran for them and `app/(authenticated)/layout.tsx` performs no check of
+		 * its own ("trusts middleware.ts to gate auth"). The app shell therefore rendered for a
+		 * signed-out visitor, defeating the stated purpose of this file — no flash before redirect
+		 * on shareable item links.
 		 */
-		'/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
+		'/((?!api|_next/static|_next/image|favicon.ico|public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|mjs|map|woff|woff2|ttf|otf|txt|xml|webmanifest)$).*)',
 	],
 };

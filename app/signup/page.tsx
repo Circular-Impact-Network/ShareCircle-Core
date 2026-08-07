@@ -31,6 +31,7 @@ import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { getPasswordRequirementsText, isPasswordAcceptable } from '@/lib/password-validation';
 import { shouldNavigateAfterSignIn, signInError, signInWithTimeout } from '@/lib/auth-client';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 type SignupMode = 'signup' | 'verify';
 
@@ -68,7 +69,7 @@ function SignupContent() {
 	const [code, setCode] = useState<string[]>(EMPTY_OTP);
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const callbackUrl = searchParams.get('callbackUrl') || '/home';
+	const callbackUrl = safeRedirectPath(searchParams.get('callbackUrl'));
 	const modeParam = searchParams.get('mode');
 	const emailParam = searchParams.get('email');
 

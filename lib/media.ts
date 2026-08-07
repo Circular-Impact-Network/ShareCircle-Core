@@ -1,18 +1,26 @@
 'use client';
 
-const MB = 1024 * 1024;
+import {
+	HEIC_MESSAGE,
+	MAX_MEDIA_ATTACHMENTS as SHARED_MAX_MEDIA_ATTACHMENTS,
+	MAX_UPLOAD_BYTES,
+	SUPPORTED_IMAGE_TYPES as SHARED_SUPPORTED_IMAGE_TYPES,
+	SUPPORTED_VIDEO_TYPES,
+	UNSUPPORTED_IMAGE_TYPES,
+	formatMaxUploadSize,
+	isHeicLike,
+	isSupportedUploadType,
+	unsupportedTypeMessage,
+} from '@/lib/upload-rules';
 
-export const MAX_UPLOAD_SIZE_BYTES = 5 * MB;
-export const MAX_MEDIA_ATTACHMENTS = 5;
+// Re-exported so existing importers keep working, but the values now come from lib/upload-rules
+// so the client and the two upload routes cannot disagree about them again.
+export const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_BYTES;
+export const MAX_MEDIA_ATTACHMENTS = SHARED_MAX_MEDIA_ATTACHMENTS;
 
-export const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
-export const SUPPORTED_MEDIA_TYPES = [...SUPPORTED_IMAGE_TYPES, 'video/mp4', 'video/webm', 'video/quicktime'] as const;
-export const IOS_UNSUPPORTED_IMAGE_TYPES = [
-	'image/heic',
-	'image/heif',
-	'image/heic-sequence',
-	'image/heif-sequence',
-] as const;
+export const SUPPORTED_IMAGE_TYPES = SHARED_SUPPORTED_IMAGE_TYPES;
+export const SUPPORTED_MEDIA_TYPES = [...SHARED_SUPPORTED_IMAGE_TYPES, ...SUPPORTED_VIDEO_TYPES] as const;
+export const IOS_UNSUPPORTED_IMAGE_TYPES = UNSUPPORTED_IMAGE_TYPES;
 
 type ValidateFileOptions = {
 	allowVideo?: boolean;
@@ -26,27 +34,23 @@ type CompressionOptions = {
 };
 
 export function isHeicLikeType(file: File) {
-	return IOS_UNSUPPORTED_IMAGE_TYPES.includes(file.type as (typeof IOS_UNSUPPORTED_IMAGE_TYPES)[number]);
+	return isHeicLike(file.type);
 }
 
 export function getUploadValidationError(
 	file: File,
 	{ allowVideo = false, maxSizeBytes = MAX_UPLOAD_SIZE_BYTES }: ValidateFileOptions = {},
 ) {
-	const supportedTypes = new Set<string>(allowVideo ? SUPPORTED_MEDIA_TYPES : SUPPORTED_IMAGE_TYPES);
-
 	if (isHeicLikeType(file)) {
-		return 'This photo format is not supported yet. On iPhone, switch Camera to Most Compatible or choose a JPEG/PNG/WebP image.';
+		return HEIC_MESSAGE;
 	}
 
-	if (!supportedTypes.has(file.type)) {
-		return allowVideo
-			? 'Only JPEG, PNG, GIF, WebP, MP4, WebM, or QuickTime files are supported.'
-			: 'Only JPEG, PNG, GIF, and WebP images are supported.';
+	if (!isSupportedUploadType(file.type, { allowVideo })) {
+		return unsupportedTypeMessage({ allowVideo });
 	}
 
 	if (file.size > maxSizeBytes) {
-		return `Each file must be smaller than ${Math.round(maxSizeBytes / MB)}MB.`;
+		return `Each file must be smaller than ${formatMaxUploadSize(maxSizeBytes)}.`;
 	}
 
 	return null;

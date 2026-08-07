@@ -7,6 +7,7 @@ import { AttachmentType } from '@prisma/client';
 import { canUsersChat, getDirectConversationOtherUserId, getUserIdOrResponse } from '../../_utils';
 import { contextRefSchema, resolveContextRef } from '@/lib/chat-context-ref';
 import { z } from 'zod';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 const sendMessageSchema = z
 	.object({
@@ -16,7 +17,10 @@ const sendMessageSchema = z
 			.array(
 				z.object({
 					type: z.literal('IMAGE'),
-					url: z.string().min(1),
+					// Was an unbounded free string rendered straight into <img src>. A ~50MB base64
+					// data: URI hung the recipient's browser, and an /api/... value turned the render
+					// into an authenticated GET beacon.
+					url: z.string().min(1).max(2048).url('Attachment url must be an absolute URL'),
 					path: z.string().optional(),
 				}),
 			)
@@ -141,7 +145,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 			// Broadcast delivery receipts to sender (single batched send)
 			if (undeliveredReceipts.length > 0) {
 				try {
-					const channel = supabaseAdmin.channel(`messages:${id}`);
+					const channel = supabaseAdmin.channel(`messages:${id}`, PRIVATE_CHANNEL);
 					await channel.send({
 						type: 'broadcast',
 						event: 'receipt_update',

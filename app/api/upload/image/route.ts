@@ -4,6 +4,14 @@ import sharp from 'sharp';
 import { authOptions } from '@/lib/auth';
 import { uploadImage, getSignedUrl } from '@/lib/supabase';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
+import {
+	HEIC_MESSAGE,
+	MAX_UPLOAD_BYTES,
+	formatMaxUploadSize,
+	isHeicLike,
+	isSupportedUploadType,
+	unsupportedTypeMessage,
+} from '@/lib/upload-rules';
 
 // Allowed storage buckets (attachments for chat, media for item video)
 const ALLOWED_BUCKETS = ['avatars', 'items', 'media', 'attachments'];
@@ -76,31 +84,30 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 		}
 
-		// Validate file type
-		// For 'media' bucket, allow images and videos. For other buckets, only images.
-		const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
-		const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-		const validTypes = bucket === 'media' ? [...validImageTypes, ...validVideoTypes] : validImageTypes;
+		// Type and size come from lib/upload-rules, shared with the client validator in
+		// lib/media.ts. This route used to accept HEIC/HEIF while every UI path rejected them,
+		// and allowed 10MB while the client capped at 5MB — so the two disagreed in both
+		// directions and users saw client-side errors the server would never have produced.
+		const allowVideo = bucket === 'media';
 
-		if (!validTypes.includes(file.type)) {
-			const allowedTypes =
-				bucket === 'media'
-					? 'JPEG, PNG, GIF, WebP, HEIC, MP4, WebM, or QuickTime'
-					: 'JPEG, PNG, GIF, WebP, or HEIC';
+		if (isHeicLike(file.type)) {
+			return NextResponse.json({ error: HEIC_MESSAGE }, { status: 400 });
+		}
+
+		if (!isSupportedUploadType(file.type, { allowVideo })) {
+			return NextResponse.json({ error: unsupportedTypeMessage({ allowVideo }) }, { status: 400 });
+		}
+
+		// Raw cap — sharp compresses images down to <500KB typically.
+		if (file.size > MAX_UPLOAD_BYTES) {
 			return NextResponse.json(
-				{ error: `Invalid file type. Only ${allowedTypes} are allowed.` },
+				{ error: `File size must be less than ${formatMaxUploadSize()}` },
 				{ status: 400 },
 			);
 		}
 
-		// Validate file size (max 10MB raw — sharp will compress images down to <500KB typically).
-		const maxSize = 10 * 1024 * 1024;
-		if (file.size > maxSize) {
-			return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
-		}
-
 		// Compress images (skip videos — sharp doesn't handle them and they're not in this bucket anyway).
-		const isImage = validImageTypes.includes(file.type);
+		const isImage = isSupportedUploadType(file.type);
 		const uploadFile = isImage ? (await compressImage(file)).file : file;
 
 		// Upload to Supabase and get file path

@@ -4,6 +4,14 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
 import { uploadImage, getSignedUrl, deleteImage } from '@/lib/supabase';
+import {
+	HEIC_MESSAGE,
+	MAX_UPLOAD_BYTES,
+	formatMaxUploadSize,
+	isHeicLike,
+	isSupportedUploadType,
+	unsupportedTypeMessage,
+} from '@/lib/upload-rules';
 
 // POST /api/circles/[id]/avatar - Upload circle avatar (admin only)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -48,19 +56,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 			return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 		}
 
-		// Validate file type
-		const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-		if (!validTypes.includes(file.type)) {
-			return NextResponse.json(
-				{ error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' },
-				{ status: 400 },
-			);
+		// Shared with the client validator and the item-upload route — see lib/upload-rules.
+		if (isHeicLike(file.type)) {
+			return NextResponse.json({ error: HEIC_MESSAGE }, { status: 400 });
 		}
 
-		// Validate file size (max 5MB)
-		const maxSize = 5 * 1024 * 1024;
-		if (file.size > maxSize) {
-			return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
+		if (!isSupportedUploadType(file.type)) {
+			return NextResponse.json({ error: unsupportedTypeMessage() }, { status: 400 });
+		}
+
+		if (file.size > MAX_UPLOAD_BYTES) {
+			return NextResponse.json(
+				{ error: `File size must be less than ${formatMaxUploadSize()}` },
+				{ status: 400 },
+			);
 		}
 
 		// Delete old avatar if exists

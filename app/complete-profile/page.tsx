@@ -14,12 +14,13 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 function CompleteProfileContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { update } = useSession();
-	const callbackUrl = searchParams.get('callbackUrl') || '/home';
+	const callbackUrl = safeRedirectPath(searchParams.get('callbackUrl'));
 
 	const [dob, setDob] = useState<Date | undefined>(undefined);
 	const [city, setCity] = useState('');

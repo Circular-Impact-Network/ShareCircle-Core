@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 vi.mock('next-auth', () => ({
@@ -20,6 +20,7 @@ vi.mock('@/lib/rate-limit', () => ({
 import { getServerSession } from 'next-auth';
 import { analyzeImage } from '@/lib/ai';
 import { POST } from '@/app/api/items/analyze/route';
+import { resetSupabaseHostnameCache } from '@/lib/supabase-url';
 
 const SUPABASE_IMAGE = 'https://project.supabase.co/storage/v1/object/sign/items/a.jpg';
 
@@ -36,6 +37,15 @@ describe('POST /api/items/analyze error normalization', () => {
 	beforeEach(() => {
 		vi.mocked(getServerSession).mockReset();
 		vi.mocked(analyzeImage).mockReset();
+		// Every real deployment sets this; the SSRF guard now pins the allowed host to it rather
+		// than accepting any *.supabase.co, so the test environment has to configure it too.
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://project.supabase.co');
+		resetSupabaseHostnameCache();
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		resetSupabaseHostnameCache();
 	});
 
 	it('returns 401 when not authenticated', async () => {
@@ -54,6 +64,23 @@ describe('POST /api/items/analyze error normalization', () => {
 		authed();
 		const res = await POST(makeRequest({ imageUrl: 'https://evil.example.com/a.jpg' }));
 		expect(res.status).toBe(400);
+	});
+
+	it("returns 400 for someone else's Supabase project", async () => {
+		authed();
+		// The old guard was `hostname.endsWith('.supabase.co')`, so anyone could register a free
+		// project and feed arbitrary bytes into the vision call. This is the case that guard missed.
+		const res = await POST(makeRequest({ imageUrl: 'https://attacker.supabase.co/storage/v1/object/x.jpg' }));
+		expect(res.status).toBe(400);
+	});
+
+	it('returns 500, not 400, when the server has no Supabase URL configured', async () => {
+		authed();
+		vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+		resetSupabaseHostnameCache();
+		// A misconfigured server must not tell the user their image is invalid.
+		const res = await POST(makeRequest({ imageUrl: SUPABASE_IMAGE }));
+		expect(res.status).toBe(500);
 	});
 
 	it('returns 200 with the analysis on success', async () => {

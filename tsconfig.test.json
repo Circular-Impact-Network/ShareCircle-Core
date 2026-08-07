@@ -1,0 +1,18 @@
+{
+	// The base tsconfig excludes `tests`, so `tsc --noEmit` — a required check on both branches —
+	// never type-checked a single spec, fixture, helper or unit test. Vitest and Playwright both
+	// transpile without type-checking, so nothing anywhere validated that third of the codebase.
+	//
+	// Kept as a separate project rather than deleting the exclude, because the app build should
+	// not compile test files into its program.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		// The base config is incremental and writes tsconfig.tsbuildinfo; a second project sharing
+		// that file would keep invalidating the first one's cache.
+		"incremental": false,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["tests/**/*.ts", "tests/**/*.tsx", "*.config.ts", "next-env.d.ts", "types/**/*.ts"],
+	"exclude": ["node_modules"]
+}

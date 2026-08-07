@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
 import { getSignedUrl } from '@/lib/supabase';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 const updateCircleSchema = z.object({
 	name: z
@@ -219,6 +220,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 			{ status: 200 },
 		);
 	} catch (error) {
+		// The create path converts this unique-index violation into a friendly 409; the rename
+		// path only pre-checked, so two concurrent renames surfaced as an opaque 500.
+		if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+			return NextResponse.json({ error: 'A circle with this name already exists.' }, { status: 409 });
+		}
 		console.error('Update circle error:', error);
 		return NextResponse.json({ error: 'Failed to update circle' }, { status: 500 });
 	}

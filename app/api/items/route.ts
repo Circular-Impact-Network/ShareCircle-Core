@@ -9,14 +9,11 @@ import { getSignedUrl, getSignedUrls } from '@/lib/supabase';
 import { generateDocumentEmbedding, buildEnrichedText, validateListingAgainstImages } from '@/lib/ai';
 import { queueBroadcast } from '@/lib/notify';
 import { z } from 'zod';
+import { findForeignStoragePaths } from '@/lib/storage-paths';
+import { isOwnSupabaseUrl } from '@/lib/supabase-url';
 
-const isSupabaseUrl = (url: string) => {
-	try {
-		return new URL(url).hostname.endsWith('.supabase.co');
-	} catch {
-		return false;
-	}
-};
+// Pinned to the configured project — see lib/supabase-url.ts.
+const isSupabaseUrl = (url: string) => isOwnSupabaseUrl(url);
 
 const createItemSchema = z.object({
 	name: z.string().trim().min(1, 'Item name is required').max(200, 'Item name must be 200 characters or fewer'),
@@ -29,7 +26,11 @@ const createItemSchema = z.object({
 	mediaPaths: z.array(z.string()).optional().default([]),
 	estimatedWeightKg: z.number().positive().nullish(),
 	estimatedNewPriceUsd: z.number().positive().nullish(),
-	isValueVisible: z.boolean().optional().default(true),
+	// Defaults to hidden, matching both add-item-modal and edit-item-modal, which initialise the
+	// toggle to false. The schema used to default to `true`, so a caller that omitted the field
+	// published the price while every UI path kept it private — and the `?? false` at the write
+	// site was dead code, because Zod had already substituted `true`.
+	isValueVisible: z.boolean().optional().default(false),
 });
 
 export const maxDuration = 60;
@@ -210,7 +211,9 @@ export async function GET(req: NextRequest) {
 				isOwner: item.ownerId === userId,
 				isAvailable: item.isAvailable,
 				estimatedWeightKg: item.estimatedWeightKg,
-				estimatedNewPriceUsd: item.estimatedNewPriceUsd,
+				// Same owner-or-visible gate as the single-item route — the browse list leaked the
+				// hidden price just as readily as the detail page did.
+				estimatedNewPriceUsd: item.ownerId === userId || item.isValueVisible ? item.estimatedNewPriceUsd : null,
 				isValueVisible: item.isValueVisible,
 			};
 		});
@@ -259,6 +262,17 @@ export async function POST(req: NextRequest) {
 			estimatedNewPriceUsd,
 			isValueVisible,
 		} = parsed.data;
+
+		/**
+		 * Storage keys are `${userId}/…`, so anything outside the caller's own prefix was uploaded
+		 * by someone else. Accepting one here let a caller have the API sign another user's object
+		 * for them, and — once stored on their item — delete it on the next update. The sibling
+		 * cleanup route has enforced this since it was written; create and update never did.
+		 */
+		const foreignPaths = findForeignStoragePaths([imagePath, ...mediaPaths], userId);
+		if (foreignPaths.length > 0) {
+			return NextResponse.json({ error: 'You can only attach your own uploads' }, { status: 403 });
+		}
 
 		// Verify user is a member of all specified circles
 		const userCircles = await prisma.circleMember.findMany({

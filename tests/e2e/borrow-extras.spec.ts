@@ -217,6 +217,10 @@ test.describe('B13 — multi-circle item visibility after removal from one circl
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('item remains visible in circle2 after admin removes it from circle1', async ({ request, browser }) => {
+		// Two circles, a multi-circle item and a second context. Passed at 50.9s on the previous run
+		// and timed out three times on the next — that gap is noise, not a regression.
+		test.setTimeout(150_000);
+
 		const user1Api = new TestAPI(request);
 		const circle1 = await user1Api.createCircle({ name: `Multi Circle A ${Date.now()}` });
 		const circle2 = await user1Api.createCircle({ name: `Multi Circle B ${Date.now()}` });

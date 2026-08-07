@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import type { ChatMessage } from '@/components/chat/types';
 
 type UseUserMessagesOptions = {
@@ -45,20 +46,35 @@ export function useUserMessages({ userId, onNewMessage }: UseUserMessagesOptions
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
 
-		const channel = supabase.channel(`user:${userId}:messages`);
-		channelRef.current = channel;
+		// The socket has to carry a JWT before a private channel will accept the join, so the
+		// subscribe moves inside the auth promise. `cancelled` covers an unmount that happens
+		// while the token request is still in flight.
+		let channel: RealtimeChannel | null = null;
+		let cancelled = false;
 
-		channel
-			.on('broadcast', { event: 'new_message' }, payload => {
-				const message = payload.payload as ChatMessage;
-				onNewMessageRef.current(message);
-				// Mark the message as delivered (shows double grey tick to sender)
-				markAsDelivered(message.id);
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
+
+				channel = supabase.channel(`user:${userId}:messages`, PRIVATE_CHANNEL);
+				channelRef.current = channel;
+
+				channel
+					.on('broadcast', { event: 'new_message' }, payload => {
+						const message = payload.payload as ChatMessage;
+						onNewMessageRef.current(message);
+						// Mark the message as delivered (shows double grey tick to sender)
+						markAsDelivered(message.id);
+					})
+					.subscribe();
 			})
-			.subscribe();
+			.catch(error => {
+				console.error('Realtime auth failed; user message updates are disabled:', error);
+			});
 
 		return () => {
-			supabase.removeChannel(channel);
+			cancelled = true;
+			if (channel) supabase.removeChannel(channel);
 		};
 	}, [userId]); // Only re-subscribe when userId changes
 }

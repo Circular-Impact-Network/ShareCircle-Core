@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUserIdOrResponse } from '../threads/_utils';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 // POST /api/messages/delivered - mark message as delivered
 export async function POST(req: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
 
 		// Broadcast the delivery receipt to the sender
 		try {
-			const channel = supabaseAdmin.channel(`messages:${receipt.message.conversationId}`);
+			const channel = supabaseAdmin.channel(`messages:${receipt.message.conversationId}`, PRIVATE_CHANNEL);
 			await channel.send({
 				type: 'broadcast',
 				event: 'receipt_update',
