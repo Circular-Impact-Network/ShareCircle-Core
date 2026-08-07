@@ -32,12 +32,32 @@ function getPushConfig() {
 	const subject = process.env.VAPID_SUBJECT;
 
 	if (!publicKey || !privateKey || !subject) {
+		const absent = [
+			!publicKey && 'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+			!privateKey && 'VAPID_PRIVATE_KEY',
+			!subject && 'VAPID_SUBJECT',
+		].filter(Boolean);
+		console.warn(`Push disabled: ${absent.join(', ')} not set.`);
 		return null;
 	}
 
 	if (!vapidConfigured) {
-		webpush.setVapidDetails(subject, publicKey, privateKey);
-		vapidConfigured = true;
+		// `setVapidDetails` throws on a malformed subject (it must be a `mailto:` address or an
+		// https URL) or on keys that are not valid base64url of the right length. Unhandled, that
+		// throw escaped GET /api/push/subscriptions as a 500, the client's status fetch rejected,
+		// and the UI simply showed the push toggle disabled with no reason anywhere — which is
+		// indistinguishable from "not configured", and cost real time to diagnose.
+		try {
+			webpush.setVapidDetails(subject, publicKey, privateKey);
+			vapidConfigured = true;
+		} catch (error) {
+			console.error(
+				`Push disabled: VAPID details rejected (subject must be a mailto: address or https URL; ` +
+					`got "${subject}"):`,
+				error,
+			);
+			return null;
+		}
 	}
 
 	return { publicKey, subject };
