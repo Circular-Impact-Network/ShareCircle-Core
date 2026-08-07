@@ -10,27 +10,7 @@ test.describe('messages', () => {
 		});
 
 		// API might return error if thread already exists - that's OK
-		if (!response.ok()) {
-			// Navigate to messages page and find existing thread
-			await page.goto('/messages');
-			await page.waitForLoadState('networkidle');
-
-			// Look for existing thread with user2
-			const threadEntry = page.getByText(users.user2.name).first();
-			const hasThread = await threadEntry.isVisible({ timeout: 5000 }).catch(() => false);
-
-			if (!hasThread) {
-				// No thread exists and couldn't create one - skip test
-				test.skip();
-				return;
-			}
-
-			await threadEntry.click();
-		} else {
-			// Thread created successfully - navigate to it
-			const thread = (await response.json()) as { id: string };
-			await page.goto(`/messages/${thread.id}`);
-		}
+		expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 
 		await page.waitForLoadState('domcontentloaded');
 

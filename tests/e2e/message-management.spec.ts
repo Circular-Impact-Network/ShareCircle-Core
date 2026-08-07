@@ -47,12 +47,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate to thread
@@ -70,12 +65,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate to thread
@@ -102,12 +92,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate to thread
@@ -132,12 +117,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate to thread
@@ -164,13 +144,7 @@ test.describe('message management', () => {
 			});
 
 			// API might fail if user doesn't exist
-			if (!response.ok()) {
-				// Navigate to messages anyway to verify page loads
-				await page.goto('/messages');
-				await page.waitForLoadState('networkidle');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 
 			// Navigate to messages
 			await page.goto('/messages');
@@ -187,12 +161,7 @@ test.describe('message management', () => {
 			});
 
 			// API might fail if user doesn't exist
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('networkidle');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate directly to thread
@@ -219,12 +188,7 @@ test.describe('message management', () => {
 			const response = await request.post('/api/messages/threads', {
 				data: { otherUserId: users.user2.id },
 			});
-			if (!response.ok()) {
-				await page.goto('/messages');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/messages/);
-				return;
-			}
+			expect(response.ok(), `response failed with ${response.status()}: ${await response.text()}`).toBeTruthy();
 			const thread = (await response.json()) as { id: string };
 
 			// Navigate to messages list first to establish browser history
@@ -277,13 +241,10 @@ test.describe('message management', () => {
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				// Test browse page instead
-				await page.goto('/browse');
-				await page.waitForLoadState('domcontentloaded');
-				await expect(page).toHaveURL(/\/browse/);
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item page as user1 (owner)

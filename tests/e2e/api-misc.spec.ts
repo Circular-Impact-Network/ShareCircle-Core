@@ -110,12 +110,10 @@ test.describe('I — messages unread-count', () => {
 			data: { action: 'mark-read' },
 		});
 		// Endpoint may use POST or PATCH; if PATCH is wrong try POST.
-		if (!markReadRes.ok()) {
-			const altRes = await request.post(`/api/messages/threads/${thread.id}/read`);
-			// Either path being non-200 doesn't necessarily mean a failure here —
-			// just record and continue.
-			void altRes;
-		}
+		expect(
+			markReadRes.ok(),
+			`markReadRes failed with ${markReadRes.status()}: ${await markReadRes.text()}`,
+		).toBeTruthy();
 
 		await user2Context.close();
 	});

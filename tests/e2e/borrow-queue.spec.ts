@@ -102,12 +102,10 @@ test.describe('borrow queue', () => {
 			});
 
 			// If item creation fails (e.g., requires image/AI), verify page loads instead
-			if (!itemResponse.ok()) {
-				await page.goto('/activity');
-				await page.waitForLoadState('networkidle');
-				await expect(page).toHaveURL(/\/activity/);
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// User2 joins the circle

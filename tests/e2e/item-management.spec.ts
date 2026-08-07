@@ -31,10 +31,10 @@ test.describe('item management', () => {
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -76,10 +76,10 @@ test.describe('item management', () => {
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -342,10 +342,10 @@ test.describe('item management', () => {
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
