@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUserIdOrResponse } from '../../_utils';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 // POST /api/messages/threads/[id]/read - mark read
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,20 +67,24 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 		// Broadcast receipt updates to other participants
 		if (unreadReceipts.length > 0) {
 			try {
-				const channel = supabaseAdmin.channel(`messages:${conversationId}`);
-				for (const receipt of unreadReceipts) {
-					await channel.send({
-						type: 'broadcast',
-						event: 'receipt_update',
-						payload: {
+				const channel = supabaseAdmin.channel(`messages:${conversationId}`, PRIVATE_CHANNEL);
+				// One batched send carrying `receipts`, matching what the client reads. This used to
+				// emit a bare receipt object per iteration; the client has expected the wrapped array
+				// since a15ce13 (2026-05-07), so every one of these crashed the chat as soon as it
+				// actually arrived. Batching also collapses N broadcasts into one.
+				await channel.send({
+					type: 'broadcast',
+					event: 'receipt_update',
+					payload: {
+						receipts: unreadReceipts.map(receipt => ({
 							id: receipt.id,
 							messageId: receipt.messageId,
 							userId: receipt.userId,
 							deliveredAt: now.toISOString(),
 							readAt: now.toISOString(),
-						},
-					});
-				}
+						})),
+					},
+				});
 				await supabaseAdmin.removeChannel(channel);
 			} catch (broadcastError) {
 				console.error('Failed to broadcast receipt updates:', broadcastError);
@@ -88,7 +93,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
 		// Broadcast to user's channel to update unread count in sidebar
 		try {
-			const userChannel = supabaseAdmin.channel(`user:${userId}:messages`);
+			const userChannel = supabaseAdmin.channel(`user:${userId}:messages`, PRIVATE_CHANNEL);
 			await userChannel.send({
 				type: 'broadcast',
 				event: 'messages_read',

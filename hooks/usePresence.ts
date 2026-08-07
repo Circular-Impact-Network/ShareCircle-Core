@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import type { ChatUser } from '@/components/chat/types';
 
 type TypingState = {
@@ -22,26 +23,40 @@ export function useTypingIndicator(conversationId: string | null, currentUser: C
 
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
-		const channel = supabase.channel(`typing:${conversationId}`);
-		channelRef.current = channel;
+		// Typing is a client-sent broadcast, so this channel needs both the SELECT and INSERT
+		// policies on realtime.messages — the socket must be authorised before either works.
+		let channel: RealtimeChannel | null = null;
+		let cancelled = false;
 
-		channel
-			.on('broadcast', { event: 'typing' }, payload => {
-				const senderId = payload.payload?.userId as string | undefined;
-				if (!senderId || senderId === currentUser.id) return;
-				setTypingUserIds(prev => (prev.includes(senderId) ? prev : [...prev, senderId]));
-				if (typingTimeouts.current[senderId]) {
-					clearTimeout(typingTimeouts.current[senderId]);
-				}
-				typingTimeouts.current[senderId] = setTimeout(() => {
-					setTypingUserIds(prev => prev.filter(id => id !== senderId));
-					delete typingTimeouts.current[senderId];
-				}, 2500);
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
+
+				channel = supabase.channel(`typing:${conversationId}`, PRIVATE_CHANNEL);
+				channelRef.current = channel;
+
+				channel
+					.on('broadcast', { event: 'typing' }, payload => {
+						const senderId = payload.payload?.userId as string | undefined;
+						if (!senderId || senderId === currentUser.id) return;
+						setTypingUserIds(prev => (prev.includes(senderId) ? prev : [...prev, senderId]));
+						if (typingTimeouts.current[senderId]) {
+							clearTimeout(typingTimeouts.current[senderId]);
+						}
+						typingTimeouts.current[senderId] = setTimeout(() => {
+							setTypingUserIds(prev => prev.filter(id => id !== senderId));
+							delete typingTimeouts.current[senderId];
+						}, 2500);
+					})
+					.subscribe(reportSubscription(`typing:${conversationId}`));
 			})
-			.subscribe();
+			.catch(error => {
+				console.error('Realtime auth failed; typing indicators are disabled:', error);
+			});
 
 		return () => {
-			supabase.removeChannel(channel);
+			cancelled = true;
+			if (channel) supabase.removeChannel(channel);
 			Object.values(typingTimeouts.current).forEach(timeout => clearTimeout(timeout));
 			typingTimeouts.current = {};
 		};

@@ -17,10 +17,14 @@ test.describe('G39 — POST /api/items/analyze', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('endpoint accepts a Supabase-hosted imageUrl and returns 200 / 422 / 429 (not 500)', async ({ request }) => {
-		// Use a syntactically valid Supabase URL. If validation succeeds, Gemini is called.
-		// In an E2E env with no real image at this URL Gemini will fail and the route returns
-		// a 500 — we tolerate that as long as it's not a totally broken handler.
-		const imageUrl = 'https://example.supabase.co/storage/v1/object/sign/items/e2e-fake.png?token=fake';
+		// Must be *our* Supabase project, not merely something on supabase.co: the SSRF guard now
+		// pins the allowed host to NEXT_PUBLIC_SUPABASE_URL, because the old suffix check let an
+		// attacker point the vision call at any project they had registered.
+		//
+		// If validation succeeds Gemini is called; in an E2E env there is no real image at this
+		// URL, so a 500 is tolerated as long as the handler is wired.
+		const supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname;
+		const imageUrl = `https://${supabaseHost}/storage/v1/object/sign/items/e2e-fake.png?token=fake`;
 
 		const res = await request.post('/api/items/analyze', { data: { imageUrl } });
 		// Accept any of:
@@ -34,6 +38,15 @@ test.describe('G39 — POST /api/items/analyze', () => {
 	test('endpoint rejects non-Supabase imageUrl with 400', async ({ request }) => {
 		const res = await request.post('/api/items/analyze', {
 			data: { imageUrl: 'https://evil.example.com/exfil.png' },
+		});
+		expect(res.status()).toBe(400);
+	});
+
+	test('endpoint rejects a different Supabase project with 400', async ({ request }) => {
+		// The case the old `endsWith('.supabase.co')` guard allowed: anyone could register a free
+		// project and have the server fetch arbitrary bytes from it into the vision model.
+		const res = await request.post('/api/items/analyze', {
+			data: { imageUrl: 'https://attacker.supabase.co/storage/v1/object/sign/items/x.png?token=fake' },
 		});
 		expect(res.status()).toBe(400);
 	});
@@ -90,10 +103,14 @@ test.describe('G41 — PATCH isValueVisible', () => {
 		const circle = await api.createCircle({ name: `Value Vis Circle ${Date.now()}` });
 		const item = await api.createItem({ name: `Value Vis Item ${Date.now()}`, circleIds: [circle.id] });
 
-		const toTrue = (await api.updateItem(item.id, { isValueVisible: true })) as { isValueVisible: boolean };
+		const toTrue = (await api.updateItem(item.id, { isValueVisible: true })) as unknown as {
+			isValueVisible: boolean;
+		};
 		expect(toTrue.isValueVisible).toBe(true);
 
-		const toFalse = (await api.updateItem(item.id, { isValueVisible: false })) as { isValueVisible: boolean };
+		const toFalse = (await api.updateItem(item.id, { isValueVisible: false })) as unknown as {
+			isValueVisible: boolean;
+		};
 		expect(toFalse.isValueVisible).toBe(false);
 	});
 });

@@ -10,7 +10,7 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
-import { TestAPI } from './helpers/test-data';
+import { TestAPI, signupPayload } from './helpers/test-data';
 
 // ─── Group I: feedback / cleanup / unread-count ───────────────────────────────
 
@@ -106,16 +106,11 @@ test.describe('I — messages unread-count', () => {
 		expect(afterSend.unreadCount).toBeGreaterThan(baseline.unreadCount);
 
 		// User1 marks the thread read.
-		const markReadRes = await request.patch(`/api/messages/threads/${thread.id}`, {
-			data: { action: 'mark-read' },
-		});
-		// Endpoint may use POST or PATCH; if PATCH is wrong try POST.
-		if (!markReadRes.ok()) {
-			const altRes = await request.post(`/api/messages/threads/${thread.id}/read`);
-			// Either path being non-200 doesn't necessarily mean a failure here —
-			// just record and continue.
-			void altRes;
-		}
+		const markReadRes = await request.post(`/api/messages/threads/${thread.id}/read`);
+		expect(
+			markReadRes.ok(),
+			`markReadRes failed with ${markReadRes.status()}: ${await markReadRes.text()}`,
+		).toBeTruthy();
 
 		await user2Context.close();
 	});
@@ -134,11 +129,10 @@ test.describe('J46 — rate limit auth signup', () => {
 		const statuses: number[] = [];
 		for (let i = 0; i < 6; i++) {
 			const res = await anonContext.request.post('/api/auth/signup', {
-				data: {
-					name: 'Rate Limit Test',
-					email,
-					password,
-				},
+				// Must be a payload the schema accepts, or every call returns 400 and the rate
+				// limit is never reached — the assertion below then soft-skips and this test
+				// silently stops covering anything.
+				data: signupPayload({ name: 'Rate Limit Test', email, password }),
 			});
 			statuses.push(res.status());
 		}

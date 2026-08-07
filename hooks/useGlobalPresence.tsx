@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, createContext, useContext, ReactNode, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 type GlobalPresenceContextType = {
 	onlineUserIds: string[];
@@ -37,32 +38,49 @@ export function GlobalPresenceProvider({ userId: userIdProp, children }: GlobalP
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
 
-		const channel = supabase.channel('presence:messages', {
-			config: {
-				presence: {
-					key: userKey,
-				},
-			},
-		});
-		channelRef.current = channel;
+		// Shared online-status channel. Private like the rest, so an anonymous socket can no longer
+		// enumerate who is online; the policy admits any authenticated user to this one topic.
+		let channel: RealtimeChannel | null = null;
+		let cancelled = false;
 
-		channel
-			.on('presence', { event: 'sync' }, () => {
-				const state = channel.presenceState<{ userId: string }>();
-				const online = Object.values(state).flatMap(entries => entries.map(entry => entry.userId));
-				setOnlineUserIds([...new Set(online)]);
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
+
+				const presenceChannel = supabase.channel('presence:messages', {
+					config: {
+						...PRIVATE_CHANNEL.config,
+						presence: {
+							key: userKey,
+						},
+					},
+				});
+				channel = presenceChannel;
+				channelRef.current = presenceChannel;
+
+				presenceChannel
+					.on('presence', { event: 'sync' }, () => {
+						const state = presenceChannel.presenceState<{ userId: string }>();
+						const online = Object.values(state).flatMap(entries => entries.map(entry => entry.userId));
+						setOnlineUserIds([...new Set(online)]);
+					})
+					.subscribe(async (status, error) => {
+						reportSubscription('presence:messages')(status, error);
+						if (status === 'SUBSCRIBED') {
+							setIsConnected(true);
+							await presenceChannel.track({ userId });
+						} else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+							setIsConnected(false);
+						}
+					});
 			})
-			.subscribe(async status => {
-				if (status === 'SUBSCRIBED') {
-					setIsConnected(true);
-					await channel.track({ userId });
-				} else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-					setIsConnected(false);
-				}
+			.catch(error => {
+				console.error('Realtime auth failed; presence is disabled:', error);
 			});
 
 		return () => {
-			supabase.removeChannel(channel);
+			cancelled = true;
+			if (channel) supabase.removeChannel(channel);
 			setIsConnected(false);
 		};
 	}, [userId, userKey]);

@@ -8,6 +8,10 @@ on:
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
+    # Superseded PR pushes are worth cancelling. Note the consequence for pushes to main: two
+    # merges in quick succession will cancel the first run's smoke-production, and a cancelled
+    # run is not a failure - so a broken production deploy can pass unnoticed. Post-deploy
+    # verification should move to its own workflow with cancel-in-progress disabled.
     cancel-in-progress: true
 
 jobs:
@@ -33,7 +37,10 @@ jobs:
                   cache: 'npm'
             - run: npm ci
             - run: npx prisma generate
-            - run: npx tsc --noEmit
+            # Runs both projects. The app tsconfig excludes `tests`, so this job used to be blind
+            # to every spec, fixture and unit test - a third of the TypeScript in the repo, behind
+            # a required status check. Turning it on surfaced 16 pre-existing type errors.
+            - run: npm run type-check
 
     unit-tests:
         runs-on: ubuntu-latest
@@ -86,6 +93,9 @@ jobs:
             NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            # The server this job starts mints realtime tokens with it; without it
+            # /api/realtime/token 500s and every private-channel subscription fails.
+            SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
             VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
             SKIP_SMS: 'true'
             SKIP_EMAIL: 'true'
@@ -116,7 +126,9 @@ jobs:
         needs: [lint, type-check, unit-tests, build]
         env:
             PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_URL }}
-            TEST_CLEANUP_SECRET: ${{ secrets.TEST_CLEANUP_SECRET }}
+            # No TEST_CLEANUP_SECRET: remote runs skip globalSetup/globalTeardown entirely
+            # (playwright.config.ts), so nothing here calls the test endpoints. Withholding it
+            # also means this job cannot reach /api/test/cleanup on a deployed environment.
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
@@ -124,6 +136,11 @@ jobs:
                   node-version: 20
                   cache: 'npm'
             - run: npm ci
+            # Fail fast with a legible reason. A protected or misconfigured target otherwise shows
+            # up as an opaque assertion failure three minutes later, which is how this job stayed
+            # broken without anyone reading the cause.
+            - name: Preflight — target is reachable and not behind Vercel SSO
+              run: ./scripts/smoke-preflight.sh "$PLAYWRIGHT_BASE_URL"
             - run: npx playwright install --with-deps chromium
             - run: npx playwright test tests/e2e/smoke.spec.ts --project=chromium
             - uses: actions/upload-artifact@v4
@@ -140,7 +157,9 @@ jobs:
         needs: [lint, type-check, unit-tests, build]
         env:
             PLAYWRIGHT_BASE_URL: ${{ secrets.PRODUCTION_URL }}
-            TEST_CLEANUP_SECRET: ${{ secrets.TEST_CLEANUP_SECRET }}
+            # Deliberately no TEST_CLEANUP_SECRET. smoke.spec.ts is read-only, and handing this
+            # job the secret was one env-var copy away from arming /api/test/cleanup — a
+            # cascading user delete — against the production database.
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
@@ -148,6 +167,8 @@ jobs:
                   node-version: 20
                   cache: 'npm'
             - run: npm ci
+            - name: Preflight — target is reachable and not behind Vercel SSO
+              run: ./scripts/smoke-preflight.sh "$PLAYWRIGHT_BASE_URL"
             - run: npx playwright install --with-deps chromium
             - run: npx playwright test tests/e2e/smoke.spec.ts --project=chromium
             - uses: actions/upload-artifact@v4

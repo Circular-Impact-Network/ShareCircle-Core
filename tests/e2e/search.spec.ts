@@ -172,19 +172,23 @@ test.describe('search functionality', () => {
 			// Then clear it
 			await searchInput.clear();
 			await searchInput.press('Enter');
-			await page.waitForTimeout(500);
 
-			// Should show items grid or empty state (items render in items-grid, not item-card)
-			const hasItems = await page
-				.locator('[data-testid="items-grid"]')
-				.isVisible({ timeout: 3000 })
-				.catch(() => false);
-			const hasEmptyState = await page
-				.getByText(/No items yet|No matching items/i)
-				.isVisible({ timeout: 2000 })
-				.catch(() => false);
+			// Poll for whichever terminal state the refetch settles on, rather than sampling once
+			// after a fixed 500ms. The old version read the DOM mid-refetch and saw only the
+			// loading state, so it failed with neither grid nor empty state present — which is a
+			// statement about timing, not about the page being wrong.
+			await expect(async () => {
+				const hasItems = await page
+					.locator('[data-testid="items-grid"]')
+					.isVisible()
+					.catch(() => false);
+				const hasEmptyState = await page
+					.getByText(/No items yet|No matching items/i)
+					.isVisible()
+					.catch(() => false);
 
-			expect(hasItems || hasEmptyState).toBeTruthy();
+				expect(hasItems || hasEmptyState).toBeTruthy();
+			}).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
 		}
 	});
 

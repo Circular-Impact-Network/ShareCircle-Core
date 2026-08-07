@@ -47,4 +47,19 @@ describe('BorrowRequestCard — chat with requester (E6)', () => {
 
 		expect(onChat).toHaveBeenCalledWith('user-9', 'item-1', 'Power Drill');
 	});
+
+	it('labels the button exactly "Chat", with the name left to screen readers', () => {
+		// Standardised across tabs: the non-pending branch used to read "Chat with Bhavya"
+		// while every other surface said plain "Chat".
+		const approvedRequest = { ...pendingRequest, status: 'APPROVED' } as unknown as BorrowRequest;
+		render(<BorrowRequestCard request={approvedRequest} {...baseProps} onChat={vi.fn()} />);
+
+		const button = screen.getByTestId('chat-btn');
+		expect(button.textContent).toMatch(/^\s*Chat/);
+		expect(button.textContent).toContain('Bhavya');
+
+		// The name is present for assistive tech but visually hidden.
+		const srOnly = button.querySelector('.sr-only');
+		expect(srOnly?.textContent).toContain('Bhavya');
+	});
 });

@@ -74,6 +74,7 @@ import { useProgressivePagination } from '@/hooks/useProgressivePagination';
 import { type ItemRequestFilterValue } from '@/components/app/item-request-filter';
 import { CircleRequestsTab } from './circle-details/CircleRequestsTab';
 import { CircleInviteSection } from './circle-details/CircleInviteSection';
+import { formatInviteExpiry } from '@/lib/invite';
 
 interface CircleDetailsPageProps {
 	circleId: string;
@@ -231,22 +232,14 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 		return '';
 	};
 
-	const getInviteExpiryLabel = () => {
-		if (!circle?.inviteExpiresAt) return 'Invite expires 7 days after generation.';
-		return `Invite expires on ${formatDate(circle.inviteExpiresAt)}.`;
-	};
+	const getInviteExpiryLabel = () => formatInviteExpiry(circle?.inviteExpiresAt);
 
-	const handleInviteToggle = async () => {
-		if (showInviteSection) {
-			setShowInviteSection(false);
-			return;
-		}
-
-		if (circle?.userRole === 'ADMIN') {
-			await handleRegenerateCode();
-		}
-
-		setShowInviteSection(true);
+	// Opening the panel must NOT rotate the code. It used to call handleRegenerateCode()
+	// here, so every time an admin opened the invite panel the code changed and every link
+	// they had already shared started failing with "Invalid invite code" — the reported bug.
+	// Regeneration is now only ever explicit, via the Regenerate button.
+	const handleInviteToggle = () => {
+		setShowInviteSection(prev => !prev);
 	};
 
 	// Loading state
@@ -322,7 +315,13 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							<span className="sr-only">Settings</span>
 						</Button>
 					)}
-					<Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleInviteToggle}>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9"
+						onClick={handleInviteToggle}
+						data-testid="circle-invite-toggle"
+					>
 						<Share2 className="h-4 w-4" />
 						<span className="sr-only">Invite</span>
 					</Button>
@@ -395,7 +394,13 @@ export function CircleDetailsPage({ circleId }: CircleDetailsPageProps) {
 							Settings
 						</Button>
 					)}
-					<Button variant="outline" size="sm" className="gap-2" onClick={handleInviteToggle}>
+					<Button
+						variant="outline"
+						size="sm"
+						className="gap-2"
+						onClick={handleInviteToggle}
+						data-testid="circle-invite-toggle"
+					>
 						<Share2 className="h-4 w-4" />
 						Invite
 					</Button>

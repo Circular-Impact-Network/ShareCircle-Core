@@ -10,11 +10,6 @@ export function formatWeight(kg: number, unit: WeightUnit): string {
 	return `${kg} kg`;
 }
 
-/** Default display unit for a user — lbs for the US, kg everywhere else. */
-export function defaultWeightUnit(countryCode?: string | null): WeightUnit {
-	return countryCode?.toUpperCase() === 'US' ? 'lbs' : 'kg';
-}
-
 const APPAREL_CATEGORY_RE = /apparel|clothing|shoe|footwear|dress|shirt|pant|jacket|garment|accessor|apparel/i;
 
 /** Apparel/shoes items get a "check with owner for size" note since size isn't captured. */

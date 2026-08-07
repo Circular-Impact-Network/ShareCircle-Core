@@ -117,6 +117,11 @@ test.describe('full handoff cycle (ACTIVE → LENDER_CONFIRMED → BORROWER_CONF
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('completes the full formal handoff flow', async ({ request, browser }) => {
+		// Five sequential lifecycle transitions across two browser contexts. It has been landing at
+		// 55-59s against the 60s default, so whether it reports flaky or failed is luck rather than
+		// code. Same budget as the other multi-actor flows in this suite.
+		test.setTimeout(150_000);
+
 		const user1Api = new TestAPI(request);
 
 		const circle = await user1Api.createCircle({ name: `Full Handoff Circle ${Date.now()}` });
@@ -268,7 +273,9 @@ test.describe('invalid transitions are rejected', () => {
 		const res = await request.post(`/api/borrow-requests/${borrowRequest.id}/confirm-return`);
 		expect(res.status()).toBe(400);
 		const body = (await res.json()) as { error: string };
-		expect(body.error).toMatch(/mark the item as returned/i);
+		// The API says "marked", not "mark" — the old /mark the item/ pattern never matched, so
+		// this assertion had been failing unnoticed while the e2e suite could not run.
+		expect(body.error).toMatch(/marked the item as returned/i);
 
 		// Clean up
 		await user2Api.markReturn(borrowRequest.id);
@@ -321,9 +328,15 @@ test.describe('invalid transitions are rejected', () => {
 		await user1Api.approveBorrowRequest(borrowRequest.id);
 		await user1Api.confirmHandoff(borrowRequest.id);
 
-		// Lender tries to confirm handoff again
+		// Lender confirms handoff again. This is deliberately idempotent, not an error: the
+		// route documents it (see the "Idempotent: handoff already confirmed" branch), and it is
+		// the right behaviour on mobile, where a double-tap or a retry over a flaky connection
+		// must not surface a failure for an action that already succeeded. The test previously
+		// expected 400 and had been failing unnoticed while the e2e suite could not run.
 		const res = await request.post(`/api/borrow-requests/${borrowRequest.id}/handoff`);
-		expect(res.status()).toBe(400);
+		expect(res.status()).toBe(200);
+		const body = (await res.json()) as { message: string };
+		expect(body.message).toMatch(/already confirmed/i);
 
 		// Clean up
 		await user2Api.markReturn(borrowRequest.id);

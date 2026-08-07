@@ -94,15 +94,80 @@ npm run dev              # Start dev server (port 3003)
 npm run build            # Production build
 npm run lint             # ESLint check
 npm run format           # Prettier write
-npm run db:generate      # Regenerate Prisma client after schema changes
-npm run db:migrate:dev   # Create + apply migration
-npm run db:push          # Push schema without migration (dev only, destructive)
-npm run db:studio        # Prisma Studio at localhost:5555
+npm run db:generate        # Regenerate Prisma client after schema changes
+npm run db:migrate:dev     # Create + apply migration (development)
+npm run db:migrate         # Apply pending migrations (production; = prisma migrate deploy)
+npm run db:migrate:status  # What's applied vs pending, for the current DATABASE_URL
+npm run db:push            # Push schema without migration (dev only, destructive)
+npm run db:studio          # Prisma Studio at localhost:5555
 npm test                 # All tests
 npm run test:unit        # Vitest unit tests
 npm run test:e2e         # Playwright E2E tests
 npm run test:e2e:ui      # Playwright UI mode
 ```
+
+## Migrations & Deployment
+
+**Migrations apply automatically on deploy.** Vercel serves **staging**; Hostinger serves **main/production**. Two independent paths, because Hostinger's start command is configured in hPanel and cannot be overridden from this repo:
+
+```json
+"prestart":    "prisma migrate deploy",
+"postinstall": "prisma generate && node scripts/migrate-on-deploy.mjs"
+```
+
+**`prestart`** runs immediately before `start`, so a host booting with `npm start` migrates
+first. It requires the start command to actually be `npm start` — a custom `next start -p 3003`
+bypasses npm lifecycle scripts entirely and migrations silently never run.
+
+**`postinstall`** is the belt to that brace, because Hostinger's start command lives in hPanel
+and no file in this repo can override it. Every deploy must install dependencies, so this path
+cannot be skipped. `scripts/migrate-on-deploy.mjs` guards itself narrowly and logs which guard
+fired:
+
+| Condition                 | Behaviour                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `CI` set                  | skip — Actions' `DIRECT_URL` is the IPv6-only `db.<ref>.supabase.co`, unreachable from IPv4 runners |
+| `VERCEL` set              | skip — Vercel serves staging, whose schema is managed separately                                    |
+| `NODE_ENV` ≠ `production` | skip — a developer's `npm install` must never migrate a database as a side effect                   |
+| no `DIRECT_URL`           | **fail** — the pgbouncer URL in `DATABASE_URL` cannot run DDL                                       |
+| otherwise                 | apply, and fail the deploy if it errors                                                             |
+
+Both paths are safe together: `migrate deploy` no-ops when nothing is pending and Prisma takes a
+Postgres advisory lock, so concurrent instances cannot race.
+
+Deliberately **not** in `build`: on Vercel that would migrate whichever database a preview's env
+points at, and a build container may have no database access at all.
+
+`instrumentation.ts` would be the ideal hook — it runs on server boot regardless of start command
+— but it does not work here. This project builds with `next build --webpack`, and webpack refuses
+to bundle `node:child_process` for the edge-runtime compilation of that file, including behind a
+dynamic import in a second module.
+
+If a migration fails, the deploy fails. That is intentional — serving traffic against a
+half-migrated schema is worse than being down.
+
+**Verifying after a deploy.** `.env` holds `PROD_DB_URL` / `PROD_DIRECT_URL`, so prod state can be
+read without touching the host:
+
+```bash
+set -a; . ./.env; set +a
+DATABASE_URL="$PROD_DB_URL" DIRECT_URL="$PROD_DIRECT_URL" npx prisma migrate status
+```
+
+### Baselining an existing database
+
+Both dev and prod were baselined on 2026-08-01. Their schemas already contained migrations
+that `_prisma_migrations` had no record of, so `migrate deploy` would have tried to re-run
+`CREATE TABLE` against live tables. If you ever restore or clone a database, repeat this:
+
+```bash
+npm run db:migrate:status                          # list what Prisma thinks is pending
+npx prisma migrate resolve --applied <name>        # for each one already in the schema
+npm run db:migrate                                 # apply whatever genuinely remains
+```
+
+Verify against the schema before marking anything applied — a wrongly-baselined migration
+never runs.
 
 ## Best Practices
 
@@ -135,6 +200,9 @@ npm run test:e2e:ui      # Playwright UI mode
 8. **PWA caching**: NetworkOnly for auth routes, NetworkFirst for API reads (Workbox in `next.config.ts`).
 9. **N+1 queries**: Use `include` for eager loading in Prisma; don't fetch relations in loops.
 10. **AI endpoint timeout**: `export const maxDuration = 60;` on AI routes — default times out for vision/embedding calls.
+11. **Install is blocked on desktop at the manifest, not in JS**: `app/manifest.webmanifest/route.ts` serves `display: 'browser'` to desktop Chromium so the app fails Chromium's installability criterion. Suppressing `beforeinstallprompt` only hides _our_ card — Chrome and Edge keep their omnibox install button, which no web page can remove. Device classification lives in `lib/device.ts` (`classifyUserAgent` is shared by client and route, so they cannot disagree). There is no `app/manifest.ts`; adding one back would shadow this route.
+12. **Password rules have one source of truth**: `lib/password-validation.ts`. Clients gate on `isPasswordAcceptable()` and render `<PasswordRequirements>`; APIs gate on `validatePassword()`. Never hand-roll a length check — a client that disagrees with the API produces a submit the server rejects for reasons the form never showed.
+13. **E2E signups must use `signupPayload()`** from `tests/e2e/helpers/test-data.ts`. `city` and `dateOfBirth` are mandatory at signup _and_ feed the profile-completion gate, so omitting them 400s the request and redirects any created user to `/complete-profile`. Several specs `test.skip()` on setup failure, so this fails green.
 
 ## Environment Variables
 
@@ -143,10 +211,15 @@ Required:
 - `DATABASE_URL`, `DIRECT_URL` — PostgreSQL with pgvector
 - `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `RESEND_API_KEY` — transactional email (OTP, password reset). Without it, email is skipped.
 
-Optional: `GOOGLE_CLIENT_ID/SECRET` · `GMAIL_USER/APP_PASSWORD` · `TWILIO_*` · `VAPID_*`
+Optional: `GOOGLE_CLIENT_ID/SECRET` · `EMAIL_FROM` (defaults to `no-reply@circularimpact.org`) · `EMAIL_ASSET_BASE_URL` (email logo origin; defaults to `NEXTAUTH_URL`) · `TWILIO_*` · `VAPID_*` · `GEOCODE_CONTACT_EMAIL`
 
 Test flags: `E2E_AUTO_VERIFY=true` · `SKIP_EMAIL=true` · `SKIP_SMS=true` · `TEST_CLEANUP_SECRET`
+
+**Email**: Resend via `lib/email.ts`. `SKIP_EMAIL` is honoured in development only — it is
+deliberately ignored in production, because silently swallowing OTPs there left users stuck
+on a verification screen forever.
 
 ## Testing Notes
 

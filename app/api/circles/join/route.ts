@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { queueBroadcast } from '@/lib/notify';
 import { JoinType, MemberRole } from '@prisma/client';
+import { isInviteExpired } from '@/lib/invite';
+import { RATE_LIMITS, checkRateLimit, getClientIdentifier, rateLimitResponse } from '@/lib/rate-limit';
 
 // POST /api/circles/join - Join a circle via code or link
 export async function POST(req: NextRequest) {
@@ -16,6 +18,14 @@ export async function POST(req: NextRequest) {
 		}
 
 		const userId = session.user.id;
+
+		// 18 sibling routes rate limit; this one did not, while returning distinct 404/410/400
+		// responses that form a clean oracle for probing invite codes.
+		const rateLimit = checkRateLimit(getClientIdentifier(req, userId), 'circles-join', RATE_LIMITS.auth);
+		if (!rateLimit.success) {
+			return rateLimitResponse(rateLimit);
+		}
+
 		const body = await req.json();
 		const { code, joinType } = body;
 
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid invite code. Circle not found.' }, { status: 404 });
 		}
 
-		if (circle.inviteExpiresAt && circle.inviteExpiresAt.getTime() <= Date.now()) {
+		if (isInviteExpired(circle.inviteExpiresAt)) {
 			return NextResponse.json(
 				{ error: 'This invite has expired. Please ask for a new invite code.' },
 				{ status: 410 },
@@ -63,11 +73,19 @@ export async function POST(req: NextRequest) {
 
 		if (existingMembership) {
 			if (existingMembership.leftAt) {
-				// User was a member before but left - rejoin
+				// User was a member before but left - rejoin.
+				//
+				// `role` must be reset explicitly. Removal only soft-deletes (it writes `leftAt`
+				// and leaves `role` untouched), so a removed ADMIN whose row still says ADMIN
+				// would regain full admin rights simply by replaying the invite code they already
+				// hold — enough to delete the circle or remove its owner. Anyone rejoining comes
+				// back as a plain member and has to be re-promoted deliberately, which is also
+				// what the response below has always claimed happens.
 				await prisma.circleMember.update({
 					where: { id: existingMembership.id },
 					data: {
 						leftAt: null,
+						role: MemberRole.MEMBER,
 						joinType: joinType === 'LINK' ? JoinType.LINK : JoinType.CODE,
 						joinedAt: new Date(),
 					},

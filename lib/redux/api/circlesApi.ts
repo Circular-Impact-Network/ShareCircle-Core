@@ -165,6 +165,22 @@ export const circlesApi = createApi({
 				url: `/circles/${id}/regenerate-code`,
 				method: 'POST',
 			}),
+			// Patch the cached detail directly from the response. Relying on tag invalidation
+			// alone left a window where the panel showed the NEW code next to the PREVIOUS
+			// expiry, until the refetch landed.
+			async onQueryStarted(id, { dispatch, queryFulfilled }) {
+				try {
+					const { data } = await queryFulfilled;
+					dispatch(
+						circlesApi.util.updateQueryData('getCircle', id, draft => {
+							draft.inviteCode = data.inviteCode;
+							draft.inviteExpiresAt = data.inviteExpiresAt;
+						}),
+					);
+				} catch {
+					// Failed regeneration leaves the cache untouched; invalidation still runs.
+				}
+			},
 			invalidatesTags: (_result, _error, id) => [
 				{ type: 'Circles', id },
 				{ type: 'CircleDetails', id },

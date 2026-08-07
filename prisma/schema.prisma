@@ -104,6 +104,9 @@ model User {
   phoneVerified     DateTime? @map("phone_verified")
   image             String?
   hashed_password   String?
+  // Stamped on every password change or reset. Any JWT minted before this instant is refused,
+  // so a stolen session cannot outlive the password it was obtained under.
+  password_changed_at DateTime? @map("password_changed_at")
   phone_number      String?   @unique
   country_code      String?
   address           String?
@@ -198,7 +201,10 @@ model Circle {
   name        String
   description String?  @db.Text
   inviteCode  String   @unique @map("invite_code")
-  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '30 days'")) @map("invite_expires_at")
+  // Timestamptz so the expiry is an absolute instant: as a naive `timestamp` the
+  // `now() + interval` default resolved through the session TimeZone while Prisma read it
+  // back as UTC. See migration 20260731090100_invite_expiry_timestamptz_two_days.
+  inviteExpiresAt DateTime @default(dbgenerated("now() + interval '2 days'")) @map("invite_expires_at") @db.Timestamptz(3)
   avatarUrl   String?  @map("avatar_url")
   avatarPath  String?  @map("avatar_path")
   createdById String   @map("created_by")
@@ -211,6 +217,10 @@ model Circle {
   items        ItemCircle[]
   itemRequestCircles ItemRequestCircle[]
 
+  // Names are unique per creator, case- and whitespace-insensitively. That needs a
+  // functional index — lower(btrim(name)) — which @@unique cannot express, so it exists
+  // only in migration 20260731090000_circle_name_unique_per_creator. Do not use
+  // `prisma db push` on this table: it would silently drop the index.
   @@index([createdById])
   @@map("circles")
 }
@@ -253,6 +263,10 @@ model Item {
   isValueVisible       Boolean   @default(false) @map("is_value_visible")
   // Vector embeddings stored via raw SQL (pgvector)
   embedding    Unsupported("vector(1024)")?
+  // Full-text search vector — a DB-managed GENERATED column (see migration
+  // 20260716120000_readd_items_search_vector). Declared here only so `db push`
+  // never drops it; the generation expression + GIN index live in the DB.
+  search_vector Unsupported("tsvector")?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

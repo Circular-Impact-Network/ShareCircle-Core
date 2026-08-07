@@ -109,6 +109,22 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid push subscription endpoint' }, { status: 400 });
 		}
 
+		/**
+		 * Refuse to re-parent someone else's endpoint.
+		 *
+		 * `upsert` keyed on `endpoint` alone let any authenticated user claim a subscription
+		 * belonging to another account simply by knowing its endpoint — after which the victim's
+		 * device received the attacker's notifications and none of their own. Endpoints are not
+		 * secret: the GET handler on this route already discloses their hosts.
+		 */
+		const existingSubscription = await prisma.pushSubscription.findUnique({
+			where: { endpoint },
+			select: { userId: true },
+		});
+		if (existingSubscription && existingSubscription.userId !== userId) {
+			return NextResponse.json({ error: 'This subscription belongs to another account' }, { status: 409 });
+		}
+
 		await prisma.pushSubscription.upsert({
 			where: { endpoint },
 			update: {

@@ -3,6 +3,8 @@ import { chromium, request, type FullConfig } from '@playwright/test';
 import fs from 'fs/promises';
 import path from 'path';
 
+import { signupPayload } from './helpers/test-data';
+
 type CreatedUser = {
 	key: 'user1' | 'user2';
 	id: string;
@@ -34,12 +36,22 @@ export default async function globalSetup(config: FullConfig) {
 	dotenv.config({ path: path.join(process.cwd(), '.env') });
 	dotenv.config({ path: path.join(process.cwd(), '.env.local'), override: true });
 
+	/**
+	 * This file never opens a database connection — it drives everything over HTTP. The check is
+	 * on behalf of the Next.js server Playwright is about to start, which does need DATABASE_URL,
+	 * and which fails at signup with an error that looks like an email problem when it is missing.
+	 *
+	 * The old message claimed "(Prisma)", which sent at least one investigation down the wrong
+	 * path. playwright.config.ts only registers this setup for local runs, so reaching here always
+	 * means a local server is in play.
+	 */
 	if (!process.env.DATABASE_URL?.trim()) {
 		throw new Error(
-			'E2E global setup requires DATABASE_URL (Prisma). ' +
+			'E2E global setup requires DATABASE_URL: the Next.js server Playwright starts reads it, ' +
+				'and signup hits the database before any mail is sent — so a missing value surfaces as a ' +
+				'misleading email/OTP error. ' +
 				'Locally: ensure .env / .env.local defines DATABASE_URL. ' +
-				'GitHub Actions: set repository secrets TEST_DATABASE_URL and TEST_DIRECT_URL (CI maps them to DATABASE_URL / DIRECT_URL). ' +
-				'This is not an email/SMS issue — signup hits the DB before any mail is sent.',
+				'GitHub Actions: set repository secrets TEST_DATABASE_URL and TEST_DIRECT_URL (CI maps them to DATABASE_URL / DIRECT_URL).',
 		);
 	}
 
@@ -74,15 +86,9 @@ export default async function globalSetup(config: FullConfig) {
 
 	for (const user of rawUsers) {
 		const response = await api.post('/api/auth/signup', {
-			data: {
-				name: user.name,
-				email: user.email,
-				password: user.password,
-				// Real email signup collects date of birth (required), which marks the
-				// profile complete. Without it the profile-completion gate would redirect
-				// these test users to /complete-profile and block every authenticated route.
-				dateOfBirth: '1990-01-01',
-			},
+			// Date of birth and location are both mandatory and both feed the
+			// profile-completion gate — see signupPayload for why they cannot be omitted.
+			data: signupPayload({ name: user.name, email: user.email, password: user.password }),
 		});
 
 		if (!response.ok()) {

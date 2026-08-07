@@ -56,9 +56,14 @@ export async function POST(req: NextRequest) {
 			category,
 			tag,
 			circleIds,
-			limit = 20,
-			threshold = 0.2, // Multimodal embeddings produce higher similarity scores for relevant matches
+			limit: rawLimit = 20,
+			threshold: rawThreshold = 0.2, // Multimodal embeddings produce higher similarity scores for relevant matches
 		} = body;
+
+		// Both were taken from the request unclamped, so `limit=1000000` forced a full-table scan,
+		// sign and serialise. Bound them to sane ranges.
+		const limit = Math.min(Math.max(1, Number(rawLimit) || 20), 100);
+		const threshold = Math.min(Math.max(0, Number(rawThreshold) || 0.2), 1);
 
 		// Need at least query or imageUrl
 		if (!query && !imageUrl) {

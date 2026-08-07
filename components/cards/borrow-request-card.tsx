@@ -88,7 +88,7 @@ export function BorrowRequestCard({
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Avatar className="h-5 w-5">
 								<AvatarImage src={request.requester.image || undefined} />
-								<AvatarFallback className="text-[10px]">
+								<AvatarFallback className="text-3xs">
 									{request.requester.name?.[0]?.toUpperCase() || '?'}
 								</AvatarFallback>
 							</Avatar>
@@ -152,7 +152,10 @@ export function BorrowRequestCard({
 									className="gap-2"
 								>
 									<MessageCircle className="h-4 w-4" />
-									Chat with {request.requester.name || 'borrower'}
+									Chat
+									{/* Name kept for screen readers only — the visible label is
+									    standardised to "Chat" across all tabs. */}
+									<span className="sr-only"> with {request.requester.name || 'borrower'}</span>
 								</Button>
 							</div>
 						)}

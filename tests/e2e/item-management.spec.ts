@@ -25,16 +25,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Editable Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -70,16 +73,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Description Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page
@@ -185,6 +191,11 @@ test.describe('item management', () => {
 		});
 
 		test('cannot delete item with an active borrow transaction — returns 409', async ({ request, browser }) => {
+			// Drives a borrow to ACTIVE across two contexts before it can assert the 409. Chronically
+			// at the 60s default — needed retry #2 on the previous run and exhausted all three on the
+			// one after.
+			test.setTimeout(150_000);
+
 			const user1Api = new TestAPI(request);
 			const circle = await user1Api.createCircle({ name: `Active Borrow Delete Circle ${Date.now()}` });
 			const item = await user1Api.createItem({
@@ -331,16 +342,19 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Control Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Testing controls',
 					circleIds: [circle.id],
 				},
 			});
 
 			// Item creation might fail if AI/image is required
-			if (!itemResponse.ok()) {
-				test.skip();
-				return;
-			}
+			expect(
+				itemResponse.ok(),
+				`itemResponse failed with ${itemResponse.status()}: ${await itemResponse.text()}`,
+			).toBeTruthy();
 			const item = (await itemResponse.json()) as { id: string };
 
 			// Navigate to item detail page

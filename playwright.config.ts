@@ -20,14 +20,38 @@ export default defineConfig({
 		screenshot: 'only-on-failure',
 		video: 'retain-on-failure',
 	},
-	globalSetup: path.join(__dirname, 'tests/e2e/global-setup.ts'),
-	globalTeardown: path.join(__dirname, 'tests/e2e/global-teardown.ts'),
+	/**
+	 * Setup, teardown and the local server are all local-run concerns, so they live behind one
+	 * switch.
+	 *
+	 * global-setup signs two real users up, verifies them via /api/test/get-otp and mints
+	 * sessions via /api/test/create-session — against whatever baseURL is configured. Locally
+	 * that is a throwaway server and it is exactly right. Against a deployed target it means the
+	 * smoke jobs were writing test accounts into staging, and smoke-production was attempting to
+	 * write them into the production database — while also requiring production to expose
+	 * session-minting test endpoints for the setup to succeed at all.
+	 *
+	 * It bought nothing: smoke.spec.ts is three read-only checks that use no session and never
+	 * import ./fixtures. So remote runs skip setup and teardown outright rather than being made
+	 * to work.
+	 */
 	...(isRemoteTarget
 		? {}
 		: {
+				globalSetup: path.join(__dirname, 'tests/e2e/global-setup.ts'),
+				globalTeardown: path.join(__dirname, 'tests/e2e/global-teardown.ts'),
 				webServer: {
-					// CI: use the production build (npm run build runs first in ci.yml); Local: dev server with HMR.
-					command: process.env.CI ? 'npm run start' : 'npm run dev',
+					// CI: serve the production build (npm run build runs first in ci.yml).
+					// Local: dev server with HMR.
+					//
+					// `next start` directly, NOT `npm run start`, and only here. `npm start` fires
+					// the `prestart` hook -> `prisma migrate deploy`, which connects over
+					// DIRECT_URL. Supabase's direct endpoint (db.<ref>.supabase.co:5432) resolves
+					// to IPv6 only and GitHub-hosted runners are IPv4-only, so that connection
+					// cannot succeed and the web server failed to boot with P1001. The CI database
+					// is already migrated, so there is nothing for it to do here anyway. Deploy
+					// targets that boot with `npm start` still get migrations applied.
+					command: process.env.CI ? 'npx next start -p 3003' : 'npm run dev',
 					url: baseURL,
 					reuseExistingServer: !process.env.CI, // Always start fresh in CI; reuse locally for speed.
 					timeout: 120_000,

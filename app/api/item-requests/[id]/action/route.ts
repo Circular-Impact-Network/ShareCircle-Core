@@ -21,9 +21,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		}
 
 		// Verify item request exists
-		const itemRequest = await prisma.itemRequest.findUnique({ where: { id } });
+		const itemRequest = await prisma.itemRequest.findUnique({
+			where: { id },
+			include: { circles: { select: { circleId: true } } },
+		});
 		if (!itemRequest) {
 			return NextResponse.json({ error: 'Item request not found' }, { status: 404 });
+		}
+
+		// This route wrote an action row against any request id for any authenticated user, with
+		// no membership check at all — the one route in this subtree that skipped the gate.
+		const membership = await prisma.circleMember.findFirst({
+			where: {
+				userId,
+				circleId: { in: itemRequest.circles.map(c => c.circleId) },
+				leftAt: null,
+			},
+			select: { id: true },
+		});
+		if (!membership) {
+			return NextResponse.json({ error: 'You are not a member of this circle' }, { status: 403 });
 		}
 
 		// Upsert the action

@@ -3,7 +3,8 @@
 import { createContext, useContext, useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { useToast } from '@/hooks/useToast';
 import { getBrowserPushPermission, isPushSupported, urlBase64ToUint8Array } from '@/lib/push-client';
 import { notificationsApi } from '@/lib/redux/api/notificationsApi';
@@ -302,52 +303,67 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
 
-		// Subscribe to user's notification channel
-		const notificationChannel = supabase.channel(`notifications:${userId}`);
-		notificationChannelRef.current = notificationChannel;
+		// Subscribe to user's notification channel. Private, so the socket must be authorised
+		// first — otherwise anyone with the anon key could read another user's notifications by
+		// guessing their id.
+		let notificationChannel: RealtimeChannel | null = null;
+		let cancelled = false;
 
-		notificationChannel
-			.on('broadcast', { event: 'new_notification' }, payload => {
-				const notification = payload.payload as {
-					id: string;
-					type: string;
-					title: string;
-					body: string;
-					metadata?: Record<string, unknown>;
-				};
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
 
-				// Show toast for new notification
-				toast({
-					title: notification.title,
-					description: notification.body || 'There is new activity waiting for you.',
-				});
+				const channel = supabase.channel(`notifications:${userId}`, PRIVATE_CHANNEL);
+				notificationChannel = channel;
+				notificationChannelRef.current = channel;
 
-				// Invalidate queries to refresh data
-				invalidateNotificationQueries();
+				channel
+					.on('broadcast', { event: 'new_notification' }, payload => {
+						const notification = payload.payload as {
+							id: string;
+							type: string;
+							title: string;
+							body: string;
+							metadata?: Record<string, unknown>;
+						};
 
-				// Also refresh message count for NEW_MESSAGE notifications
-				if (notification.type === 'NEW_MESSAGE') {
-					invalidateMessageQueries();
-				}
+						// Show toast for new notification
+						toast({
+							title: notification.title,
+							description: notification.body || 'There is new activity waiting for you.',
+						});
+
+						// Invalidate queries to refresh data
+						invalidateNotificationQueries();
+
+						// Also refresh message count for NEW_MESSAGE notifications
+						if (notification.type === 'NEW_MESSAGE') {
+							invalidateMessageQueries();
+						}
+					})
+					.on('broadcast', { event: 'request_status_changed' }, () => {
+						// Refresh borrow requests data
+						invalidateNotificationQueries();
+					})
+					.on('broadcast', { event: 'transaction_updated' }, () => {
+						// Refresh transactions data
+						invalidateNotificationQueries();
+					})
+					.subscribe(reportSubscription(`notifications:${userId}`));
 			})
-			.on('broadcast', { event: 'request_status_changed' }, () => {
-				// Refresh borrow requests data
-				invalidateNotificationQueries();
-			})
-			.on('broadcast', { event: 'transaction_updated' }, () => {
-				// Refresh transactions data
-				invalidateNotificationQueries();
-			})
-			.subscribe();
+			.catch(error => {
+				console.error('Realtime auth failed; live notifications are disabled:', error);
+			});
 
 		// NOTE: Message channel (user:${userId}:messages) is handled by useUserMessages hook
 		// in ChatContainer to avoid duplicate subscriptions. Unread count is updated above
 		// via the NEW_MESSAGE notification type.
 
 		return () => {
+			cancelled = true;
 			// `removeChannel` both unsubscribes and frees the supabase client's internal
 			// reference; calling only `unsubscribe()` leaks the channel for the page lifetime.
-			supabase.removeChannel(notificationChannel);
+			if (notificationChannel) supabase.removeChannel(notificationChannel);
 			notificationChannelRef.current = null;
 			messageChannelRef.current = null;
 		};

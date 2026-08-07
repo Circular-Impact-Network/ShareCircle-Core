@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getUserIdOrResponse } from '../threads/_utils';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 // POST /api/messages/delivered - mark message as delivered
 export async function POST(req: NextRequest) {
@@ -45,16 +46,23 @@ export async function POST(req: NextRequest) {
 
 		// Broadcast the delivery receipt to the sender
 		try {
-			const channel = supabaseAdmin.channel(`messages:${receipt.message.conversationId}`);
+			const channel = supabaseAdmin.channel(`messages:${receipt.message.conversationId}`, PRIVATE_CHANNEL);
 			await channel.send({
 				type: 'broadcast',
 				event: 'receipt_update',
+				// Wrapped in `receipts` to match the client and the other two emitters. Sending a
+				// bare receipt here made `payload.receipts` undefined on the client, which threw
+				// inside a setState updater and took the whole chat page down.
 				payload: {
-					id: receipt.id,
-					messageId: receipt.messageId,
-					userId: receipt.userId,
-					deliveredAt: now.toISOString(),
-					readAt: null,
+					receipts: [
+						{
+							id: receipt.id,
+							messageId: receipt.messageId,
+							userId: receipt.userId,
+							deliveredAt: now.toISOString(),
+							readAt: null,
+						},
+					],
 				},
 			});
 			await supabaseAdmin.removeChannel(channel);

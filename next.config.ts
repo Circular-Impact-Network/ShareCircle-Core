@@ -59,17 +59,31 @@ const withPWA = withPWAInit({
 					},
 				},
 			},
+			// The manifest is generated per-request from the user agent (see
+			// app/manifest.webmanifest/route.ts) and must never be served from a cache, or a
+			// stale copy could keep offering install on desktop after this shipped.
+			{
+				urlPattern: ({ url }: { url: URL }) => url.pathname === '/manifest.webmanifest',
+				handler: 'NetworkOnly',
+			},
 			...runtimeCaching,
 		],
 	},
 });
+
+const isDev = process.env.NODE_ENV !== 'production';
 
 const securityHeaders = [
 	{ key: 'X-Content-Type-Options', value: 'nosniff' },
 	{ key: 'X-Frame-Options', value: 'DENY' },
 	{ key: 'X-XSS-Protection', value: '1; mode=block' },
 	{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-	{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+	// geolocation=(self): signup needs the Geolocation API on our own origin. An empty
+	// allowlist — geolocation=() — disables the API outright, so getCurrentPosition never
+	// prompts and fires the error callback immediately (Chrome/Safari; Firefox ignores the
+	// policy for geolocation, which is why this only broke for some users). Same-origin
+	// only; embedded frames still cannot use it.
+	{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
 	{
 		key: 'Strict-Transport-Security',
 		value: 'max-age=63072000; includeSubDomains; preload',
@@ -78,7 +92,12 @@ const securityHeaders = [
 		key: 'Content-Security-Policy',
 		value: [
 			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for Next.js dev, unsafe-inline for some RSC patterns
+			// `unsafe-eval` is only needed by the dev server's HMR runtime, so it is scoped to
+			// development. Shipping it made the CSP close to decorative: with eval available, any
+			// injected string becomes executable code. `unsafe-inline` has to stay for now — Next's
+			// RSC payload and the PWA register script are inlined without a nonce — so this is a
+			// reduction in blast radius, not a complete defence.
+			isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
 			// fonts.googleapis.com / fonts.gstatic.com: the standalone legal pages (/terms, /privacy) load Google Fonts.
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",

@@ -48,8 +48,10 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useGetItemQuery, useUpdateItemMutation, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
-import { useGetUserQuery } from '@/lib/redux/api/userApi';
-import { formatWeight, defaultWeightUnit, isApparelOrShoes, type WeightUnit } from '@/lib/units';
+import { formatWeight, isApparelOrShoes } from '@/lib/units';
+import { formatMoney } from '@/lib/currency';
+import { usePreferences } from '@/app/providers';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import {
 	useCreateBorrowRequestMutation,
 	useGetBorrowRequestsQuery,
@@ -92,13 +94,14 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 	const [desiredTo, setDesiredTo] = useState<Date | undefined>(undefined);
 
 	const { data: item, isLoading, error, refetch: refetchItem } = useGetItemQuery(itemId);
-	const { data: currentUser } = useGetUserQuery();
 	const [updateItem, { isLoading: isUpdatingItem }] = useUpdateItemMutation();
 	const [deleteItem, { isLoading: isDeletingItem }] = useDeleteItemMutation();
 
-	// Weight unit: default from the user's country (US → lbs), with a manual toggle. Display-only; kg is canonical.
-	const [weightUnit, setWeightUnit] = useState<WeightUnit | null>(null);
-	const resolvedWeightUnit: WeightUnit = weightUnit ?? defaultWeightUnit(currentUser?.countryCode);
+	// Weight unit and currency come from Settings → Appearance so the choice persists and
+	// applies app-wide. This used to be per-page state seeded from
+	// defaultWeightUnit(currentUser?.countryCode) — which never worked, because country_code
+	// holds a phone dial code ("+1"), so the comparison against 'US' never matched.
+	const { weightUnit, currency, fxRates } = usePreferences();
 
 	// Get existing borrow requests and queue for this item
 	const { data: existingRequests = [] } = useGetBorrowRequestsQuery({ itemId, type: 'outgoing' }, { skip: !itemId });
@@ -477,18 +480,11 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 						</div>
 					)}
 
-					{/* Weight — always visible, with kg/lbs toggle (defaults to the user's locale) */}
+					{/* Weight — always visible, in the unit chosen in Settings → Appearance */}
 					{item.estimatedWeightKg != null && (
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Scale className="h-4 w-4 flex-shrink-0" />
-							<span>~{formatWeight(item.estimatedWeightKg, resolvedWeightUnit)}</span>
-							<button
-								type="button"
-								onClick={() => setWeightUnit(resolvedWeightUnit === 'kg' ? 'lbs' : 'kg')}
-								className="text-xs font-medium text-primary hover:underline"
-							>
-								Show in {resolvedWeightUnit === 'kg' ? 'lbs' : 'kg'}
-							</button>
+							<span>~{formatWeight(item.estimatedWeightKg, weightUnit)}</span>
 						</div>
 					)}
 
@@ -503,9 +499,23 @@ export function ItemDetailPage({ itemId }: ItemDetailPageProps) {
 					{item.estimatedNewPriceUsd != null && (item.isOwner || item.isValueVisible) && (
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<DollarSign className="h-4 w-4 flex-shrink-0" />
-							<span>Est. retail value: ${item.estimatedNewPriceUsd?.toLocaleString()}</span>
+							<span>Est. retail value: {formatMoney(item.estimatedNewPriceUsd, currency, fxRates)}</span>
 						</div>
 					)}
+
+					{/* Display-only placeholder for a feature that does not exist yet. Deliberately
+					    not a form element and not interactive — it exists so borrowers understand
+					    deposits are planned rather than silently absent. */}
+					<div
+						className="flex items-center gap-2 text-sm text-muted-foreground opacity-60"
+						aria-disabled="true"
+						data-testid="security-deposit-row"
+					>
+						<Lock className="h-4 w-4 flex-shrink-0" />
+						<span>Security deposit</span>
+						<span className="text-muted-foreground">Not set yet</span>
+						<ComingSoonPill />
+					</div>
 
 					{/* Shared in Circles */}
 					{item.circles && item.circles.length > 0 && (

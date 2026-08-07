@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useDispatch } from 'react-redux';
-import { createBrowserSupabaseClient } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { circlesApi } from '@/lib/redux/api/circlesApi';
 
 /**
@@ -20,20 +22,32 @@ export function useCircleMembersRealtime(circleId: string | undefined) {
 		const supabase = createBrowserSupabaseClient();
 		if (!supabase) return;
 
-		const channel = supabase.channel(`circle:${circleId}:members`);
-		channel
-			.on('broadcast', { event: 'member_changed' }, () => {
-				dispatch(
-					circlesApi.util.invalidateTags([
-						{ type: 'CircleMembers', id: circleId },
-						{ type: 'CircleDetails', id: circleId },
-					]),
-				);
+		let channel: RealtimeChannel | null = null;
+		let cancelled = false;
+
+		void ensureRealtimeAuth(supabase)
+			.then(() => {
+				if (cancelled) return;
+
+				channel = supabase.channel(`circle:${circleId}:members`, PRIVATE_CHANNEL);
+				channel
+					.on('broadcast', { event: 'member_changed' }, () => {
+						dispatch(
+							circlesApi.util.invalidateTags([
+								{ type: 'CircleMembers', id: circleId },
+								{ type: 'CircleDetails', id: circleId },
+							]),
+						);
+					})
+					.subscribe(reportSubscription(`circle:${circleId}:members`));
 			})
-			.subscribe();
+			.catch(error => {
+				console.error('Realtime auth failed; live member updates are disabled:', error);
+			});
 
 		return () => {
-			supabase.removeChannel(channel);
+			cancelled = true;
+			if (channel) supabase.removeChannel(channel);
 		};
 	}, [circleId, dispatch]);
 }

@@ -1,27 +1,10 @@
-import { randomInt } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@prisma/client';
-
-const INVITE_EXPIRY_DAYS = 30;
-
-// Generate 8-character alphanumeric invite code
-function generateInviteCode(): string {
-	const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-	let code = '';
-	for (let i = 0; i < 8; i++) {
-		code += chars[randomInt(0, chars.length)];
-	}
-	return code;
-}
-
-const getInviteExpiryDate = () => {
-	const expiresAt = new Date();
-	expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
-	return expiresAt;
-};
+import { getInviteExpiryDate } from '@/lib/invite';
+import { generateInviteCode } from '@/lib/invite-server';
 
 // POST /api/circles/[id]/regenerate-code - Generate new invite code (admin only)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -101,7 +84,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 				return NextResponse.json({ error: 'Circle not found' }, { status: 404 });
 			}
 
-			return NextResponse.json({ inviteCode, inviteExpiresAt }, { status: 200 });
+			// Read the row back rather than echoing the local JS value: this path binds the
+			// timestamp as an untyped raw parameter, so what Postgres stored is authoritative.
+			const persisted = await prisma.circle.findUnique({
+				where: { id },
+				select: { inviteCode: true, inviteExpiresAt: true },
+			});
+
+			if (!persisted) {
+				return NextResponse.json({ error: 'Circle not found' }, { status: 404 });
+			}
+
+			return NextResponse.json(
+				{ inviteCode: persisted.inviteCode, inviteExpiresAt: persisted.inviteExpiresAt },
+				{ status: 200 },
+			);
 		}
 	} catch (error) {
 		console.error('Regenerate code error:', error);

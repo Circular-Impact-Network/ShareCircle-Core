@@ -27,6 +27,13 @@ describe('ChatHeader', () => {
 		onToggleMute: vi.fn(),
 		onToggleArchive: vi.fn(),
 		onDelete: vi.fn(),
+		// Added when the header gained in-thread search. These tests kept passing without them
+		// because tsconfig.json excluded `tests`, so nothing ever type-checked this file — the
+		// component was being rendered with an incomplete props object throughout.
+		isSearchOpen: false,
+		searchValue: '',
+		onToggleSearch: vi.fn(),
+		onSearchChange: vi.fn(),
 	};
 
 	it('renders user name', () => {

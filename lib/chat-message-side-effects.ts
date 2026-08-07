@@ -2,6 +2,7 @@ import { NotificationType, type AttachmentType, type Prisma } from '@prisma/clie
 import { queueNotification } from '@/lib/notify';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { ContextRef } from '@/lib/chat-context-ref';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 type MessageSender = { name: string | null };
 
@@ -69,7 +70,7 @@ export async function runAfterNewChatMessagePersisted(options: {
 	try {
 		const broadcastPromises: Promise<unknown>[] = [];
 
-		const conversationChannel = supabaseAdmin.channel(`messages:${conversationId}`);
+		const conversationChannel = supabaseAdmin.channel(`messages:${conversationId}`, PRIVATE_CHANNEL);
 		broadcastPromises.push(
 			conversationChannel
 				.send({ type: 'broadcast', event: 'new_message', payload: messagePayload })
@@ -77,7 +78,7 @@ export async function runAfterNewChatMessagePersisted(options: {
 		);
 
 		for (const recipientId of recipientIds) {
-			const userChannel = supabaseAdmin.channel(`user:${recipientId}:messages`);
+			const userChannel = supabaseAdmin.channel(`user:${recipientId}:messages`, PRIVATE_CHANNEL);
 			broadcastPromises.push(
 				userChannel
 					.send({ type: 'broadcast', event: 'new_message', payload: messagePayload })

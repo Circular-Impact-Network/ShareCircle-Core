@@ -23,6 +23,11 @@ import {
 	validatePhoneByCountry,
 } from '@/lib/phone';
 import { PHONE_AUTH_ENABLED } from '@/lib/feature-flags';
+import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { getPasswordRequirementsText, isPasswordAcceptable } from '@/lib/password-validation';
+import { shouldNavigateAfterSignIn, signInError, signInWithTimeout } from '@/lib/auth-client';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 type LoginMode = 'login' | 'forgot' | 'reset';
 
@@ -49,7 +54,7 @@ function LoginContent() {
 	const [lastLoginMethod, setLastLoginMethod] = useState('');
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const callbackUrl = searchParams.get('callbackUrl') || '/home';
+	const callbackUrl = safeRedirectPath(searchParams.get('callbackUrl'));
 	const verified = searchParams.get('verified');
 	const modeParam = searchParams.get('mode');
 	const tokenParam = searchParams.get('token');
@@ -162,6 +167,9 @@ function LoginContent() {
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
+		// Reset on every attempt: the CTA used to persist from an earlier "not verified"
+		// failure and kept offering to verify an email the user had since corrected.
+		setNeedsEmailVerification(false);
 		setIsLoading(true);
 
 		try {
@@ -177,14 +185,14 @@ function LoginContent() {
 				return;
 			}
 
-			const result = await signIn('credentials', {
-				email,
-				password,
-				redirect: false,
-			});
+			// Bounded wait — an unbounded `await signIn()` here left "Logging in…" spinning
+			// forever on a cold start even though the session cookie was already set. Same
+			// root cause as the signup hang; see lib/auth-client.ts.
+			const result = await signInWithTimeout({ email, password });
 
-			if (result?.error) {
-				const message = result.error === 'CredentialsSignin' ? 'Invalid email or password.' : result.error;
+			if (!shouldNavigateAfterSignIn(result)) {
+				const reason = signInError(result);
+				const message = !reason || reason === 'CredentialsSignin' ? 'Invalid email or password.' : reason;
 				setError(message);
 				setNeedsEmailVerification(/not verified/i.test(message));
 				setIsLoading(false);
@@ -280,6 +288,7 @@ function LoginContent() {
 	const handleLoginWithOtp = async () => {
 		setError('');
 		setSuccessMessage('');
+		setNeedsEmailVerification(false);
 
 		const code = otpCode.join('');
 		if (code.length !== 6) {
@@ -296,11 +305,7 @@ function LoginContent() {
 					setIsOtpVerifying(false);
 					return;
 				}
-				result = await signIn('credentials', {
-					email,
-					code,
-					redirect: false,
-				});
+				result = await signInWithTimeout({ email, code });
 			} else {
 				if (!isSupportedPhoneCountry(country)) {
 					setError('Please select a valid country');
@@ -314,16 +319,12 @@ function LoginContent() {
 					return;
 				}
 
-				result = await signIn('credentials', {
-					phone: phoneNumber,
-					country,
-					code,
-					redirect: false,
-				});
+				result = await signInWithTimeout({ phone: phoneNumber, country, code });
 			}
 
-			if (result?.error) {
-				const message = result.error === 'CredentialsSignin' ? 'Invalid code. Please try again.' : result.error;
+			if (!shouldNavigateAfterSignIn(result)) {
+				const reason = signInError(result);
+				const message = !reason || reason === 'CredentialsSignin' ? 'Invalid code. Please try again.' : reason;
 				setError(message);
 				setNeedsEmailVerification(/not verified/i.test(message));
 				setIsOtpVerifying(false);
@@ -394,8 +395,10 @@ function LoginContent() {
 			return;
 		}
 
-		if (password.length < 8) {
-			setError('Password must be at least 8 characters');
+		// Full rule set, matching /api/auth/reset-password. The old length-only check meant a
+		// password the form accepted came back rejected by the API.
+		if (!isPasswordAcceptable(password)) {
+			setError(getPasswordRequirementsText());
 			return;
 		}
 
@@ -598,7 +601,7 @@ function LoginContent() {
 							disabled={isLoading}
 							autoFocus
 						/>
-						<p className="text-xs text-muted-foreground mt-1">Must be at least 8 characters</p>
+						<PasswordRequirements password={password} confirmPassword={confirmPassword} />
 					</div>
 					<div>
 						<label className="block text-sm font-medium mb-2">Confirm New Password</label>
@@ -684,23 +687,31 @@ function LoginContent() {
 					</form>
 				) : (
 					<div className="space-y-4">
-						{PHONE_AUTH_ENABLED && (
-							<Tabs
-								value={loginMethod}
-								onValueChange={value => {
-									setLoginMethod(value as 'email' | 'phone');
-									setError('');
-									setSuccessMessage('');
-									setOtpCode(EMPTY_OTP);
-								}}
-								className="w-full"
-							>
-								<TabsList className="grid w-full grid-cols-2 mb-4">
-									<TabsTrigger value="email">Email OTP</TabsTrigger>
-									<TabsTrigger value="phone">Phone OTP</TabsTrigger>
-								</TabsList>
-							</Tabs>
-						)}
+						{/* The Phone tab stays visible but disabled until the SMS provider is live, so
+						    the missing option reads as "not yet" rather than as a broken page. */}
+						<Tabs
+							value={loginMethod}
+							onValueChange={value => {
+								setLoginMethod(value as 'email' | 'phone');
+								setError('');
+								setSuccessMessage('');
+								setOtpCode(EMPTY_OTP);
+							}}
+							className="w-full"
+						>
+							<TabsList className="grid w-full grid-cols-2 mb-4">
+								<TabsTrigger value="email">Email OTP</TabsTrigger>
+								<TabsTrigger
+									value="phone"
+									disabled={!PHONE_AUTH_ENABLED}
+									data-testid="phone-login-tab"
+									className="gap-1.5"
+								>
+									Phone OTP
+									{!PHONE_AUTH_ENABLED && <ComingSoonPill />}
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
 
 						{loginMethod === 'email' ? (
 							<div>

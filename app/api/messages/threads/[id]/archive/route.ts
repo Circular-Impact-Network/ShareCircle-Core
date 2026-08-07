@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdOrResponse } from '../../_utils';
+import { parseBody } from '@/lib/api-guards';
+import { z } from 'zod';
 
 // POST /api/messages/threads/[id]/archive - archive/unarchive conversation
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,8 +11,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 		if (!userId) return response!;
 
 		const { id } = await params;
-		const body = await req.json();
-		const archived = Boolean(body?.archived);
+		const parsed = await parseBody(req, z.object({ archived: z.boolean() }));
+		if (!parsed.ok) return parsed.response;
+		const { archived } = parsed.data;
 
 		await prisma.conversationParticipant.updateMany({
 			where: {

@@ -4,6 +4,7 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
+import { TestAPI } from './helpers/test-data';
 
 test.describe('borrow workflow', () => {
 	test.use({ storageState: storageStatePaths.user1 });
@@ -31,20 +32,17 @@ test.describe('borrow workflow', () => {
 		await user2Page.waitForLoadState('domcontentloaded');
 		await expect(user2Page.getByText(circleName).first()).toBeVisible({ timeout: 10000 });
 
-		// Step 3: User1 creates an item via API (faster and more reliable than UI flow)
-		const itemRes = await request.post('/api/items', {
-			data: {
-				name: 'Power Drill',
-				description: 'A powerful cordless drill for DIY projects.',
-				imagePath: 'tests/uploads/item.png',
-				circleIds: [circle.id],
-			},
+		// Step 3: User1 creates an item via API (faster and more reliable than UI flow).
+		//
+		// Via TestAPI so the image path belongs to the owner, as a real upload's would. It also
+		// throws rather than returning a status, which removes the early `return` that used to
+		// end this test successfully whenever item creation failed.
+		const api = new TestAPI(request);
+		await api.createItem({
+			name: 'Power Drill',
+			description: 'A powerful cordless drill for DIY projects.',
+			circleIds: [circle.id],
 		});
-		if (!itemRes.ok()) {
-			// Item creation failed - circle creation and joining still succeeded
-			await user2Context.close();
-			return;
-		}
 
 		// Step 4: User2 requests to borrow the item
 		await user2Page.goto('/browse');

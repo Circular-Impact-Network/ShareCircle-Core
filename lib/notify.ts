@@ -2,6 +2,7 @@ import { after } from 'next/server';
 import { NotificationType } from '@prisma/client';
 import { createNotification, notifyCircleMembers } from '@/lib/notifications';
 import { supabaseAdmin } from '@/lib/supabase';
+import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 
 type NotifyParams = {
 	userId: string;
@@ -83,7 +84,7 @@ export function queueCircleNotification(params: CircleNotifyParams): void {
 export function queueBroadcast(channelName: string, event: string, payload: Record<string, unknown>): void {
 	after(async () => {
 		try {
-			const channel = supabaseAdmin.channel(channelName);
+			const channel = supabaseAdmin.channel(channelName, PRIVATE_CHANNEL);
 			await channel.send({ type: 'broadcast', event, payload });
 			await supabaseAdmin.removeChannel(channel);
 		} catch (error) {

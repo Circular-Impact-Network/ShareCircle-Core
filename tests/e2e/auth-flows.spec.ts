@@ -74,14 +74,27 @@ test.describe('authentication flows', () => {
 			expect(hasLink || hasText).toBeTruthy();
 		});
 
-		test('phone OTP tab is accessible in OTP login mode', async ({ page }) => {
+		/**
+		 * Requirement: "phone number login/signup should show 'Coming soon' and a greyed-out tab."
+		 *
+		 * This test used to click the tab and assert the phone input appeared. Phone auth is
+		 * behind PHONE_AUTH_ENABLED until the SMS provider is live, so the tab is deliberately
+		 * visible-but-disabled: the missing option reads as "not yet" rather than a broken page.
+		 */
+		test('phone OTP tab is visible but disabled, with a Coming soon pill', async ({ page }) => {
 			await page.goto('/login');
 			await page.waitForLoadState('networkidle');
 
 			await page.getByRole('button', { name: 'Login with OTP' }).click();
-			await expect(page.getByRole('tab', { name: 'Phone OTP' })).toBeVisible();
-			await page.getByRole('tab', { name: 'Phone OTP' }).click();
-			await expect(page.getByPlaceholder('Phone number')).toBeVisible();
+
+			const phoneTab = page.getByTestId('phone-login-tab');
+			await expect(phoneTab).toBeVisible();
+			await expect(phoneTab).toBeDisabled();
+			await expect(phoneTab).toContainText('Coming soon');
+
+			// Email OTP remains the working path.
+			await expect(page.getByRole('tab', { name: 'Email OTP' })).toBeEnabled();
+			await expect(page.getByPlaceholder('Phone number')).toHaveCount(0);
 		});
 	});
 
@@ -156,17 +169,24 @@ test.describe('authentication flows', () => {
 			}
 		});
 
-		test('phone signup shows validation for invalid number', async ({ page }) => {
+		/**
+		 * Replaces a test that clicked the Phone tab and asserted phone-number validation. That
+		 * path is unreachable while PHONE_AUTH_ENABLED is false, so the requirement to assert is
+		 * the signpost, not the validation behind it. Restore the validation test alongside the
+		 * flag when the SMS provider goes live.
+		 */
+		test('phone signup tab is visible but disabled, with a Coming soon pill', async ({ page }) => {
 			await page.goto('/signup');
 			await page.waitForLoadState('networkidle');
 
-			await page.getByRole('tab', { name: 'Phone' }).click();
-			await page.getByPlaceholder('Phone number').fill('123');
-			// Signup actions are gated behind accepting the policies.
-			await page.getByRole('checkbox').check();
-			await page.getByRole('button', { name: 'Create Account' }).click();
+			const phoneTab = page.getByTestId('phone-signup-tab');
+			await expect(phoneTab).toBeVisible();
+			await expect(phoneTab).toBeDisabled();
+			await expect(phoneTab).toContainText('Coming soon');
 
-			await expect(page.getByText(/valid phone number/i)).toBeVisible();
+			// Email signup stays fully usable.
+			await expect(page.getByRole('tab', { name: 'Email' })).toBeEnabled();
+			await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
 		});
 	});
 

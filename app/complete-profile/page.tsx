@@ -2,25 +2,25 @@
 
 import type React from 'react';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { Loader2, MapPin, LocateFixed, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, subYears, isBefore } from 'date-fns';
 import AuthSplitLayout from '@/components/auth/AuthSplitLayout';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 function CompleteProfileContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { update } = useSession();
-	const callbackUrl = searchParams.get('callbackUrl') || '/home';
+	const callbackUrl = safeRedirectPath(searchParams.get('callbackUrl'));
 
 	const [dob, setDob] = useState<Date | undefined>(undefined);
 	const [city, setCity] = useState('');
@@ -29,24 +29,35 @@ function CompleteProfileContent() {
 	const [countryName, setCountryName] = useState('');
 	const [latitude, setLatitude] = useState<number | null>(null);
 	const [longitude, setLongitude] = useState<number | null>(null);
-	const { locate, isLocating } = useGeolocation();
+	const { locate, isLocating, error: geoError } = useGeolocation();
 	const [isSaving, setIsSaving] = useState(false);
 	const [agreedToPolicies, setAgreedToPolicies] = useState(false);
 	const [error, setError] = useState('');
+	const [locationError, setLocationError] = useState<string | null>(null);
+	const [approximateLocation, setApproximateLocation] = useState(false);
 
-	const handleUseLocation = async () => {
+	const handleUseLocation = useCallback(async () => {
 		const result = await locate();
-		if (!result) {
-			setError('Unable to retrieve your location. You can enter your city manually.');
+		if (!result?.city) {
+			setLocationError(geoError ?? 'We could not detect your location. Please try again.');
 			return;
 		}
+		setLocationError(null);
+		setApproximateLocation(result.approximate);
 		setLatitude(result.latitude);
 		setLongitude(result.longitude);
-		if (result.city) setCity(result.city);
-		if (result.state) setStateRegion(result.state);
-		if (result.zipCode) setZipCode(result.zipCode);
-		if (result.country) setCountryName(result.country);
-	};
+		setCity(result.city);
+		setStateRegion(result.state);
+		setZipCode(result.zipCode);
+		setCountryName(result.country);
+	}, [locate, geoError]);
+
+	// Location is required here too, so detect on mount rather than waiting for a click.
+	useEffect(() => {
+		void handleUseLocation();
+		// Mount-only by design.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -64,6 +75,14 @@ function CompleteProfileContent() {
 			setError('Please accept the Terms of Service and Privacy Policy to continue.');
 			return;
 		}
+		// Checked last: a missing location should not mask a fixable field error above.
+		if (!city.trim()) {
+			setError('We need your location to continue. Tap Retry next to Location.');
+			if (!isLocating) {
+				void handleUseLocation();
+			}
+			return;
+		}
 
 		setIsSaving(true);
 		try {
@@ -74,7 +93,7 @@ function CompleteProfileContent() {
 					dateOfBirth: format(dob, 'yyyy-MM-dd'),
 					latitude: latitude ?? undefined,
 					longitude: longitude ?? undefined,
-					city: city.trim() || undefined,
+					city: city.trim(),
 					state: stateRegion.trim() || undefined,
 					zipCode: zipCode.trim() || undefined,
 					countryName: countryName.trim() || undefined,
@@ -122,42 +141,53 @@ function CompleteProfileContent() {
 					<p className="text-xs text-muted-foreground mt-1">You must be at least 13 years old.</p>
 				</div>
 
+				{/* Location is required and always detected — no manual input, matching signup. */}
 				<div>
 					<label className="block text-sm font-medium mb-2">
-						Location <span className="text-muted-foreground text-xs">(optional)</span>
+						Location <span className="text-destructive">*</span>
 					</label>
-					<div className="flex gap-2">
-						<Input
-							type="text"
-							placeholder="Your city"
-							value={city}
-							onChange={e => setCity(e.target.value)}
-							className="flex-1"
-							disabled={isSaving}
-						/>
-						<Button
-							type="button"
-							variant="outline"
-							size="icon"
-							onClick={handleUseLocation}
-							disabled={isSaving || isLocating}
-							title="Use my location"
-						>
-							{isLocating ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
-							) : (
-								<LocateFixed className="h-4 w-4" />
-							)}
-						</Button>
+					<div
+						className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2.5"
+						data-testid="profile-location"
+					>
+						{isLocating ? (
+							<>
+								<Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+								<span className="text-sm text-muted-foreground">Detecting your location…</span>
+							</>
+						) : city ? (
+							<>
+								<MapPin className="h-4 w-4 shrink-0 text-emerald-600" />
+								<span className="text-sm font-medium" data-testid="profile-location-value">
+									{[city, stateRegion, countryName].filter(Boolean).join(', ')}
+								</span>
+							</>
+						) : (
+							<>
+								<MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="text-sm text-muted-foreground">Location not detected yet</span>
+							</>
+						)}
+						{!isLocating && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								className="ml-auto shrink-0 gap-1.5"
+								onClick={handleUseLocation}
+								disabled={isSaving}
+								data-testid="profile-location-retry"
+							>
+								<LocateFixed className="h-3.5 w-3.5" />
+								{city ? 'Update' : 'Retry'}
+							</Button>
+						)}
 					</div>
-					{latitude && longitude && (
-						<p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-							<MapPin className="h-3 w-3" />
-							Location captured{city ? ` · ${city}` : ''}
-						</p>
-					)}
+					{locationError && <p className="text-xs text-destructive mt-1">{locationError}</p>}
 					<p className="text-xs text-muted-foreground mt-1">
-						Click the pin icon to auto-detect, or type your city manually.
+						{approximateLocation && city
+							? 'Approximate location from your network. Allow location access for a more precise result.'
+							: 'Detected automatically so we can connect you with circles nearby.'}
 					</p>
 				</div>
 
@@ -235,7 +265,7 @@ export default function CompleteProfilePage() {
 						</div>
 						<h1 className="text-3xl font-display font-bold mb-2">Complete your profile</h1>
 						<p className="text-muted-foreground">
-							Add your date of birth (and location, if you like) to finish.
+							Your date of birth and location are both required before you can continue.
 						</p>
 					</div>
 				}

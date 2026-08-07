@@ -159,6 +159,10 @@ test.describe('D27 — per-type notification creation', () => {
 	test.use({ storageState: storageStatePaths.user1 });
 
 	test('handoff / receive / return / confirm-return all create their notifications', async ({ request, browser }) => {
+		// Four lifecycle steps, each followed by polling for the notification its `after()` callback
+		// queues. The polling is what pushes it past the 60s default.
+		test.setTimeout(150_000);
+
 		const user1Api = new TestAPI(request);
 		const circle = await user1Api.createCircle({ name: `Per-type Circle ${Date.now()}` });
 		const item = await user1Api.createItem({ name: `Per-type Item ${Date.now()}`, circleIds: [circle.id] });

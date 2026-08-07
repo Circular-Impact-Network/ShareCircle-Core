@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect -- sync server-fetched prefs into local form state */
 /* eslint-disable react-hooks/preserve-manual-memoization -- isDirty useMemo vs React Compiler expectations */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, ChevronDown, Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -69,15 +69,38 @@ export function NotificationPreferencesPanel() {
 		);
 	}, [data?.stored, globalInApp, globalPush, categoryOverrides, typeOverrides]);
 
+	/**
+	 * Tracks which server snapshot the form has been seeded from, so "not yet loaded" can be told
+	 * apart from "the user has edited".
+	 *
+	 * The previous version bailed out whenever `isDirty` was true. But `isDirty` compares local
+	 * state against the freshly-arrived data in the same render, and local state starts at the
+	 * defaults (true/true/{}/{}). So for any user whose saved preferences differ from the
+	 * defaults — that is, anyone who has ever changed one — `isDirty` was already true on the
+	 * very first arrival, the effect returned early, and the form never seeded at all. They saw
+	 * every toggle ON with Save already enabled, and one tap wrote the defaults back over their
+	 * real settings.
+	 */
+	const seededSnapshotRef = useRef<string | null>(null);
+
 	useEffect(() => {
 		if (!data?.stored) {
 			return;
 		}
-		// Don't overwrite in-progress edits when a background refetch (e.g. on window focus)
-		// returns a new data.stored reference — that was snapping toggles back to saved state.
-		if (isDirty) {
+
+		const snapshot = JSON.stringify(data.stored);
+		if (seededSnapshotRef.current === snapshot) {
 			return;
 		}
+
+		// Once seeded at least once, don't overwrite in-progress edits when a background refetch
+		// (e.g. on window focus) returns a new data.stored reference — that was snapping toggles
+		// back to saved state.
+		if (seededSnapshotRef.current !== null && isDirty) {
+			return;
+		}
+
+		seededSnapshotRef.current = snapshot;
 		setGlobalInApp(data.stored.globalInApp);
 		setGlobalPush(data.stored.globalPush);
 		setCategoryOverrides(cloneOverrides(data.stored.categoryOverrides || {}));
@@ -239,13 +262,16 @@ export function NotificationPreferencesPanel() {
 						</span>
 					</div>
 
+					{/* One master row, two channel toggles — the In-app / Push columns already say
+					    which is which, so splitting this into two rows (each with a dead spacer
+					    filling the other column) only added noise. */}
 					<div className="flex min-h-11 items-center gap-3 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 sm:px-4">
 						<div className="min-w-0 flex-1 space-y-0.5">
-							<Label htmlFor="global-in-app" className="text-sm font-medium">
-								All notifications (in-app)
-							</Label>
+							<div className="text-sm font-medium">All notifications</div>
 							<p className="text-xs text-muted-foreground">
-								Toasts and entries in your notifications list.
+								{pushMasterDisabled
+									? 'Toasts and list entries in the app. For push, fix device push above or your browser permission.'
+									: 'Toasts and list entries in the app, plus background alerts on devices where push is enabled.'}
 							</p>
 						</div>
 						<div className="flex w-14 shrink-0 justify-end sm:w-16">
@@ -256,21 +282,6 @@ export function NotificationPreferencesPanel() {
 								aria-label="All in-app notifications"
 							/>
 						</div>
-						<div className="w-14 shrink-0 sm:w-16" />
-					</div>
-
-					<div className="flex min-h-11 items-center gap-3 rounded-lg border border-border/80 bg-muted/30 px-3 py-2 sm:px-4">
-						<div className="min-w-0 flex-1 space-y-0.5">
-							<Label htmlFor="global-push" className="text-sm font-medium">
-								All notifications (push)
-							</Label>
-							<p className="text-xs text-muted-foreground">
-								{pushMasterDisabled
-									? 'Fix device push above or browser permission to use push toggles.'
-									: 'Background alerts on devices where push is enabled.'}
-							</p>
-						</div>
-						<div className="w-14 shrink-0 sm:w-16" />
 						<div className="flex w-14 shrink-0 justify-end sm:w-16">
 							<Switch
 								id="global-push"
@@ -314,7 +325,7 @@ export function NotificationPreferencesPanel() {
 										</CollapsibleTrigger>
 										<div className="flex shrink-0 items-center justify-end gap-6 sm:gap-10 pl-6 sm:pl-0">
 											<div className="flex flex-col items-center gap-1">
-												<span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
+												<span className="text-3xs font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
 													In-app
 												</span>
 												<Switch
@@ -326,7 +337,7 @@ export function NotificationPreferencesPanel() {
 												/>
 											</div>
 											<div className="flex flex-col items-center gap-1">
-												<span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
+												<span className="text-3xs font-medium uppercase tracking-wide text-muted-foreground sm:hidden">
 													Push
 												</span>
 												<Switch

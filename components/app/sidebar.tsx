@@ -119,7 +119,7 @@ export function Sidebar() {
 										{unreadCount > 0 && (
 											<Badge
 												variant={active ? 'secondary' : 'destructive'}
-												className="h-5 min-w-[20px] px-1.5 text-[10px]"
+												className="h-5 min-w-[20px] px-1.5 text-3xs"
 											>
 												{unreadCount > 99 ? '99+' : unreadCount}
 											</Badge>

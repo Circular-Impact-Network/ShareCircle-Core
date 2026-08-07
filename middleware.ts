@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+import { safeRedirectPath } from '@/lib/safe-redirect';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
@@ -35,23 +37,31 @@ export async function middleware(request: NextRequest) {
 		/^\/requests$/,
 		/^\/settings$/,
 		/^\/dashboard(\/.*)?$/,
+		// Invite landing. It joins a circle on mount, so it must sit behind the same email
+		// verification and profile-completion gates as the rest of the app — otherwise an
+		// invite link is a way to become a circle member with no age or location on file.
+		// The gates preserve ?code= via callbackUrl, so the join still completes afterwards.
+		/^\/join$/,
 	];
 
 	// Check if current path is a protected route
 	const isProtectedRoute = protectedRoutePatterns.some(pattern => pattern.test(pathname));
 	const isCompleteProfile = pathname === '/complete-profile';
+	// Query string included: a bare pathname silently dropped ?code= from /join, so anyone
+	// bounced through login or profile completion lost the invite they clicked.
+	const returnTo = `${pathname}${request.nextUrl.search}`;
 
 	// /complete-profile requires authentication
 	if (isCompleteProfile && !token) {
 		const loginUrl = new URL('/login', request.url);
-		loginUrl.searchParams.set('callbackUrl', pathname);
+		loginUrl.searchParams.set('callbackUrl', returnTo);
 		return NextResponse.redirect(loginUrl);
 	}
 
 	// If accessing a protected route without authentication, redirect to login
 	if (isProtectedRoute && !token) {
 		const loginUrl = new URL('/login', request.url);
-		loginUrl.searchParams.set('callbackUrl', pathname);
+		loginUrl.searchParams.set('callbackUrl', returnTo);
 		return NextResponse.redirect(loginUrl);
 	}
 
@@ -65,10 +75,7 @@ export async function middleware(request: NextRequest) {
 		}
 		// Check for callbackUrl first
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	// Check email verification for authenticated users on protected routes
@@ -79,14 +86,17 @@ export async function middleware(request: NextRequest) {
 			const verifyUrl = new URL('/signup', request.url);
 			verifyUrl.searchParams.set('mode', 'verify');
 			verifyUrl.searchParams.set('email', token.email as string);
+			if (pathname !== '/home') verifyUrl.searchParams.set('callbackUrl', returnTo);
 			return NextResponse.redirect(verifyUrl);
 		}
 
-		// Profile completion gate: users missing required profile data (e.g. Google
-		// sign-ups that skip date of birth) must complete it before using the app.
+		// Profile completion gate: date of birth and location are mandatory at signup, but a
+		// Google sign-up has neither and older accounts predate the requirement. Both are
+		// enforced here rather than only on the signup form, so there is no route into the app
+		// that leaves them unset — see isProfileComplete in lib/auth.ts.
 		if (token.emailVerified && token.profileComplete === false) {
 			const completeUrl = new URL('/complete-profile', request.url);
-			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', pathname);
+			if (pathname !== '/home') completeUrl.searchParams.set('callbackUrl', returnTo);
 			return NextResponse.redirect(completeUrl);
 		}
 	}
@@ -94,10 +104,7 @@ export async function middleware(request: NextRequest) {
 	// If the profile is already complete, keep users out of the onboarding step
 	if (token && isCompleteProfile && token.profileComplete === true) {
 		const callbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-		if (callbackUrl && callbackUrl.startsWith('/')) {
-			return NextResponse.redirect(new URL(callbackUrl, request.url));
-		}
-		return NextResponse.redirect(new URL('/home', request.url));
+		return NextResponse.redirect(new URL(safeRedirectPath(callbackUrl), request.url));
 	}
 
 	return NextResponse.next();
@@ -113,7 +120,15 @@ export const config = {
 		 * - _next/image (image optimization files)
 		 * - favicon.ico (browser icon)
 		 * - public folder files
+		 * - files with a known static-asset extension
+		 *
+		 * That last clause used to be `.*\..*` — any path containing a dot at all. `/items/abc.def`,
+		 * `/messages/x.y` and `/circles/a.b` all match real [id] routes and all contain a dot, so
+		 * middleware never ran for them and `app/(authenticated)/layout.tsx` performs no check of
+		 * its own ("trusts middleware.ts to gate auth"). The app shell therefore rendered for a
+		 * signed-out visitor, defeating the stated purpose of this file — no flash before redirect
+		 * on shareable item links.
 		 */
-		'/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
+		'/((?!api|_next/static|_next/image|favicon.ico|public|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|mjs|map|woff|woff2|ttf|otf|txt|xml|webmanifest)$).*)',
 	],
 };

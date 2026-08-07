@@ -108,11 +108,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				{/* Apply the saved theme before first paint to avoid a flash-of-light and a
-				    hydration mismatch on the theme toggle (matches ThemeProvider's 'light' default). */}
+				{/* Apply the saved theme and font size before first paint: avoids a flash-of-light,
+				    a hydration mismatch on the theme toggle (matches ThemeProvider's 'light'
+				    default), and a visible reflow when the root font size is not 16px.
+				    Keep the size map in sync with FONT_SIZES in lib/preferences.ts. */}
 				<script
 					dangerouslySetInnerHTML={{
-						__html: `try{if(localStorage.getItem('sharecircle_theme')==='dark'){document.documentElement.classList.add('dark')}}catch(e){}`,
+						__html: `try{var s=localStorage;if(s.getItem('sharecircle_theme')==='dark'){document.documentElement.classList.add('dark')}var f={sm:14,md:16,lg:18}[s.getItem('sharecircle_font_size')];if(f){document.documentElement.style.fontSize=f+'px'}}catch(e){}`,
 					}}
 				/>
 			</head>
