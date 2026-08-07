@@ -117,9 +117,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 			return NextResponse.json({ error: 'Borrow request not found' }, { status: 404 });
 		}
 
-		// Only pending requests can be approved/declined
+		// Only pending requests can be approved/declined.
+		//
+		// 409, not 400: the request is well-formed, it just conflicts with the current state — and
+		// the race guards further down already answer 409 for exactly this condition. Two status
+		// codes for one outcome meant a client could not tell "retry is pointless" from "you sent
+		// something malformed" depending on which check happened to catch it first.
 		if (borrowRequest.status !== BorrowRequestStatus.PENDING) {
-			return NextResponse.json({ error: 'Request has already been processed' }, { status: 400 });
+			return NextResponse.json({ error: 'Request has already been processed' }, { status: 409 });
 		}
 
 		// Validate action permissions
