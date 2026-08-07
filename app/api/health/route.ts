@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkEnv } from '@/lib/env';
+import { isPushConfigured } from '@/lib/push';
 
 // Always evaluated fresh — a cached health check reports the state of a past request.
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,9 @@ export async function GET() {
 			status: healthy ? 'ok' : 'degraded',
 			database,
 			env: env.ok ? 'ok' : 'incomplete',
+			// Reported separately because "the variables are set" and "web-push accepted them" are
+			// different things: a subject that is not a mailto:/https URL is present but rejected.
+			push: isPushConfigured() ? 'ok' : 'not-configured',
 			// Names only. `checkEnv` yields messages built from variable names, never values.
 			missing: env.missing,
 			warnings: env.warnings,
