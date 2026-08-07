@@ -71,6 +71,8 @@ const withPWA = withPWAInit({
 	},
 });
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const securityHeaders = [
 	{ key: 'X-Content-Type-Options', value: 'nosniff' },
 	{ key: 'X-Frame-Options', value: 'DENY' },
@@ -90,7 +92,12 @@ const securityHeaders = [
 		key: 'Content-Security-Policy',
 		value: [
 			"default-src 'self'",
-			"script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for Next.js dev, unsafe-inline for some RSC patterns
+			// `unsafe-eval` is only needed by the dev server's HMR runtime, so it is scoped to
+			// development. Shipping it made the CSP close to decorative: with eval available, any
+			// injected string becomes executable code. `unsafe-inline` has to stay for now — Next's
+			// RSC payload and the PWA register script are inlined without a nonce — so this is a
+			// reduction in blast radius, not a complete defence.
+			isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
 			// fonts.googleapis.com / fonts.gstatic.com: the standalone legal pages (/terms, /privacy) load Google Fonts.
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
