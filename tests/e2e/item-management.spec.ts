@@ -25,6 +25,9 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Editable Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
@@ -70,6 +73,9 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Description Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Original description',
 					circleIds: [circle.id],
 				},
@@ -336,6 +342,9 @@ test.describe('item management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Control Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Testing controls',
 					circleIds: [circle.id],
 				},

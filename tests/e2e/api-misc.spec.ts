@@ -106,10 +106,7 @@ test.describe('I — messages unread-count', () => {
 		expect(afterSend.unreadCount).toBeGreaterThan(baseline.unreadCount);
 
 		// User1 marks the thread read.
-		const markReadRes = await request.patch(`/api/messages/threads/${thread.id}`, {
-			data: { action: 'mark-read' },
-		});
-		// Endpoint may use POST or PATCH; if PATCH is wrong try POST.
+		const markReadRes = await request.post(`/api/messages/threads/${thread.id}/read`);
 		expect(
 			markReadRes.ok(),
 			`markReadRes failed with ${markReadRes.status()}: ${await markReadRes.text()}`,

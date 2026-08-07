@@ -4,6 +4,7 @@
  */
 
 import { test, expect, storageStatePaths } from './fixtures';
+import { TestAPI } from './helpers/test-data';
 
 test.describe('message management', () => {
 	test.use({ storageState: storageStatePaths.user1 });
@@ -235,6 +236,9 @@ test.describe('message management', () => {
 			const itemResponse = await request.post('/api/items', {
 				data: {
 					name: 'Chat Test Item',
+					// imagePath is required and must be owned by the caller. Omitting it 400'd every
+					// one of these creations in CI; the old `if (!itemResponse.ok()) test.skip()` hid it.
+					imagePath: `${await new TestAPI(request).userId()}/${Date.now()}.jpg`,
 					description: 'Item for chat testing',
 					circleIds: [circle.id],
 				},

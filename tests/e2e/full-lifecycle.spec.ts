@@ -22,6 +22,8 @@ test.describe('borrow lifecycle', () => {
 	};
 
 	test('owner and borrower complete a full borrow and return', async ({ browser, users }) => {
+		// Nine sequential API round trips plus a page load; the 60s default is not enough on CI.
+		test.setTimeout(150_000);
 		const ownerCtx = await browser.newContext({ storageState: storageStatePaths.user1 });
 		const borrowerCtx = await browser.newContext({ storageState: storageStatePaths.user2 });
 

@@ -81,7 +81,7 @@ export class TestAPI {
 	 */
 	private cachedUserId: Promise<string> | null = null;
 
-	private userId(): Promise<string> {
+	userId(): Promise<string> {
 		if (!this.cachedUserId) {
 			this.cachedUserId = this.request.get('/api/auth/session').then(async res => {
 				if (!res.ok()) throw new Error(`Failed to resolve session user: ${res.status()}`);
