@@ -114,6 +114,48 @@ export function PWAProvider() {
 			}
 		};
 
+		/**
+		 * Last-resort recovery from a service worker serving a dead build.
+		 *
+		 * A `ChunkLoadError` after a deploy means the HTML we are running references JavaScript
+		 * that no longer exists on the server — almost always a stale worker's cache. The user
+		 * cannot fix that themselves: reloading just re-serves the same cached HTML, so the app is
+		 * bricked until they clear site data, which nobody knows to do. `skipWaiting` should stop
+		 * this happening, but a worker installed *before* that shipped is still out there, so the
+		 * page has to be able to rescue itself.
+		 *
+		 * Guarded by sessionStorage: exactly one recovery attempt per tab, so a genuinely missing
+		 * chunk cannot turn into a reload loop.
+		 */
+		const RECOVERY_FLAG = 'sc-chunk-recovery-attempted';
+		const recoverFromStaleWorker = async (reason: string) => {
+			if (sessionStorage.getItem(RECOVERY_FLAG)) return;
+			sessionStorage.setItem(RECOVERY_FLAG, '1');
+			console.error(`Stale build detected (${reason}); clearing caches and reloading once.`);
+			try {
+				const registrations = await navigator.serviceWorker.getRegistrations();
+				await Promise.all(registrations.map(r => r.unregister()));
+				if ('caches' in window) {
+					const keys = await caches.keys();
+					await Promise.all(keys.map(k => caches.delete(k)));
+				}
+			} catch (error) {
+				console.error('Failed to clear stale caches:', error);
+			}
+			window.location.reload();
+		};
+
+		const handleChunkError = (event: ErrorEvent | PromiseRejectionEvent) => {
+			const message =
+				'reason' in event ? String((event as PromiseRejectionEvent).reason) : (event as ErrorEvent).message;
+			if (/ChunkLoadError|Loading chunk \S+ failed|Importing a module script failed/i.test(message)) {
+				void recoverFromStaleWorker(message.slice(0, 80));
+			}
+		};
+
+		window.addEventListener('error', handleChunkError);
+		window.addEventListener('unhandledrejection', handleChunkError);
+
 		const registerServiceWorker = async () => {
 			const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
@@ -147,6 +189,8 @@ export function PWAProvider() {
 		return () => {
 			navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
 			navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+			window.removeEventListener('error', handleChunkError);
+			window.removeEventListener('unhandledrejection', handleChunkError);
 		};
 	}, []);
 
