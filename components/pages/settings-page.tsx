@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -67,6 +68,7 @@ function getCountryFromDialCode(dialCode: string | null | undefined): SupportedP
 export function SettingsPage() {
 	const { theme, toggleTheme, fontSize, setFontSize, weightUnit, setWeightUnit, currency, setCurrency } = useTheme();
 	const [activeTab, setActiveTab] = useState('profile');
+	const { update: updateSession } = useSession();
 	const { installStatus, updateStatus, install, checkForUpdates, applyUpdate } = usePWAInstall();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -330,8 +332,12 @@ export function SettingsPage() {
 				setPasswordIsLoading(false);
 				return;
 			}
+			// Re-baseline this tab's token against the new `password_changed_at`. Without it the
+			// user who just changed their own password would be signed out by their own action at
+			// the next revalidation; every *other* session still dies, which is the point.
+			await updateSession();
 			setPasswordStep('success');
-			setPasswordSuccess('Password updated successfully.');
+			setPasswordSuccess('Password updated. Other devices have been signed out.');
 			setCurrentPassword('');
 			setNewPassword('');
 			setConfirmNewPassword('');

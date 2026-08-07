@@ -90,6 +90,10 @@ export async function POST(req: NextRequest) {
 			where: { id: user.id },
 			data: {
 				hashed_password: hashedPassword,
+				// Ends every session minted before this reset. A forgotten-password reset is the
+				// one action a user takes when they suspect compromise, so it must log the other
+				// party out rather than merely change a credential they are no longer using.
+				password_changed_at: new Date(),
 				// Also verify email if not already verified (since they received the email)
 				emailVerified: user.emailVerified || new Date(),
 			},

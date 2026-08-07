@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
 		const hashedPassword = await bcrypt.hash(newPassword, 12);
 		await prisma.user.update({
 			where: { id: user.id },
-			data: { hashed_password: hashedPassword },
+			// The stamp is what actually ends other sessions. Without it, changing a password after
+			// a token was stolen accomplished nothing — the thief's JWT stayed valid to expiry.
+			data: { hashed_password: hashedPassword, password_changed_at: new Date() },
 		});
 
 		return NextResponse.json({ message: 'Password changed successfully.' }, { status: 200 });

@@ -20,6 +20,19 @@ import { isSupportedPhoneCountry, validatePhoneByCountry } from './phone';
 const PROFILE_RULE_VERSION = 2;
 
 /**
+ * How long a JWT may go without being checked against the database.
+ *
+ * Sessions are JWTs, so nothing server-side can revoke one — the token is valid until it expires.
+ * That meant a password change did not end the attacker's session: whoever held a stolen token
+ * kept it for the rest of its 24h life, and the one action a compromised user takes to protect
+ * themselves did nothing. Re-reading on every request would put a query in front of every page,
+ * so the token instead carries the last-checked time and is re-validated at most this often. The
+ * exposure window after a password change is therefore bounded by this interval rather than by
+ * the token lifetime.
+ */
+const SESSION_REVALIDATE_INTERVAL_MS = 5 * 60_000;
+
+/**
  * A profile is complete once both mandatory fields are captured. Location counts only when
  * it resolved to a city — latitude/longitude alone are not usable for matching people to
  * circles nearby, and the IP fallback can return coordinates with no place name.
@@ -252,6 +265,14 @@ export const authOptions: NextAuthOptions = {
 	],
 	callbacks: {
 		async session({ token, session }) {
+			// A token minted before the account's last password change is refused. Blanking the id
+			// rather than throwing keeps every existing guard working unchanged: API routes already
+			// bail on `!session?.user?.id`, and the authenticated layout already redirects to
+			// /login when the session has no user.
+			if (token?.sessionRevoked) {
+				return { ...session, user: { ...session.user, id: '' }, expires: new Date(0).toISOString() };
+			}
+
 			if (token) {
 				session.user.id = token.id as string;
 				session.user.name = token.name;
@@ -274,22 +295,35 @@ export const authOptions: NextAuthOptions = {
 			// Fetch emailVerified + profile completion from DB on sign-in, update, whenever
 			// either value isn't cached in the token, or when the completeness rule has been
 			// widened since this token was minted.
+			const lastCheckedAt = (token.checkedAt as number | undefined) ?? 0;
+			const revalidationDue = Date.now() - lastCheckedAt > SESSION_REVALIDATE_INTERVAL_MS;
+
 			if (
 				trigger === 'signIn' ||
 				trigger === 'update' ||
+				revalidationDue ||
 				!token.emailVerified ||
 				token.emailVerifiedUnconfirmed ||
 				token.profileComplete === undefined ||
 				token.profileRuleVersion !== PROFILE_RULE_VERSION
 			) {
 				// Retry up to 3 times to handle transient Prisma Accelerate connection errors
-				let dbUser: { emailVerified: Date | null; date_of_birth: Date | null; city: string | null } | null =
-					null;
+				let dbUser: {
+					emailVerified: Date | null;
+					date_of_birth: Date | null;
+					city: string | null;
+					password_changed_at: Date | null;
+				} | null = null;
 				for (let attempt = 0; attempt < 3; attempt++) {
 					try {
 						dbUser = await prisma.user.findUnique({
 							where: { id: token.id as string },
-							select: { emailVerified: true, date_of_birth: true, city: true },
+							select: {
+								emailVerified: true,
+								date_of_birth: true,
+								city: true,
+								password_changed_at: true,
+							},
 						});
 						break;
 					} catch (err) {
@@ -310,6 +344,18 @@ export const authOptions: NextAuthOptions = {
 							.catch(err => console.error('JWT callback: failed to heal Google emailVerified:', err));
 						dbUser.emailVerified = verifiedAt;
 					}
+					const passwordChangedAt = dbUser.password_changed_at?.getTime() ?? 0;
+					if (trigger === 'signIn' || trigger === 'update') {
+						// A fresh sign-in, or an explicit update() after the holder changed their own
+						// password, re-baselines the token so the actor is not logged out by their
+						// own action while every other session still dies.
+						token.passwordChangedAt = passwordChangedAt;
+						delete token.sessionRevoked;
+					} else if (passwordChangedAt > ((token.passwordChangedAt as number | undefined) ?? 0)) {
+						token.sessionRevoked = true;
+					}
+
+					token.checkedAt = Date.now();
 					token.emailVerified = dbUser.emailVerified;
 					token.profileComplete = isProfileComplete(dbUser);
 					token.profileRuleVersion = PROFILE_RULE_VERSION;

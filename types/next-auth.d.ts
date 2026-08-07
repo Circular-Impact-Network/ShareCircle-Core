@@ -33,5 +33,14 @@ declare module 'next-auth/jwt' {
 		 * takes effect for tokens minted under the old one.
 		 */
 		profileRuleVersion?: number;
+		/**
+		 * `password_changed_at` as of the last database read, in epoch milliseconds. A later value
+		 * in the database means this token predates a password change and must be refused.
+		 */
+		passwordChangedAt?: number;
+		/** Epoch ms of the last database revalidation; bounds how long a revoked token survives. */
+		checkedAt?: number;
+		/** Set once revocation is detected. The session callback then yields an empty user id. */
+		sessionRevoked?: boolean;
 	}
 }
