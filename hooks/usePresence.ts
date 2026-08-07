@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import type { ChatUser } from '@/components/chat/types';
 
@@ -48,7 +48,7 @@ export function useTypingIndicator(conversationId: string | null, currentUser: C
 							delete typingTimeouts.current[senderId];
 						}, 2500);
 					})
-					.subscribe();
+					.subscribe(reportSubscription(`typing:${conversationId}`));
 			})
 			.catch(error => {
 				console.error('Realtime auth failed; typing indicators are disabled:', error);

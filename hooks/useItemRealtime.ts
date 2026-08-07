@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useDispatch } from 'react-redux';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { itemsApi } from '@/lib/redux/api/itemsApi';
 
@@ -43,7 +43,7 @@ export function useItemRealtime(circleIds: string[]) {
 							dispatch(itemsApi.util.invalidateTags(['Items', { type: 'CircleItems', id: circleId }]));
 						});
 					}
-					channel.subscribe();
+					channel.subscribe(reportSubscription(`circle:${circleId}:items`));
 					return channel;
 				});
 			})

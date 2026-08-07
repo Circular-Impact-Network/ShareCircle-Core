@@ -3,7 +3,7 @@
 import { createContext, useContext, useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { useToast } from '@/hooks/useToast';
 import { getBrowserPushPermission, isPushSupported, urlBase64ToUint8Array } from '@/lib/push-client';
@@ -349,7 +349,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 						// Refresh transactions data
 						invalidateNotificationQueries();
 					})
-					.subscribe();
+					.subscribe(reportSubscription(`notifications:${userId}`));
 			})
 			.catch(error => {
 				console.error('Realtime auth failed; live notifications are disabled:', error);

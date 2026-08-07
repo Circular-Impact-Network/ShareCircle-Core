@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { useDispatch } from 'react-redux';
-import { createBrowserSupabaseClient, ensureRealtimeAuth } from '@/lib/supabaseBrowser';
+import { createBrowserSupabaseClient, ensureRealtimeAuth, reportSubscription } from '@/lib/supabaseBrowser';
 import { PRIVATE_CHANNEL } from '@/lib/realtime-channels';
 import { circlesApi } from '@/lib/redux/api/circlesApi';
 
@@ -39,7 +39,7 @@ export function useCircleMembersRealtime(circleId: string | undefined) {
 							]),
 						);
 					})
-					.subscribe();
+					.subscribe(reportSubscription(`circle:${circleId}:members`));
 			})
 			.catch(error => {
 				console.error('Realtime auth failed; live member updates are disabled:', error);
