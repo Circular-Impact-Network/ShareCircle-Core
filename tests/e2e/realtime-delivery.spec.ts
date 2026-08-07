@@ -160,6 +160,9 @@ test.describe('realtime delivery into an open page', () => {
 		// looked fine; the first *reconnect* (a slept laptop, a dropped wifi, a backgrounded tab)
 		// swapped in the anon key, every private channel was refused, and live updates stopped for
 		// good. Dropping the network here is the shortest way to reproduce that.
+		//
+		// Deliberately slow: it waits out a subscribe, a socket drop and a rejoin.
+		test.setTimeout(150_000);
 		const user1Ctx = await browser.newContext({ storageState: storageStatePaths.user1 });
 		const user2Ctx = await browser.newContext({ storageState: storageStatePaths.user2 });
 
@@ -227,6 +230,7 @@ test.describe('realtime delivery into an open page', () => {
 		// receipt object while the client destructured `payload.receipts`, so the sender's chat
 		// threw inside a setState updater and unmounted. A single-page test cannot see that: the
 		// message it asserts on has already rendered before the receipt arrives.
+		test.setTimeout(120_000);
 		const user1Ctx = await browser.newContext({ storageState: storageStatePaths.user1 });
 		const user2Ctx = await browser.newContext({ storageState: storageStatePaths.user2 });
 
