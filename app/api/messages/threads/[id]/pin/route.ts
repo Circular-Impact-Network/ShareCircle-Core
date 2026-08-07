@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdOrResponse } from '../../_utils';
+import { parseBody } from '@/lib/api-guards';
+import { z } from 'zod';
 
 // PATCH /api/messages/threads/[id]/pin - pin/unpin conversation
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,8 +11,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 		if (!userId) return response!;
 
 		const { id } = await params;
-		const body = await req.json();
-		const pinned = Boolean(body?.pinned);
+		const parsed = await parseBody(req, z.object({ pinned: z.boolean() }));
+		if (!parsed.ok) return parsed.response;
+		const { pinned } = parsed.data;
 
 		await prisma.conversationParticipant.updateMany({
 			where: {
