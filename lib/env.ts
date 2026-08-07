@@ -33,7 +33,21 @@ const requiredSchema = z.object({
  * Absent in development, but their absence in production silently disables a user-visible
  * feature rather than breaking a request, which is exactly the kind of thing that goes unnoticed.
  */
-const PRODUCTION_RECOMMENDED = ['DIRECT_URL', 'RESEND_API_KEY', 'VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'] as const;
+/**
+ * `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is the name `lib/push.ts` actually reads. An earlier version of
+ * this list said `VAPID_PUBLIC_KEY`, which sent an operator looking for a variable nothing uses.
+ *
+ * It is also `NEXT_PUBLIC_`, so Next inlines it at **build** time: setting it on the host and
+ * restarting is not enough, the app has to be rebuilt or the browser still ships without a key
+ * and the push toggle stays disabled.
+ */
+const PRODUCTION_RECOMMENDED = [
+	'DIRECT_URL',
+	'RESEND_API_KEY',
+	'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+	'VAPID_PRIVATE_KEY',
+	'VAPID_SUBJECT',
+] as const;
 
 export type EnvCheck = {
 	ok: boolean;
