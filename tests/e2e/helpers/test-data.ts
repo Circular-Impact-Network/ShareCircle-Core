@@ -19,6 +19,8 @@ export interface Item {
 	name: string;
 	description: string;
 	imageUrl?: string;
+	/** Claimed on approval, released on confirmed return — the borrow lifecycle turns on it. */
+	isAvailable?: boolean;
 }
 
 export interface Thread {
