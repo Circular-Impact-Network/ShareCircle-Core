@@ -28,7 +28,7 @@ import {
 	Info,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useTheme } from '@/app/providers';
+import { useTheme } from '@/lib/preferences-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/lib/redux/hooks';
