@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogOut, Settings, List, History, MessageSquarePlus } from 'lucide-react';
+import { LogOut, Settings, List, History, MessageSquarePlus, LifeBuoy } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -71,6 +71,7 @@ export function MobileHeader() {
 						<DropdownMenuTrigger asChild>
 							<button
 								type="button"
+								data-tour="mobile-menu"
 								className="flex h-9 w-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label="Account menu"
 							>
@@ -93,6 +94,12 @@ export function MobileHeader() {
 								<Link href="/activity" className="flex items-center gap-2">
 									<History className="h-4 w-4" />
 									My Activity
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="/help" className="flex items-center gap-2">
+									<LifeBuoy className="h-4 w-4" />
+									Help & Guide
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>

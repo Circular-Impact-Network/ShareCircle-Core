@@ -36,6 +36,7 @@ export async function middleware(request: NextRequest) {
 		/^\/notifications$/,
 		/^\/requests$/,
 		/^\/settings$/,
+		/^\/help$/,
 		/^\/dashboard(\/.*)?$/,
 		// Invite landing. It joins a circle on mount, so it must sit behind the same email
 		// verification and profile-completion gates as the rest of the app — otherwise an

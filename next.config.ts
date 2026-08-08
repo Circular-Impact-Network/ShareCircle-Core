@@ -141,7 +141,10 @@ const securityHeaders = [
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
 			"font-src 'self' data: https://fonts.gstatic.com",
 			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
-			"frame-src 'none'",
+			// 'self', not 'none': the Help & Guide page renders the stored document in a sandboxed
+			// same-origin iframe. Under 'none' that frame is blocked outright and the page shows an
+			// empty box, with the refusal visible only in the console.
+			"frame-src 'self'",
 			"object-src 'none'",
 			"base-uri 'self'",
 			"form-action 'self'",
@@ -176,13 +179,38 @@ const nextConfig: NextConfig = {
 				source,
 				headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
 			})),
+			/*
+			 * Uploaded documents get their own, far stricter policy.
+			 *
+			 * Setting this inside the route handler does not work: the config headers are applied
+			 * afterwards and overwrite it, so the documents inherited the app's policy — which permits
+			 * inline script. These files can be replaced by upload without a code review, so they must
+			 * be treated as untrusted content: no script, no network, no framing of anything else.
+			 * `sandbox` applies even when the document is opened directly rather than in our iframe.
+			 */
+			{
+				source: '/api/docs/:slug',
+				headers: [
+					{
+						key: 'Content-Security-Policy',
+						value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; sandbox",
+					},
+					// SAMEORIGIN rather than the app-wide DENY. `DENY` refuses framing even by our own
+					// origin, so the Help & Guide page would have rendered an empty box, with the refusal
+					// reported only in the browser console. Other sites still cannot frame these.
+					{ key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+				],
+			},
 		];
 	},
-	// Serve the pre-designed standalone legal documents (in public/legal) at clean URLs.
+	// Clean URLs for the standalone legal documents, now served from storage.
 	async rewrites() {
 		return [
-			{ source: '/terms', destination: '/legal/terms.html' },
-			{ source: '/privacy', destination: '/legal/privacy.html' },
+			// Served from Supabase storage rather than public/, so a wording change is an upload
+			// rather than a deploy — and so the response actually carries our headers, which files
+			// under public/ do not get on this host.
+			{ source: '/terms', destination: '/api/docs/terms' },
+			{ source: '/privacy', destination: '/api/docs/privacy' },
 		];
 	},
 	serverExternalPackages: ['@prisma/client', 'prisma'],

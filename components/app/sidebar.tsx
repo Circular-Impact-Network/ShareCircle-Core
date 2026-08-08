@@ -12,6 +12,7 @@ import {
 	Bell,
 	History,
 	MessageSquarePlus,
+	LifeBuoy,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -36,6 +37,7 @@ const navItems = [
 	{ id: 'activity', label: 'My Activity', icon: History, href: '/activity' },
 	{ id: 'messages', label: 'Messages', icon: MessageSquare, href: '/messages' },
 	{ id: 'notifications', label: 'Notifications', icon: Bell, href: '/notifications' },
+	{ id: 'help', label: 'Help & Guide', icon: LifeBuoy, href: '/help' },
 	{ id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
@@ -107,6 +109,7 @@ export function Sidebar() {
 									<Link
 										key={item.id}
 										href={item.href}
+										data-tour={`nav-${item.id}`}
 										className={cn(
 											'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
 											active
