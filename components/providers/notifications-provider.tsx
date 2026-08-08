@@ -14,6 +14,24 @@ import { useAppDispatch } from '@/lib/redux/hooks';
 
 const PUSH_DEBUG_STORAGE_KEY = 'sharecircle_sw_last_push_at';
 
+/**
+ * Every step of the push handshake is a platform promise that can hang rather than reject:
+ * `serviceWorker.ready` never settles if no worker activates, and WebKit silently drops
+ * `requestPermission()` when transient user activation has expired. A hang leaves `pushLoading`
+ * true forever, which disables the toggle permanently — the user sees a dead switch and no error.
+ * Racing a timer turns every one of those into a message that names the step that stalled.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, step: string): Promise<T> {
+	let timer: ReturnType<typeof setTimeout>;
+
+	return Promise.race([
+		promise,
+		new Promise<never>((_, reject) => {
+			timer = setTimeout(() => reject(new Error(`${step} timed out. Please try again.`)), ms);
+		}),
+	]).finally(() => clearTimeout(timer)) as Promise<T>;
+}
+
 interface NotificationsContextType {
 	pushSupported: boolean;
 	pushConfigured: boolean;
@@ -204,35 +222,58 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		setPushLoading(true);
 
 		try {
-			const pushStatus = await fetchPushStatus();
+			// Permission is requested BEFORE any await. Safari only shows the prompt while the tap
+			// that triggered this call still counts as transient user activation, and awaiting even a
+			// fast fetch first spends it — after which WebKit neither prompts nor settles the promise.
+			// That is what left the toggle stuck: `finally` never ran, so `pushLoading` stayed true and
+			// the switch disabled itself permanently with no error anywhere.
+			let permission = Notification.permission;
+			if (permission !== 'granted') {
+				permission = await withTimeout(Notification.requestPermission(), 60_000, 'The permission prompt');
+			}
+			setPushPermission(permission);
+
+			if (permission !== 'granted') {
+				throw new Error(
+					permission === 'denied'
+						? 'Notifications are blocked for this app. Allow them in your device settings, then try again.'
+						: 'Notification permission was not granted.',
+				);
+			}
+
+			const pushStatus = await withTimeout(fetchPushStatus(), 15_000, 'Loading push settings');
 			if (!pushStatus.configured || !pushStatus.publicKey) {
 				throw new Error('Push notifications are not configured on the server yet.');
 			}
 
-			const permission =
-				Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-			setPushPermission(permission);
-
-			if (permission !== 'granted') {
-				throw new Error('Notification permission was not granted.');
-			}
-
-			const registration = await navigator.serviceWorker.ready;
+			const registration = await withTimeout(
+				navigator.serviceWorker.ready,
+				15_000,
+				'Waiting for the service worker',
+			);
 			let subscription = await registration.pushManager.getSubscription();
 
 			if (!subscription) {
-				subscription = await registration.pushManager.subscribe({
-					userVisibleOnly: true,
-					applicationServerKey: urlBase64ToUint8Array(pushStatus.publicKey),
-				});
+				subscription = await withTimeout(
+					registration.pushManager.subscribe({
+						userVisibleOnly: true,
+						applicationServerKey: urlBase64ToUint8Array(pushStatus.publicKey),
+					}),
+					30_000,
+					'Registering this device for push',
+				);
 			}
 
-			const response = await fetch('/api/push/subscriptions', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify(subscription.toJSON()),
-			});
+			const response = await withTimeout(
+				fetch('/api/push/subscriptions', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(subscription.toJSON()),
+				}),
+				15_000,
+				'Saving your subscription',
+			);
 
 			if (!response.ok) {
 				throw new Error('Failed to save your push subscription.');
@@ -266,7 +307,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 		setPushLoading(true);
 
 		try {
-			const registration = await navigator.serviceWorker.ready;
+			const registration = await withTimeout(
+				navigator.serviceWorker.ready,
+				15_000,
+				'Waiting for the service worker',
+			);
 			const subscription = await registration.pushManager.getSubscription();
 
 			if (subscription) {
