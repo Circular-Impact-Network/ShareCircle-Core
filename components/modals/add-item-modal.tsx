@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { WeightInput } from '@/components/items/weight-input';
+import { PriceHint } from '@/components/items/price-hint';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dropzone } from '@/components/ui/dropzone';
@@ -1078,25 +1080,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 									</Label>
 								</div>
 								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-1.5">
-										<Label htmlFor="weight" className="text-xs text-muted-foreground">
-											Weight (kg)
-										</Label>
-										<Input
-											id="weight"
-											type="number"
-											min="0"
-											step="0.1"
-											value={estimatedWeightKg ?? ''}
-											onChange={e =>
-												setEstimatedWeightKg(
-													e.target.value === '' ? null : parseFloat(e.target.value),
-												)
-											}
-											placeholder="e.g. 1.2"
-											className="h-9"
-										/>
-									</div>
+									<WeightInput
+										id="weight"
+										valueKg={estimatedWeightKg}
+										onChangeKg={setEstimatedWeightKg}
+									/>
 									<div className="space-y-1.5">
 										<Label htmlFor="price" className="text-xs text-muted-foreground">
 											Est. retail price (USD)
@@ -1115,6 +1103,11 @@ export function AddItemModal({ open, onOpenChange, currentCircleId, onItemCreate
 											placeholder="e.g. 120"
 											className="h-9"
 										/>
+										{/* Entry stays in USD even when the viewer reads another currency: exchange rates
+										    move, so converting in and back out would nudge the stored price a little every
+										    time the item was edited. The preview gives them their currency without that
+										    drift. */}
+										<PriceHint usd={estimatedNewPriceUsd} />
 									</div>
 								</div>
 								<div className="flex items-start gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30 px-2.5 py-2 text-xs text-blue-700 dark:text-blue-400">

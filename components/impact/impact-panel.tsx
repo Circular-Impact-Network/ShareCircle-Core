@@ -4,7 +4,8 @@ import { Leaf, DollarSign, HandshakeIcon, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGetUserImpactQuery } from '@/lib/redux/api/impactApi';
 import { formatMoney } from '@/lib/currency';
-import { usePreferences } from '@/app/providers';
+import { formatWeight } from '@/lib/units';
+import { usePreferences } from '@/lib/preferences-context';
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
@@ -24,7 +25,7 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
  */
 export function ImpactPanel() {
 	const { data, isLoading } = useGetUserImpactQuery();
-	const { currency, fxRates } = usePreferences();
+	const { currency, fxRates, weightUnit } = usePreferences();
 
 	return (
 		<Card className="border-border/60">
@@ -54,7 +55,7 @@ export function ImpactPanel() {
 						<Metric
 							icon={<Leaf className="h-3.5 w-3.5" />}
 							label="CO₂ avoided"
-							value={`${data.co2AvoidedKg.toLocaleString()} kg`}
+							value={formatWeight(data.co2AvoidedKg, weightUnit)}
 						/>
 						<Metric
 							icon={<HandshakeIcon className="h-3.5 w-3.5" />}

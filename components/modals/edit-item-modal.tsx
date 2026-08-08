@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WeightInput } from '@/components/items/weight-input';
+import { PriceHint } from '@/components/items/price-hint';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
@@ -450,20 +452,12 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 						</div>
 
 						<div className="grid grid-cols-2 gap-3">
-							<div className="space-y-2">
-								<Label htmlFor="edit-weight">Weight (kg)</Label>
-								<Input
-									id="edit-weight"
-									type="number"
-									min="0"
-									step="0.1"
-									value={estimatedWeightKg ?? ''}
-									onChange={e =>
-										setEstimatedWeightKg(e.target.value === '' ? null : parseFloat(e.target.value))
-									}
-									placeholder="e.g. 1.2"
-								/>
-							</div>
+							<WeightInput
+								id="edit-weight"
+								valueKg={estimatedWeightKg}
+								onChangeKg={setEstimatedWeightKg}
+								className="space-y-2"
+							/>
 							<div className="space-y-2">
 								<Label htmlFor="edit-price">Est. retail price (USD)</Label>
 								<Input
@@ -479,6 +473,9 @@ export function EditItemModal({ itemId, open, onOpenChange, onSuccess }: EditIte
 									}
 									placeholder="e.g. 120"
 								/>
+								{/* USD stays the entry currency; see PriceHint for why converting both ways
+								    would drift the stored price on every edit. */}
+								<PriceHint usd={estimatedNewPriceUsd} />
 							</div>
 						</div>
 

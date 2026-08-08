@@ -43,7 +43,8 @@ import { ItemRequestCard } from '@/components/cards/item-request-card';
 import { getAnyBorrowStatusPresentation, isBorrowOverdue, toBadgeProps } from '@/lib/borrow-ui';
 import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import { formatMoney } from '@/lib/currency';
-import { usePreferences } from '@/app/providers';
+import { formatWeight } from '@/lib/units';
+import { usePreferences } from '@/lib/preferences-context';
 
 type TabType = 'active' | 'pending' | 'queue' | 'history' | 'requests';
 
@@ -76,7 +77,7 @@ function ActiveTransactionCard({
 	isLoading?: boolean;
 }) {
 	const router = useRouter();
-	const { currency, fxRates } = usePreferences();
+	const { currency, fxRates, weightUnit } = usePreferences();
 	const isActive = transaction.status === 'ACTIVE';
 	const isLenderConfirmed = transaction.status === 'LENDER_CONFIRMED';
 	const isBorrowerConfirmed = transaction.status === 'BORROWER_CONFIRMED';
@@ -147,7 +148,7 @@ function ActiveTransactionCard({
 							<div className="mt-1.5 flex flex-wrap items-center gap-1.5">
 								<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-2xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
 									<Leaf className="h-3 w-3" />
-									{Math.round(transaction.impact.ghgSavedKg * 10) / 10} kg CO₂ saved
+									{formatWeight(transaction.impact.ghgSavedKg, weightUnit)} CO₂ saved
 								</span>
 								{transaction.impact.borrowerSavingsUsd > 0 && (
 									<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">
