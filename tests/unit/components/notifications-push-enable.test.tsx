@@ -76,20 +76,56 @@ function renderProbe() {
 	);
 }
 
+/** A registration with an active worker, as `resolveActiveRegistration` requires. */
 function stubServiceWorker(subscribe: () => Promise<unknown>) {
+	const registration = {
+		active: {},
+		installing: null,
+		waiting: null,
+		pushManager: {
+			getSubscription: async () => null,
+			subscribe,
+		},
+	};
+
 	Object.defineProperty(navigator, 'serviceWorker', {
 		configurable: true,
 		value: {
-			ready: Promise.resolve({
-				pushManager: {
-					getSubscription: async () => null,
-					subscribe,
-				},
-			}),
+			getRegistration: async () => registration,
+			register: async () => registration,
 			addEventListener: () => undefined,
 			removeEventListener: () => undefined,
 		},
 	});
+}
+
+/**
+ * No active worker, and the pending one goes `redundant` — what a rejected `install` produces.
+ * This is the state the `/~offline` precache loop left every phone in.
+ */
+function stubFailingServiceWorker() {
+	const listeners: Array<() => void> = [];
+	const pending = {
+		state: 'installing',
+		addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+		removeEventListener: () => undefined,
+	};
+	const registration = { active: null, installing: pending, waiting: null };
+
+	Object.defineProperty(navigator, 'serviceWorker', {
+		configurable: true,
+		value: {
+			getRegistration: async () => registration,
+			register: async () => registration,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+		},
+	});
+
+	return () => {
+		pending.state = 'redundant';
+		listeners.forEach(fn => fn());
+	};
 }
 
 const validSubscription = {
@@ -190,6 +226,23 @@ describe('enablePushNotifications', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('says the service worker failed to install rather than timing out', async () => {
+		const failInstall = stubFailingServiceWorker();
+
+		renderProbe();
+		await userEvent.click(screen.getByRole('button', { name: 'enable' }));
+		failInstall();
+
+		await waitFor(() =>
+			expect(toastMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Could not enable push',
+					description: expect.stringContaining('failed to install'),
+				}),
+			),
+		);
 	});
 
 	it('tells the user how to recover when notifications are blocked at the OS level', async () => {
