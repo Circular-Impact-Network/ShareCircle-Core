@@ -34,11 +34,21 @@ test.describe('smoke', () => {
 		expect(sw.status()).toBe(200);
 
 		const manifest = await sw.text();
-		const urls = [...new Set(manifest.match(/"\/[^"]*?"/g) ?? [])]
-			.map(quoted => quoted.slice(1, -1))
-			.filter(url => url.startsWith('/') && !url.startsWith('//'));
+		// Workbox emits precache entries as `{url:"...",revision:...}`. Matching that exact shape
+		// rather than every quoted path matters: the file also contains `runtimeCaching` matchers like
+		// `pathname.startsWith("/api/auth/")`, which are route prefixes and not fetchable assets.
+		// A looser regex swept those in and reported `/api/` as a broken precache entry.
+		const urls = [
+			...new Set(
+				[...manifest.matchAll(/\{\s*url\s*:\s*"([^"]+)"\s*,\s*revision\s*:\s*(?:"[^"]*"|null)\s*\}/g)].map(
+					match => match[1],
+				),
+			),
+		].filter(url => url.startsWith('/') && !url.startsWith('//'));
 
-		expect(urls.length).toBeGreaterThan(0);
+		// Guards the extraction itself: a manifest format change that matched nothing would otherwise
+		// make every assertion below trivially pass.
+		expect(urls.length).toBeGreaterThan(50);
 
 		// A `~` prefix is reserved by Apache-style userdir handling on the production host, so it can
 		// never be fetched there regardless of what the app defines.
