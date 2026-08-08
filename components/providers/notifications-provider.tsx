@@ -32,6 +32,47 @@ function withTimeout<T>(promise: Promise<T>, ms: number, step: string): Promise<
 	]).finally(() => clearTimeout(timer)) as Promise<T>;
 }
 
+/**
+ * Resolve a service worker registration that actually has an active worker.
+ *
+ * `navigator.serviceWorker.ready` cannot be used here. It never settles when no worker reaches
+ * `activated` — which is exactly what a failed `install` produces — so a broken worker is
+ * indistinguishable from a slow one, and the only symptom is a hang. Registering explicitly and
+ * watching the state transition turns "install failed" into a stated error instead.
+ */
+async function resolveActiveRegistration(): Promise<ServiceWorkerRegistration> {
+	const existing = await navigator.serviceWorker.getRegistration();
+	if (existing?.active) {
+		return existing;
+	}
+
+	const registration = existing ?? (await navigator.serviceWorker.register('/sw.js', { scope: '/' }));
+	if (registration.active) {
+		return registration;
+	}
+
+	const pending = registration.installing ?? registration.waiting;
+	if (!pending) {
+		throw new Error('The service worker did not start. Reload the app and try again.');
+	}
+
+	await new Promise<void>((resolve, reject) => {
+		const onStateChange = () => {
+			if (pending.state === 'activated') {
+				pending.removeEventListener('statechange', onStateChange);
+				resolve();
+			} else if (pending.state === 'redundant') {
+				pending.removeEventListener('statechange', onStateChange);
+				// A rejected `install` lands here. Most often one precached URL could not be fetched.
+				reject(new Error('The service worker failed to install. Reload the app and try again.'));
+			}
+		};
+		pending.addEventListener('statechange', onStateChange);
+	});
+
+	return registration;
+}
+
 interface NotificationsContextType {
 	pushSupported: boolean;
 	pushConfigured: boolean;
@@ -172,7 +213,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 				return;
 			}
 
-			const registration = await navigator.serviceWorker.ready;
+			const registration = await withTimeout(
+				resolveActiveRegistration(),
+				15_000,
+				'Waiting for the service worker',
+			);
 			const subscription = await registration.pushManager.getSubscription();
 			setPushEnabled(Boolean(subscription));
 
@@ -247,7 +292,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 			}
 
 			const registration = await withTimeout(
-				navigator.serviceWorker.ready,
+				resolveActiveRegistration(),
 				15_000,
 				'Waiting for the service worker',
 			);
@@ -308,7 +353,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
 		try {
 			const registration = await withTimeout(
-				navigator.serviceWorker.ready,
+				resolveActiveRegistration(),
 				15_000,
 				'Waiting for the service worker',
 			);

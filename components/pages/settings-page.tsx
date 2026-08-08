@@ -1201,6 +1201,20 @@ export function SettingsPage() {
 								Visit our homepage
 								<ExternalLink className="h-4 w-4 text-muted-foreground" />
 							</Link>
+							{/*
+							 * Shown so a deploy can be confirmed from the phone. A PWA serves its own cached
+							 * shell, so "my change is live" and "my change reached this device" are different
+							 * questions, and there was no way to tell them apart without this.
+							 */}
+							<div
+								data-testid="app-version"
+								className="mt-2 flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm"
+							>
+								<span className="font-medium">Version</span>
+								<span className="font-mono text-muted-foreground">
+									{process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown'}
+								</span>
+							</div>
 						</CardContent>
 					</Card>
 

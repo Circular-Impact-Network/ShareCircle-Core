@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
 import withPWAInit, { runtimeCaching } from '@ducanh2912/next-pwa';
+// Single source of truth for the version shown in Settings → About, so a deploy can be identified
+// from the phone without guessing whether the new bundle actually landed. Bump `package.json` only.
+import { version as appVersion } from './package.json';
 
 const withPWA = withPWAInit({
 	dest: 'public',
@@ -11,7 +14,22 @@ const withPWA = withPWAInit({
 	// getting stuck. Update handling is explicit in pwa-provider instead.
 	reloadOnOnline: false,
 	fallbacks: {
-		document: '/~offline',
+		// `/offline`, NOT next-pwa's default `/~offline`. THE CAUSE OF PUSH NEVER TURNING ON.
+		//
+		// Hostinger's edge (`server: hcdn`) claims every path beginning with `~` the way Apache's
+		// mod_userdir does, and 301s it to a trailing slash — even for paths that do not exist here.
+		// Next then 308s the slash straight back off, because `trailingSlash` is false. The result is
+		// an infinite redirect pair that only exists in production:
+		//
+		//     /~offline  -> 301 -> /~offline/
+		//     /~offline/ -> 308 -> /~offline
+		//
+		// Workbox precaches this document during the service worker's `install` event, so that fetch
+		// never resolved, `install` rejected, and NO worker ever reached `activated`. Everything that
+		// waits on `navigator.serviceWorker.ready` then hangs forever — which is why enabling push
+		// timed out, and why offline support was silently dead too. Localhost and Vercel are both
+		// fine, so nothing catches this before a Hostinger deploy.
+		document: '/offline',
 	},
 	workboxOptions: {
 		// THE CAUSE OF THE POST-DEPLOY ChunkLoadError.
@@ -132,6 +150,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+	env: {
+		NEXT_PUBLIC_APP_VERSION: appVersion,
+	},
 	async headers() {
 		return [
 			{
