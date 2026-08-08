@@ -159,6 +159,23 @@ const nextConfig: NextConfig = {
 				source: '/(.*)',
 				headers: securityHeaders,
 			},
+			/*
+			 * Service worker scripts must never be held by a cache. They shipped with no
+			 * `Cache-Control` at all, so Hostinger's CDN applied its own TTL and cached `/sw.js` at the
+			 * edge (`x-hcdn-cache-status: HIT`). A deploy then left the app in its worst possible
+			 * state: the new build was live and serving new HTML, while every browser was still handed
+			 * the PREVIOUS worker from the edge. That worker precaches the previous build's URLs, so
+			 * fixing a bad precache entry did not take effect and could not be diagnosed from the
+			 * deploy — the code was correct and the served worker was not.
+			 *
+			 * A worker is the one file whose staleness cannot be self-correcting: it is what decides
+			 * what everything else serves. Browsers already bypass their own HTTP cache when checking
+			 * for worker updates; this makes the CDN do the same.
+			 */
+			...['/sw.js', '/sw-extra.js', '/swe-worker-:hash.js', '/fallback-:hash.js'].map(source => ({
+				source,
+				headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
+			})),
 		];
 	},
 	// Serve the pre-designed standalone legal documents (in public/legal) at clean URLs.
