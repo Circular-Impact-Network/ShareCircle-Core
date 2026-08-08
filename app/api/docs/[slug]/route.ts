@@ -37,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
 		if (error || !data) {
 			console.error(`Failed to read ${BUCKET}/${objectName}:`, error);
-			return NextResponse.json({ error: 'Document unavailable' }, { status: 502 });
+			return unavailable(slug);
 		}
 
 		return new NextResponse(await data.arrayBuffer(), {
@@ -57,6 +57,41 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 		});
 	} catch (error) {
 		console.error(`Failed to serve document "${slug}":`, error);
-		return NextResponse.json({ error: 'Document unavailable' }, { status: 502 });
+		return unavailable(slug);
 	}
+}
+
+/**
+ * A readable page rather than a JSON error.
+ *
+ * These URLs are reached by people, not by code: `/terms` and `/privacy` are linked from the signup
+ * form and from emails. A raw `{"error":...}` body on a legal page tells a visitor nothing and looks
+ * like the site is broken. This says what happened and offers a way to get the document.
+ */
+function unavailable(slug: string) {
+	const title = slug === 'terms' ? 'Terms of Service' : slug === 'privacy' ? 'Privacy Policy' : 'Help Guide';
+
+	return new NextResponse(
+		`<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+			`<meta name="viewport" content="width=device-width,initial-scale=1">` +
+			`<title>${title} — temporarily unavailable</title>` +
+			`<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;display:grid;place-items:center;` +
+			`min-height:100vh;padding:1.5rem;color:#1f2937}main{max-width:32rem;text-align:center}` +
+			`h1{font-size:1.25rem;margin:0 0 .5rem}p{margin:.5rem 0;color:#4b5563}` +
+			`a{color:#047857}</style></head><body><main>` +
+			`<h1>${title} is temporarily unavailable</h1>` +
+			`<p>We could not load this document just now. Please try again shortly.</p>` +
+			`<p>If you need it urgently, email ` +
+			`<a href="mailto:support@circularimpact.org">support@circularimpact.org</a>.</p>` +
+			`</main></body></html>`,
+		{
+			// 503, not 502: this is a retryable outage of one document, and it tells a crawler not to
+			// treat the absence as permanent.
+			status: 503,
+			headers: {
+				'Content-Type': 'text/html; charset=utf-8',
+				'Cache-Control': 'no-store',
+			},
+		},
+	);
 }
