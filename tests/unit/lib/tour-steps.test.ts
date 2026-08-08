@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+import { getTourSteps, selectPresentSteps } from '@/lib/tour-steps';
+
+describe('getTourSteps', () => {
+	// The two layouts share almost no navigation, so one list cannot describe both: half its steps
+	// would point at elements the current breakpoint never renders.
+	it('points desktop users at the sidebar', () => {
+		const anchors = getTourSteps('desktop').map(step => step.anchor);
+		expect(anchors).toContain('nav-listings');
+		expect(anchors).toContain('nav-activity');
+		expect(anchors).not.toContain('mobile-menu');
+	});
+
+	it('points phone users at the avatar menu, where those screens actually live', () => {
+		const anchors = getTourSteps('mobile').map(step => step.anchor);
+		expect(anchors).toContain('mobile-menu');
+		// My Listings and My Activity are not in the bottom bar, so highlighting them would fail.
+		expect(anchors).not.toContain('nav-listings');
+		expect(anchors).not.toContain('nav-activity');
+	});
+
+	it('ends both layouts on the help assistant', () => {
+		expect(getTourSteps('desktop').at(-1)?.anchor).toBe('help-bot');
+		expect(getTourSteps('mobile').at(-1)?.anchor).toBe('help-bot');
+	});
+
+	it('gives every step something to say', () => {
+		for (const platform of ['desktop', 'mobile'] as const) {
+			for (const step of getTourSteps(platform)) {
+				expect(step.title.length).toBeGreaterThan(0);
+				expect(step.description.length).toBeGreaterThan(0);
+			}
+		}
+	});
+});
+
+describe('selectPresentSteps', () => {
+	// A step whose target is absent either highlights nothing or stops the tour partway — a poor
+	// first minute for a new user, and elements do go missing legitimately.
+	it('drops steps whose anchor is not on the page', () => {
+		const steps = getTourSteps('desktop');
+		const present = selectPresentSteps(steps, anchor => anchor !== 'nav-circles');
+
+		expect(present.map(step => step.anchor)).not.toContain('nav-circles');
+		expect(present).toHaveLength(steps.length - 1);
+	});
+
+	it('returns nothing when the shell has not rendered', () => {
+		expect(selectPresentSteps(getTourSteps('mobile'), () => false)).toEqual([]);
+	});
+
+	it('keeps the original order', () => {
+		const steps = getTourSteps('desktop');
+		expect(selectPresentSteps(steps, () => true).map(s => s.anchor)).toEqual(steps.map(s => s.anchor));
+	});
+});
