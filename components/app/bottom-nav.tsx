@@ -44,6 +44,7 @@ export function BottomNav() {
 						<Link
 							key={tab.id}
 							href={tab.href}
+							data-tour={`nav-${tab.id}`}
 							className={cn(
 								'relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors',
 								active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',

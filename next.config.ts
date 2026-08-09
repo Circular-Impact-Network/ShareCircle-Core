@@ -141,6 +141,9 @@ const securityHeaders = [
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
 			"font-src 'self' data: https://fonts.gstatic.com",
 			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
+			// The app frames nothing. The help guide briefly rendered in an iframe, which needed
+			// 'self' here; it now opens in a browser tab instead, so this goes back to the stricter
+			// value rather than being left permissive for a feature that no longer exists.
 			"frame-src 'none'",
 			"object-src 'none'",
 			"base-uri 'self'",
@@ -176,14 +179,48 @@ const nextConfig: NextConfig = {
 				source,
 				headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
 			})),
+			/*
+			 * Uploaded documents get their own, far stricter policy.
+			 *
+			 * Setting this inside the route handler does not work: the config headers are applied
+			 * afterwards and overwrite it, so the documents inherited the app's policy — which permits
+			 * inline script. These files can be replaced by upload without a code review, so they must
+			 * be treated as untrusted content: no script, no network, no framing of anything else.
+			 * `sandbox` applies even when the document is opened directly rather than in our iframe.
+			 *
+			 * `/terms` and `/privacy` must be listed too, and this is easy to get wrong: they reach the
+			 * same handler through a rewrite, but header rules are matched against the INCOMING path
+			 * and are not re-evaluated afterwards. Listing only `/api/docs/:slug` left the two
+			 * highest-traffic documents — both linked from the signup form and from email — serving
+			 * bucket-controlled HTML under the app's own policy, which permits inline script on our
+			 * origin. Verified on the wire, not by reading: `curl -D- /terms` must show `sandbox`.
+			 */
+			...['/api/docs/:slug', '/terms', '/privacy'].map(source => ({
+				source,
+				headers: [
+					{
+						key: 'Content-Security-Policy',
+						value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src data: https://fonts.gstatic.com; sandbox",
+					},
+				],
+			})),
 		];
 	},
-	// Serve the pre-designed standalone legal documents (in public/legal) at clean URLs.
+	// Clean URLs for the standalone legal documents, now served from storage.
 	async rewrites() {
 		return [
-			{ source: '/terms', destination: '/legal/terms.html' },
-			{ source: '/privacy', destination: '/legal/privacy.html' },
+			// Served from Supabase storage rather than public/, so a wording change is an upload
+			// rather than a deploy — and so the response actually carries our headers, which files
+			// under public/ do not get on this host.
+			{ source: '/terms', destination: '/api/docs/terms' },
+			{ source: '/privacy', destination: '/api/docs/privacy' },
 		];
+	},
+	// context.md is read at runtime by the help assistant. Next only bundles files it can see being
+	// imported, and this one is read by path, so it has to be traced explicitly or the deployed
+	// function has no reference material and every answer becomes "I do not know".
+	outputFileTracingIncludes: {
+		'/api/help-chat': ['./context.md'],
 	},
 	serverExternalPackages: ['@prisma/client', 'prisma'],
 	experimental: {

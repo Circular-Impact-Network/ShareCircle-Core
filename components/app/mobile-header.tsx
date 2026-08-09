@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogOut, Settings, List, History, MessageSquarePlus } from 'lucide-react';
+import { LogOut, Settings, List, History, MessageSquarePlus, HelpCircle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -57,7 +57,17 @@ export function MobileHeader() {
 				</Link>
 
 				<div className="flex items-center gap-1">
-					{/* Feedback — surfaced to the left of the profile pic, not buried in the menu */}
+					{/* Help and feedback both sit here rather than in the menu: they are the two things
+					    a stuck user reaches for, and a stuck user does not go hunting through a menu. */}
+					<a
+						href="/api/docs/help"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="flex h-9 w-9 items-center justify-center rounded-full text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+						aria-label="Help and guide"
+					>
+						<HelpCircle className="h-5 w-5" />
+					</a>
 					<button
 						type="button"
 						onClick={() => setShowFeedbackModal(true)}
@@ -71,6 +81,7 @@ export function MobileHeader() {
 						<DropdownMenuTrigger asChild>
 							<button
 								type="button"
+								data-tour="mobile-menu"
 								className="flex h-9 w-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label="Account menu"
 							>

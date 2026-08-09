@@ -236,3 +236,106 @@
 		padding-bottom: calc(4rem + env(safe-area-inset-bottom));
 	}
 }
+
+/*
+ * Guided tour (driver.js).
+ *
+ * The library ships a light-only theme with its own palette, which reads as a different product
+ * bolted on and is close to unreadable in dark mode. Restating it in our tokens makes the tour
+ * follow the user's theme and font size like everything else.
+ *
+ * Tokens are referenced as `var(--card)`, NOT `hsl(var(--card))`. This project defines them as
+ * finished colours — `#2f3436` in light, `oklch(...)` in dark — so wrapping them in `hsl()` produces
+ * `hsl(#2f3436)`, which is invalid. The browser then drops the whole declaration and the popover
+ * renders with no background at all: the text appears to float over the page.
+ */
+.driver-popover.sharecircle-tour {
+	background-color: var(--card);
+	color: var(--card-foreground);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow:
+		0 10px 30px -10px rgb(0 0 0 / 0.35),
+		0 2px 8px -2px rgb(0 0 0 / 0.2);
+	max-width: 20rem;
+	font-family: inherit;
+	padding: 1rem;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-title {
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--card-foreground);
+	line-height: 1.4;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-description {
+	font-size: 0.875rem;
+	line-height: 1.55;
+	color: var(--muted-foreground);
+	margin-top: 0.25rem;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-progress-text {
+	font-size: 0.75rem;
+	color: var(--muted-foreground);
+}
+
+/* The arrow is a bordered triangle, so it has to match the popover or it reads as a stray notch. */
+.driver-popover.sharecircle-tour .driver-popover-arrow-side-top.driver-popover-arrow {
+	border-top-color: var(--card);
+}
+.driver-popover.sharecircle-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
+	border-bottom-color: var(--card);
+}
+.driver-popover.sharecircle-tour .driver-popover-arrow-side-left.driver-popover-arrow {
+	border-left-color: var(--card);
+}
+.driver-popover.sharecircle-tour .driver-popover-arrow-side-right.driver-popover-arrow {
+	border-right-color: var(--card);
+}
+
+.driver-popover.sharecircle-tour .driver-popover-footer {
+	margin-top: 0.75rem;
+	gap: 0.5rem;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-navigation-btns button {
+	background-color: var(--primary);
+	color: var(--primary-foreground);
+	border: none;
+	border-radius: calc(var(--radius) - 2px);
+	/* 2.25rem keeps these at a comfortable tap target on a phone, where the tour matters most. */
+	min-height: 2.25rem;
+	padding: 0 0.875rem;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	text-shadow: none;
+	cursor: pointer;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-navigation-btns button:hover {
+	/* color-mix rather than an alpha channel: these tokens are opaque colours, not HSL parts. */
+	background-color: color-mix(in srgb, var(--primary) 88%, black);
+}
+
+/* "Back" is secondary — present, but never competing with the action that moves the tour on. */
+.driver-popover.sharecircle-tour .driver-popover-prev-btn {
+	background-color: transparent;
+	color: var(--muted-foreground);
+	border: 1px solid var(--border);
+}
+
+.driver-popover.sharecircle-tour .driver-popover-prev-btn:hover {
+	background-color: var(--muted);
+	color: var(--foreground);
+}
+
+.driver-popover.sharecircle-tour .driver-popover-close-btn {
+	color: var(--muted-foreground);
+	background: transparent;
+}
+
+.driver-popover.sharecircle-tour .driver-popover-close-btn:hover {
+	color: var(--foreground);
+}

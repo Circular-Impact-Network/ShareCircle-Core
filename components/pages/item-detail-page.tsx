@@ -50,7 +50,7 @@ import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useGetItemQuery, useUpdateItemMutation, useDeleteItemMutation, Item } from '@/lib/redux/api/itemsApi';
 import { formatWeight, isApparelOrShoes } from '@/lib/units';
 import { formatMoney } from '@/lib/currency';
-import { usePreferences } from '@/app/providers';
+import { usePreferences } from '@/lib/preferences-context';
 import { ComingSoonPill } from '@/components/ui/coming-soon-pill';
 import {
 	useCreateBorrowRequestMutation,

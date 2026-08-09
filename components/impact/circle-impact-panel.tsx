@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useGetCircleImpactQuery } from '@/lib/redux/api/impactApi';
 import { formatMoney } from '@/lib/currency';
-import { usePreferences } from '@/app/providers';
+import { formatWeight, fromKg } from '@/lib/units';
+import { usePreferences } from '@/lib/preferences-context';
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
 	return (
@@ -36,7 +37,7 @@ function initials(name: string | null) {
 export function CircleImpactPanel({ circleId }: { circleId: string }) {
 	const { data, isLoading } = useGetCircleImpactQuery(circleId);
 	const summary = data?.summary;
-	const { currency, fxRates } = usePreferences();
+	const { currency, fxRates, weightUnit } = usePreferences();
 
 	return (
 		<Card className="border-border/60">
@@ -68,7 +69,7 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 						<Metric
 							icon={<Leaf className="h-3.5 w-3.5" />}
 							label="CO₂ avoided"
-							value={`${(Math.round(summary.ghgSavedKg * 10) / 10).toLocaleString()} kg`}
+							value={formatWeight(summary.ghgSavedKg, weightUnit)}
 						/>
 						<Metric
 							icon={<HandshakeIcon className="h-3.5 w-3.5" />}
@@ -97,7 +98,9 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 										<th className="py-2 pr-2 font-medium">Member</th>
 										<th className="px-2 py-2 text-right font-medium">Lends</th>
 										<th className="px-2 py-2 text-right font-medium">Borrows</th>
-										<th className="px-2 py-2 text-right font-medium">CO₂ (kg)</th>
+										{/* Unit lives in the header so the cells stay bare numbers and keep tabular
+									    alignment. Both therefore have to follow the preference together. */}
+										<th className="px-2 py-2 text-right font-medium">CO₂ ({weightUnit})</th>
 										<th className="py-2 pl-2 text-right font-medium">Saved</th>
 									</tr>
 								</thead>
@@ -120,7 +123,9 @@ export function CircleImpactPanel({ circleId }: { circleId: string }) {
 											<td className="px-2 py-2 text-right tabular-nums">{m.lendsInCircle}</td>
 											<td className="px-2 py-2 text-right tabular-nums">{m.borrowsInCircle}</td>
 											<td className="px-2 py-2 text-right tabular-nums">
-												{Math.round(m.ghgSavedKg * 10) / 10}
+												{fromKg(m.ghgSavedKg, weightUnit).toLocaleString(undefined, {
+													maximumFractionDigits: 1,
+												})}
 											</td>
 											<td className="py-2 pl-2 text-right tabular-nums">
 												{formatMoney(m.savingsUsd, currency, fxRates)}

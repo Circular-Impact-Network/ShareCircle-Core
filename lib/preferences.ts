@@ -15,6 +15,16 @@ export const PREFERENCE_STORAGE_KEYS = {
 	fontSize: 'sharecircle_font_size',
 	weightUnit: 'sharecircle_weight_unit',
 	currency: 'sharecircle_currency',
+	/**
+	 * Which account these locally stored values belong to.
+	 *
+	 * Sign-out does not clear the four keys above, so on a shared browser they still hold the
+	 * previous person's choices when the next account signs in. Without an owner to compare
+	 * against, a brand-new account with no saved row has its first sync interpreted as "lift this
+	 * browser's choice up" — and silently inherits a stranger's units and currency, on every device
+	 * they ever sign in from.
+	 */
+	owner: 'sharecircle_prefs_owner',
 } as const;
 
 export type FontSizeKey = 'sm' | 'md' | 'lg';
