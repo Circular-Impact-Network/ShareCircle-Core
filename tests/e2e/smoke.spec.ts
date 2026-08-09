@@ -20,6 +20,59 @@ test.describe('smoke', () => {
 	});
 
 	/**
+	 * The stored documents must actually be present in this environment's bucket.
+	 *
+	 * `/terms` and `/privacy` are linked from signup and from emails, and they are now served from
+	 * Supabase storage rather than from the repository — so a bucket that was never populated takes
+	 * the legal pages down while every test that reads from a populated one still passes. That is
+	 * exactly the gap found by hand before this shipped: the dev bucket had all three documents and
+	 * production had none.
+	 */
+	test('stored documents are present and served as HTML', async ({ request }) => {
+		const missing: string[] = [];
+
+		for (const path of ['/api/docs/help', '/api/docs/terms', '/api/docs/privacy', '/terms', '/privacy']) {
+			const res = await request.get(path, { maxRedirects: 5 });
+			const contentType = res.headers()['content-type'] ?? '';
+			const body = await res.body();
+
+			// 503 is the route's own "document unavailable" page, which is what an empty bucket
+			// produces — a readable page, but still a missing document.
+			if (res.status() !== 200 || !contentType.includes('text/html') || body.byteLength < 1000) {
+				missing.push(`${path} -> ${res.status()} ${contentType} ${body.byteLength}B`);
+			}
+		}
+
+		expect(missing, 'documents missing from this environment’s storage bucket').toEqual([]);
+	});
+
+	/**
+	 * The sandbox policy on those documents is the whole security model for serving them.
+	 *
+	 * Their contents can be replaced by an upload with no code review, so they are untrusted HTML —
+	 * and they are served from our own origin, where a script would run with the reader's session.
+	 * The strict policy is applied by a `headers()` rule, and a rule that stops matching fails
+	 * silently: the response still has a `Content-Security-Policy`, just the app's permissive one.
+	 * That is precisely what happened to `/terms` and `/privacy`, which reach the handler through a
+	 * rewrite and so never matched the `/api/docs/:slug` rule. Asserting the header on the wire is
+	 * the only check that can tell the two policies apart.
+	 */
+	test('stored documents are sandboxed and cannot run script', async ({ request }) => {
+		const unprotected: string[] = [];
+
+		for (const path of ['/api/docs/help', '/api/docs/terms', '/api/docs/privacy', '/terms', '/privacy']) {
+			const res = await request.get(path, { maxRedirects: 5 });
+			const csp = res.headers()['content-security-policy'] ?? '';
+
+			if (!csp.includes('sandbox') || !csp.includes("default-src 'none'") || csp.includes("script-src 'self'")) {
+				unprotected.push(`${path} -> ${csp || '(no CSP)'}`);
+			}
+		}
+
+		expect(unprotected, 'documents served without the sandbox policy').toEqual([]);
+	});
+
+	/**
 	 * Every URL the service worker precaches must be fetchable on the real host.
 	 *
 	 * Workbox precaches during `install`, so ONE unfetchable URL rejects the install and no worker

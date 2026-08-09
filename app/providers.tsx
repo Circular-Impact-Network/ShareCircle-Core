@@ -2,8 +2,8 @@
 
 import type React from 'react';
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState } from 'react';
-import { SessionProvider } from 'next-auth/react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { Toaster } from '@/components/ui/toaster';
 import { Provider as ReduxProvider } from 'react-redux';
 import { PWAProvider } from '@/components/pwa/pwa-provider';
@@ -20,21 +20,7 @@ import {
 	type FontSizeKey,
 } from '@/lib/preferences';
 import type { WeightUnit } from '@/lib/units';
-
-type PreferencesContextType = {
-	theme: string;
-	toggleTheme: () => void;
-	fontSize: FontSizeKey;
-	setFontSize: (value: FontSizeKey) => void;
-	weightUnit: WeightUnit;
-	setWeightUnit: (value: WeightUnit) => void;
-	currency: CurrencyCode;
-	setCurrency: (value: CurrencyCode) => void;
-	/** USD -> currency multipliers. Falls back to the bundled table if /api/fx is down. */
-	fxRates: FxRates;
-};
-
-const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
+import { PreferencesContext } from '@/lib/preferences-context';
 
 /** localStorage throws in some private-browsing modes; never let that break the app. */
 function readStored(key: string): string | null {
@@ -56,7 +42,31 @@ function writeStored(key: string, value: string): void {
 	}
 }
 
+/** Shape of GET /api/preferences. `stored` is false until the account has saved once. */
+type StoredPreferences = {
+	theme?: string;
+	fontSize?: string;
+	weightUnit?: string;
+	currency?: string;
+	stored?: boolean;
+};
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+	// Preferences must sit inside SessionProvider so they can be read from and written to the
+	// account. They are deliberately not a server component concern: nothing rendered on the server
+	// can know them, so every unit-aware number is formatted on the client.
+	return (
+		<ReduxProvider store={store}>
+			<SessionProvider>
+				<PreferencesProvider>{children}</PreferencesProvider>
+			</SessionProvider>
+		</ReduxProvider>
+	);
+}
+
+function PreferencesProvider({ children }: { children: React.ReactNode }) {
+	const { data: session, status } = useSession();
+	const userId = session?.user?.id;
 	const [theme, setTheme] = useState<string>(() => readStored(PREFERENCE_STORAGE_KEYS.theme) ?? 'light');
 	const [fontSize, setFontSizeState] = useState<FontSizeKey>(() =>
 		coerceFontSize(readStored(PREFERENCE_STORAGE_KEYS.fontSize) ?? DEFAULT_FONT_SIZE),
@@ -116,65 +126,181 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 		};
 	}, [currency, fxLoaded]);
 
+	/**
+	 * Persist to the account, fire and forget.
+	 *
+	 * The local write has already happened by the time this runs, so a failed request costs the user
+	 * nothing in this session — the preference still applies and still survives a reload here. It
+	 * simply will not follow them to another device, which is worth a console line and not a toast.
+	 */
+	const persist = useCallback(
+		(patch: Record<string, string>) => {
+			if (status !== 'authenticated') {
+				return;
+			}
+			void fetch('/api/preferences', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify(patch),
+			}).catch(error => console.error('Failed to save preferences to your account:', error));
+		},
+		[status],
+	);
+
+	/**
+	 * Adopt the account's preferences once signed in, or lift this browser's existing choice up to
+	 * the account the first time.
+	 *
+	 * Order matters. The server wins whenever it holds a saved row, because that is the choice the
+	 * user made most recently on some device. Only when nothing has ever been saved do we push the
+	 * local values up — otherwise a browser that was never updated would overwrite a newer choice
+	 * made elsewhere with its own stale one.
+	 */
+	const syncedRef = useRef(false);
+	useEffect(() => {
+		if (status !== 'authenticated' || syncedRef.current) {
+			return;
+		}
+		syncedRef.current = true;
+
+		let cancelled = false;
+		void (async () => {
+			try {
+				const res = await fetch('/api/preferences', { credentials: 'include' });
+				if (!res.ok || cancelled) {
+					return;
+				}
+				const remote = (await res.json()) as StoredPreferences;
+
+				if (!remote.stored) {
+					// Nothing saved for this account yet, so this browser's values are the only
+					// candidate — but only if they are this account's values. On a shared browser the
+					// four keys still hold whoever signed in last, and adopting those would write a
+					// stranger's units into a brand-new account permanently. Start such an account on
+					// the defaults instead, and let them choose for themselves.
+					const owner = readStored(PREFERENCE_STORAGE_KEYS.owner);
+					const inherited = Boolean(owner) && owner !== userId;
+
+					const next = inherited
+						? {
+								theme: 'light',
+								fontSize: DEFAULT_FONT_SIZE,
+								weightUnit: DEFAULT_WEIGHT_UNIT,
+								currency: DEFAULT_CURRENCY,
+							}
+						: { theme, fontSize, weightUnit, currency };
+
+					if (inherited) {
+						setTheme(next.theme);
+						applyTheme(next.theme);
+						setFontSizeState(next.fontSize);
+						applyFontSize(next.fontSize);
+						setWeightUnitState(next.weightUnit);
+						setCurrencyState(next.currency);
+						writeStored(PREFERENCE_STORAGE_KEYS.theme, next.theme);
+						writeStored(PREFERENCE_STORAGE_KEYS.fontSize, next.fontSize);
+						writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, next.weightUnit);
+						writeStored(PREFERENCE_STORAGE_KEYS.currency, next.currency);
+					}
+
+					if (userId) {
+						writeStored(PREFERENCE_STORAGE_KEYS.owner, userId);
+					}
+					persist(next);
+					return;
+				}
+
+				const nextTheme = remote.theme === 'dark' ? 'dark' : 'light';
+				const nextFontSize = coerceFontSize(remote.fontSize);
+				setTheme(nextTheme);
+				applyTheme(nextTheme);
+				setFontSizeState(nextFontSize);
+				applyFontSize(nextFontSize);
+				setWeightUnitState(coerceWeightUnit(remote.weightUnit));
+				setCurrencyState(coerceCurrency(remote.currency));
+
+				writeStored(PREFERENCE_STORAGE_KEYS.theme, nextTheme);
+				writeStored(PREFERENCE_STORAGE_KEYS.fontSize, nextFontSize);
+				writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, coerceWeightUnit(remote.weightUnit));
+				writeStored(PREFERENCE_STORAGE_KEYS.currency, coerceCurrency(remote.currency));
+				// These values now belong to this account, so a later sign-in by somebody else can tell
+				// they are not theirs.
+				if (userId) {
+					writeStored(PREFERENCE_STORAGE_KEYS.owner, userId);
+				}
+			} catch (error) {
+				// The locally stored values remain in force; this only costs cross-device sync.
+				console.error('Failed to load preferences from your account:', error);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+		// Deliberately keyed on `status` alone: this runs once per sign-in, and including the
+		// preference values would re-run it on every change and fight the user's own edits.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [status]);
+
 	const toggleTheme = useCallback(() => {
 		setTheme(prev => {
 			const next = prev === 'light' ? 'dark' : 'light';
 			writeStored(PREFERENCE_STORAGE_KEYS.theme, next);
 			applyTheme(next);
+			persist({ theme: next });
 			return next;
 		});
-	}, []);
+	}, [persist]);
 
-	const setFontSize = useCallback((value: FontSizeKey) => {
-		setFontSizeState(value);
-		writeStored(PREFERENCE_STORAGE_KEYS.fontSize, value);
-		applyFontSize(value);
-	}, []);
+	const setFontSize = useCallback(
+		(value: FontSizeKey) => {
+			setFontSizeState(value);
+			writeStored(PREFERENCE_STORAGE_KEYS.fontSize, value);
+			applyFontSize(value);
+			persist({ fontSize: value });
+		},
+		[persist],
+	);
 
-	const setWeightUnit = useCallback((value: WeightUnit) => {
-		setWeightUnitState(value);
-		writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, value);
-	}, []);
+	const setWeightUnit = useCallback(
+		(value: WeightUnit) => {
+			setWeightUnitState(value);
+			writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, value);
+			persist({ weightUnit: value });
+		},
+		[persist],
+	);
 
-	const setCurrency = useCallback((value: CurrencyCode) => {
-		setCurrencyState(value);
-		writeStored(PREFERENCE_STORAGE_KEYS.currency, value);
-	}, []);
+	const setCurrency = useCallback(
+		(value: CurrencyCode) => {
+			setCurrencyState(value);
+			writeStored(PREFERENCE_STORAGE_KEYS.currency, value);
+			persist({ currency: value });
+		},
+		[persist],
+	);
 
 	return (
-		<ReduxProvider store={store}>
-			<SessionProvider>
-				<PreferencesContext.Provider
-					value={{
-						theme,
-						toggleTheme,
-						fontSize,
-						setFontSize,
-						weightUnit,
-						setWeightUnit,
-						currency,
-						setCurrency,
-						fxRates,
-					}}
-				>
-					{children}
-					<PWAProvider />
-					<Toaster />
-				</PreferencesContext.Provider>
-			</SessionProvider>
-		</ReduxProvider>
+		<PreferencesContext.Provider
+			value={{
+				theme,
+				toggleTheme,
+				fontSize,
+				setFontSize,
+				weightUnit,
+				setWeightUnit,
+				currency,
+				setCurrency,
+				fxRates,
+			}}
+		>
+			{children}
+			<PWAProvider />
+			<Toaster />
+		</PreferencesContext.Provider>
 	);
 }
 
-export function usePreferences() {
-	const context = useContext(PreferencesContext);
-	if (!context) {
-		throw new Error('usePreferences must be used within ThemeProvider');
-	}
-	return context;
-}
-
-/** Back-compat alias — theme was the only preference before font size / units / currency. */
-export function useTheme() {
-	return usePreferences();
-}
+// Re-exported so the many existing `from '@/app/providers'` imports keep working.
+export { usePreferences, useTheme } from '@/lib/preferences-context';

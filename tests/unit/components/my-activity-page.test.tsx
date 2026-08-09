@@ -9,7 +9,9 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
-vi.mock('@/app/providers', () => ({
+// The context moved out of `@/app/providers` so that reading a preference no longer drags the
+// Redux store and session provider in behind it.
+vi.mock('@/lib/preferences-context', () => ({
 	usePreferences: () => ({
 		theme: 'light',
 		toggleTheme: vi.fn(),

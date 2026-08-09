@@ -26,9 +26,11 @@ import {
 	FileText,
 	ExternalLink,
 	Info,
+	Compass,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useTheme } from '@/app/providers';
+import { useTheme } from '@/lib/preferences-context';
+import { startTourManually } from '@/components/tour/app-tour';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/lib/redux/hooks';
@@ -1201,6 +1203,15 @@ export function SettingsPage() {
 								Visit our homepage
 								<ExternalLink className="h-4 w-4 text-muted-foreground" />
 							</Link>
+							<button
+								type="button"
+								data-testid="replay-tour"
+								onClick={() => startTourManually()}
+								className="flex w-full items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+							>
+								Replay the app tour
+								<Compass className="h-4 w-4 text-muted-foreground" />
+							</button>
 							{/*
 							 * Shown so a deploy can be confirmed from the phone. A PWA serves its own cached
 							 * shell, so "my change is live" and "my change reached this device" are different
