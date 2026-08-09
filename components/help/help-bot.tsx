@@ -10,6 +10,7 @@ type Turn = { role: 'user' | 'assistant'; content: string };
 
 /** Dispatched on `window` to open the assistant panel from elsewhere in the app. */
 export const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
+export const HELP_BOT_CLOSE_EVENT = 'sharecircle:close-help-bot';
 
 const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
 
@@ -34,8 +35,16 @@ export function HelpBot() {
 	// features are otherwise unrelated, and a store would tie them together for one message.
 	useEffect(() => {
 		const open = () => setOpen(true);
+		// And closed again when the tour ends, because the tour is what opened it. Left open, it sat
+		// underneath the push permission card that appears next — same corner, higher z-index —
+		// which covered the two buttons the tour's last step had just pointed at.
+		const close = () => setOpen(false);
 		window.addEventListener(HELP_BOT_OPEN_EVENT, open);
-		return () => window.removeEventListener(HELP_BOT_OPEN_EVENT, open);
+		window.addEventListener(HELP_BOT_CLOSE_EVENT, close);
+		return () => {
+			window.removeEventListener(HELP_BOT_OPEN_EVENT, open);
+			window.removeEventListener(HELP_BOT_CLOSE_EVENT, close);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -94,6 +103,15 @@ export function HelpBot() {
 					next[next.length - 1] = { role: 'assistant', content: answer };
 					return next;
 				});
+			}
+
+			// A generation failure does not reach the `catch` below. The AI SDK's text stream carries
+			// only text parts, so an upstream error — a bad API key, a safety refusal, a 5xx from
+			// Gemini — is dropped from the stream and the response still closes cleanly with a 200.
+			// The read loop simply ends having produced nothing, which showed the user a blank grey
+			// bubble and no explanation, while every silent failure still spent their hourly quota.
+			if (!answer.trim()) {
+				throw new Error('The assistant could not answer that just now. Please try again.');
 			}
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : 'Something went wrong.');

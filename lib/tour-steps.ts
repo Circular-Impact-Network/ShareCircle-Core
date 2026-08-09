@@ -130,5 +130,11 @@ export function selectPresentSteps(steps: TourStep[], isPresent: (anchor: string
 		return [];
 	}
 
-	return steps.filter(step => step.appearsLater || isPresent(step.anchor));
+	// A deferred step is only reachable because an earlier step opens the panel it lives in. If that
+	// opener was itself dropped, the deferred step has nothing to bring it on screen, and driver.js
+	// does not skip a step whose element is missing — it centres the popover over a placeholder. The
+	// tour would end on a modal describing two buttons that are nowhere to be seen.
+	const opensAPanel = anchored.some(step => step.opensHelpPanel);
+
+	return steps.filter(step => (step.appearsLater ? opensAPanel : isPresent(step.anchor)));
 }
