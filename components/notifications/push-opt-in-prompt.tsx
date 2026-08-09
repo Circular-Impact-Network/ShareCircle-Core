@@ -123,7 +123,12 @@ export function PushOptInPrompt({ ready }: PushOptInPromptProps) {
 
 			{!needsInstall && (
 				<div className="mt-3 flex items-center justify-end gap-2">
-					<Button variant="ghost" size="sm" onClick={() => dismiss(true)} data-testid="push-opt-in-decline">
+					{/* "Not now" means later, so it defers rather than opting out permanently. It used to
+					    write `declinedForever`, which made the 14-day cooldown and the three-ask budget
+					    dead code for anyone who used the labelled button instead of the small X — the
+					    opposite of what the label promises, on the feature that exists because nobody
+					    was subscribed to push in the first place. */}
+					<Button variant="ghost" size="sm" onClick={() => dismiss(false)} data-testid="push-opt-in-decline">
 						Not now
 					</Button>
 					<Button
