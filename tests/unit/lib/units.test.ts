@@ -22,6 +22,17 @@ describe('formatWeight', () => {
 		expect(formatWeight(1234, 'kg')).toBe('1,234 kg');
 		expect(formatWeight(12.3456789, 'kg')).toBe('12.3 kg');
 	});
+
+	// The one-decimal cap was chosen for those five-digit totals, and the same function renders a
+	// single item's weight. A light item must not be rounded away to "0", which reads as "no weight
+	// recorded" rather than as a light item.
+	it('keeps light items visible instead of rounding them to zero', () => {
+		expect(formatWeight(0.04, 'kg')).toBe('0.04 kg');
+		expect(formatWeight(0.02, 'lbs')).toBe('0.044 lbs');
+		expect(formatWeight(0.3, 'kg')).toBe('0.3 kg');
+		// Genuinely zero still reads as a clean zero, not "0.0".
+		expect(formatWeight(0, 'kg')).toBe('0 kg');
+	});
 });
 
 // Inputs used to be labelled "Weight (kg)" regardless of the chosen unit, so someone set to pounds
@@ -37,9 +48,12 @@ describe('toKg / fromKg', () => {
 		expect(fromKg(10, 'lbs')).toBeCloseTo(22.05, 2);
 	});
 
+	// Two decimals, matching what `fromKg` rounds to. At one decimal this assertion still passed
+	// with `fromKg` rounding to whole pounds — it could not detect the loss of the very precision
+	// it exists to guard.
 	it('round-trips without visible drift', () => {
 		for (const kg of [0.5, 1, 7.25, 40, 133.7]) {
-			expect(toKg(fromKg(kg, 'lbs'), 'lbs')).toBeCloseTo(kg, 1);
+			expect(toKg(fromKg(kg, 'lbs'), 'lbs')).toBeCloseTo(kg, 2);
 		}
 	});
 

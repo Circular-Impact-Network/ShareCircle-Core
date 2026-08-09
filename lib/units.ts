@@ -12,7 +12,14 @@ const KG_TO_LBS = 2.20462;
  */
 export function formatWeight(kg: number, unit: WeightUnit): string {
 	const value = unit === 'lbs' ? kg * KG_TO_LBS : kg;
-	return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
+
+	// One decimal suits impact totals, which reach five digits. It does not suit a single item: a
+	// phone charger at 0.04 kg rounded to "~0 kg", which reads as "no weight recorded" rather than
+	// as a light item. Below 1, significant digits keep the number truthful at any scale.
+	const options: Intl.NumberFormatOptions =
+		value !== 0 && Math.abs(value) < 1 ? { maximumSignificantDigits: 2 } : { maximumFractionDigits: 1 };
+
+	return `${value.toLocaleString(undefined, options)} ${unit}`;
 }
 
 /**
