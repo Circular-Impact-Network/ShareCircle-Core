@@ -19,9 +19,16 @@ describe('getTourSteps', () => {
 		expect(anchors).not.toContain('nav-activity');
 	});
 
-	it('ends both layouts on the help assistant', () => {
-		expect(getTourSteps('desktop').at(-1)?.anchor).toBe('help-bot');
-		expect(getTourSteps('mobile').at(-1)?.anchor).toBe('help-bot');
+	it('ends both layouts on the assistant, then on how to replay', () => {
+		for (const platform of ['desktop', 'mobile'] as const) {
+			const steps = getTourSteps(platform);
+			expect(steps.at(-2)?.anchor).toBe('help-bot');
+			expect(steps.at(-1)?.anchor).toBe('replay-tour');
+			// The replay control only exists once the panel is open, so the step before it has to
+			// open the panel — otherwise the tour ends pointing at nothing.
+			expect(steps.at(-2)?.opensHelpPanel).toBe(true);
+			expect(steps.at(-1)?.appearsLater).toBe(true);
+		}
 	});
 
 	// The tour teaches the order things must be done in, not the order the navigation is in.
@@ -67,8 +74,18 @@ describe('selectPresentSteps', () => {
 		expect(present).toHaveLength(steps.length - 1);
 	});
 
+	// Deferred steps are exempt from the presence check, so the empty case needs stating: with
+	// nothing on screen there is no tour, and a tour made only of steps pointing inside a panel
+	// nothing can open would be worse than none.
 	it('returns nothing when the shell has not rendered', () => {
 		expect(selectPresentSteps(getTourSteps('mobile'), () => false)).toEqual([]);
+		expect(selectPresentSteps(getTourSteps('desktop'), () => false)).toEqual([]);
+	});
+
+	it('keeps the closing step even though its control is not on screen yet', () => {
+		// `replay-tour` lives inside the assistant panel, which is shut when the tour starts.
+		const kept = selectPresentSteps(getTourSteps('desktop'), anchor => anchor !== 'replay-tour');
+		expect(kept.map(step => step.anchor)).toContain('replay-tour');
 	});
 
 	it('keeps the original order', () => {

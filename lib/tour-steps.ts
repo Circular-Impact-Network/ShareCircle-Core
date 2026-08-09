@@ -21,6 +21,19 @@ export type TourStep = {
 	anchor: string;
 	title: string;
 	description: string;
+	/**
+	 * Opens the help assistant when the user advances past this step.
+	 *
+	 * The closing step highlights a control inside the assistant panel, which does not exist while
+	 * the panel is shut. Rather than describing where the control would be, the tour opens the
+	 * panel and points at the real thing.
+	 */
+	opensHelpPanel?: boolean;
+	/**
+	 * Exempt from the "is it on the page?" filter, because it only appears once an earlier step has
+	 * opened the panel. Without this the closing step would be dropped before the tour even starts.
+	 */
+	appearsLater?: boolean;
 };
 
 export type TourPlatform = 'desktop' | 'mobile';
@@ -50,7 +63,16 @@ const STEP_HELP: TourStep = {
 	anchor: 'help-bot',
 	title: 'Stuck at any point? Just ask',
 	description:
-		'The assistant answers questions about how ShareCircle works, any time. You can replay this tour from Settings whenever you like.',
+		'The assistant answers questions about how ShareCircle works, any time. Open it and there are two more things inside.',
+	opensHelpPanel: true,
+};
+
+const STEP_REPLAY: TourStep = {
+	anchor: 'replay-tour',
+	title: 'And you can watch this again',
+	description:
+		'Replay tour brings this walkthrough back whenever you want it, and Help guide opens the full written guide. Both live here, inside the assistant.',
+	appearsLater: true,
 };
 
 const DESKTOP_STEPS: TourStep[] = [
@@ -70,6 +92,7 @@ const DESKTOP_STEPS: TourStep[] = [
 			'My Activity holds the requests you have sent, what you have borrowed and lent, your place in any queue, and your history.',
 	},
 	STEP_HELP,
+	STEP_REPLAY,
 ];
 
 const MOBILE_STEPS: TourStep[] = [
@@ -83,6 +106,7 @@ const MOBILE_STEPS: TourStep[] = [
 			'My Listings and My Activity live behind your avatar, along with Help and Settings. Add an item from a photo, and remember to share it into a circle — an item in no circle is invisible to everybody.',
 	},
 	STEP_HELP,
+	STEP_REPLAY,
 ];
 
 export function getTourSteps(platform: TourPlatform): TourStep[] {
@@ -97,5 +121,14 @@ export function getTourSteps(platform: TourPlatform): TourStep[] {
  * legitimately go missing — a narrow window, a feature behind a flag, a page still loading.
  */
 export function selectPresentSteps(steps: TourStep[], isPresent: (anchor: string) => boolean): TourStep[] {
-	return steps.filter(step => isPresent(step.anchor));
+	const anchored = steps.filter(step => !step.appearsLater && isPresent(step.anchor));
+
+	// Nothing anchored means the shell has not painted, so there is no tour to run — and in that
+	// case the deferred steps must go too. Keeping them would leave a tour made entirely of steps
+	// pointing at controls that nothing on screen can open.
+	if (anchored.length === 0) {
+		return [];
+	}
+
+	return steps.filter(step => step.appearsLater || isPresent(step.anchor));
 }

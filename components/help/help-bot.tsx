@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bot, LifeBuoy, Loader2, Send, X } from 'lucide-react';
+import { Bot, Compass, LifeBuoy, Loader2, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { startTourManually } from '@/components/tour/app-tour';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
+
+/** Dispatched on `window` to open the assistant panel from elsewhere in the app. */
+export const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
 
 const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
 
@@ -24,6 +28,15 @@ export function HelpBot() {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
+
+	// The guided tour opens the panel for its closing step, so that step can highlight a control
+	// that only exists once the panel is on screen. An event rather than a shared store: the two
+	// features are otherwise unrelated, and a store would tie them together for one message.
+	useEffect(() => {
+		const open = () => setOpen(true);
+		window.addEventListener(HELP_BOT_OPEN_EVENT, open);
+		return () => window.removeEventListener(HELP_BOT_OPEN_EVENT, open);
+	}, []);
 
 	useEffect(() => {
 		scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -203,15 +216,32 @@ export function HelpBot() {
 						<Send className="h-4 w-4" />
 					</Button>
 				</form>
-				<a
-					href="/api/docs/help"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<LifeBuoy className="h-3.5 w-3.5" />
-					Browse the full help guide
-				</a>
+				{/* Two real buttons rather than a text link. These are the things a stuck user wants
+				    and neither was reachable without knowing where to look: the guide was a
+				    footnote, and replaying the tour was buried three levels into Settings. */}
+				<div className="grid grid-cols-2 gap-2">
+					<Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+						<a href="/api/docs/help" target="_blank" rel="noopener noreferrer">
+							<LifeBuoy className="h-3.5 w-3.5" />
+							Help guide
+						</a>
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						data-tour="replay-tour"
+						data-testid="help-bot-replay-tour"
+						className="h-8 gap-1.5 text-xs"
+						onClick={() => {
+							setOpen(false);
+							// The panel covers the elements the tour highlights, so it closes first.
+							window.setTimeout(() => startTourManually(), 150);
+						}}
+					>
+						<Compass className="h-3.5 w-3.5" />
+						Replay tour
+					</Button>
+				</div>
 			</footer>
 		</div>
 	);

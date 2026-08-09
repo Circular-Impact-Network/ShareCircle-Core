@@ -3,7 +3,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
-import { getTourSteps, selectPresentSteps, type TourPlatform } from '@/lib/tour-steps';
+import { getTourSteps, selectPresentSteps, type TourStep, type TourPlatform } from '@/lib/tour-steps';
+
+/**
+ * Duplicated rather than imported from the help bot, which imports this module for its Replay
+ * button — importing back would be a cycle. One constant is a smaller price than that.
+ */
+const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
+
+/**
+ * Turn the step list into driver.js steps.
+ *
+ * The closing step highlights a control inside the assistant panel, so the step before it opens the
+ * panel and then advances a beat later — long enough for React to render the control the next step
+ * is about to point at.
+ */
+function toDriverSteps(steps: TourStep[], getDriver: () => Driver | null) {
+	return steps.map(step => ({
+		element: `[data-tour="${step.anchor}"]`,
+		popover: {
+			title: step.title,
+			description: step.description,
+			...(step.opensHelpPanel
+				? {
+						onNextClick: () => {
+							window.dispatchEvent(new Event(HELP_BOT_OPEN_EVENT));
+							window.setTimeout(() => getDriver()?.moveNext(), 220);
+						},
+					}
+				: {}),
+		},
+	}));
+}
 
 /** Mirrors the account flag so the tour does not flash before the session resolves. */
 const LOCAL_KEY = 'sharecircle_tour_completed';
@@ -88,10 +119,7 @@ export function AppTour({ onFinished }: AppTourProps) {
 			overlayOpacity: 0.6,
 			stagePadding: 6,
 			popoverClass: 'sharecircle-tour',
-			steps: steps.map(step => ({
-				element: `[data-tour="${step.anchor}"]`,
-				popover: { title: step.title, description: step.description },
-			})),
+			steps: toDriverSteps(steps, () => driverRef.current),
 			onDestroyed: () => markCompleted(),
 		});
 
@@ -166,7 +194,8 @@ export function startTourManually(): void {
 		return;
 	}
 
-	driver({
+	let manual: Driver | null = null;
+	manual = driver({
 		showProgress: true,
 		progressText: 'Step {{current}} of {{total}}',
 		nextBtnText: 'Next',
@@ -176,9 +205,7 @@ export function startTourManually(): void {
 		overlayOpacity: 0.6,
 		stagePadding: 6,
 		popoverClass: 'sharecircle-tour',
-		steps: steps.map(step => ({
-			element: `[data-tour="${step.anchor}"]`,
-			popover: { title: step.title, description: step.description },
-		})),
-	}).drive();
+		steps: toDriverSteps(steps, () => manual),
+	});
+	manual.drive();
 }
