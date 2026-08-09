@@ -63,7 +63,6 @@ export function MobileHeader() {
 						href="/api/docs/help"
 						target="_blank"
 						rel="noopener noreferrer"
-						data-tour="help-guide"
 						className="flex h-9 w-9 items-center justify-center rounded-full text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
 						aria-label="Help and guide"
 					>

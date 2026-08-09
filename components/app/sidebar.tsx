@@ -148,7 +148,6 @@ export function Sidebar() {
 							href="/api/docs/help"
 							target="_blank"
 							rel="noopener noreferrer"
-							data-tour="help-guide"
 							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
 						>
 							<LifeBuoy className="h-4 w-4" />
