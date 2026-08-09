@@ -13,6 +13,7 @@ import {
 	History,
 	MessageSquarePlus,
 	LifeBuoy,
+	ExternalLink,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -40,7 +41,6 @@ const navItems = [
 	// Opens in the browser, not in the app. It is a standalone document like the terms and privacy
 	// policy, and inside an installed PWA an embedded viewer traps the reader in a frame with no
 	// browser chrome to scroll, zoom, search, print or share it.
-	{ id: 'help', label: 'Help & Guide', icon: LifeBuoy, href: '/api/docs/help', external: true },
 	{ id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
@@ -108,17 +108,10 @@ export function Sidebar() {
 								let unreadCount = 0;
 								if (item.id === 'notifications') unreadCount = totalNotificationUnread;
 								else if (item.id === 'messages') unreadCount = totalMessageUnread;
-								// External entries render as a plain anchor: Next's Link client-navigates, which
-								// would swallow target="_blank" and pull the document into the app shell.
-								const LinkComponent = item.external ? 'a' : Link;
-								const externalProps = item.external
-									? { target: '_blank', rel: 'noopener noreferrer' }
-									: {};
 								return (
-									<LinkComponent
+									<Link
 										key={item.id}
 										href={item.href}
-										{...externalProps}
 										data-tour={`nav-${item.id}`}
 										className={cn(
 											'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
@@ -137,14 +130,29 @@ export function Sidebar() {
 												{unreadCount > 99 ? '99+' : unreadCount}
 											</Badge>
 										)}
-									</LinkComponent>
+									</Link>
 								);
 							})}
 						</nav>
 					</ScrollArea>
 
-					{/* Feedback — full-width, directly above the profile/logout section */}
-					<div className="px-3 pb-2">
+					{/* Help and feedback sit together at the foot of the sidebar rather than in the
+					    navigation above. Neither is a place in the app — one opens a document in the
+					    browser, the other a dialog — and listing them beside Home and Messages implied
+					    they were screens you could be "on". */}
+					<div className="space-y-1 px-3 pb-2">
+						<a
+							href="/api/docs/help"
+							target="_blank"
+							rel="noopener noreferrer"
+							data-tour="help-guide"
+							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+						>
+							<LifeBuoy className="h-4 w-4" />
+							<span className="flex-1">Help &amp; Guide</span>
+							{/* Signals the new tab before the click rather than surprising after it. */}
+							<ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+						</a>
 						<button
 							type="button"
 							onClick={() => setShowFeedbackModal(true)}

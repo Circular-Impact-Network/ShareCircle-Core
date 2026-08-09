@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogOut, Settings, List, History, MessageSquarePlus, LifeBuoy } from 'lucide-react';
+import { LogOut, Settings, List, History, MessageSquarePlus, HelpCircle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -57,7 +57,18 @@ export function MobileHeader() {
 				</Link>
 
 				<div className="flex items-center gap-1">
-					{/* Feedback — surfaced to the left of the profile pic, not buried in the menu */}
+					{/* Help and feedback both sit here rather than in the menu: they are the two things
+					    a stuck user reaches for, and a stuck user does not go hunting through a menu. */}
+					<a
+						href="/api/docs/help"
+						target="_blank"
+						rel="noopener noreferrer"
+						data-tour="help-guide"
+						className="flex h-9 w-9 items-center justify-center rounded-full text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+						aria-label="Help and guide"
+					>
+						<HelpCircle className="h-5 w-5" />
+					</a>
 					<button
 						type="button"
 						onClick={() => setShowFeedbackModal(true)}
@@ -94,12 +105,6 @@ export function MobileHeader() {
 								<Link href="/activity" className="flex items-center gap-2">
 									<History className="h-4 w-4" />
 									My Activity
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
-								<Link href="/help" className="flex items-center gap-2">
-									<LifeBuoy className="h-4 w-4" />
-									Help & Guide
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
