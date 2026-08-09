@@ -187,16 +187,23 @@ const nextConfig: NextConfig = {
 			 * inline script. These files can be replaced by upload without a code review, so they must
 			 * be treated as untrusted content: no script, no network, no framing of anything else.
 			 * `sandbox` applies even when the document is opened directly rather than in our iframe.
+			 *
+			 * `/terms` and `/privacy` must be listed too, and this is easy to get wrong: they reach the
+			 * same handler through a rewrite, but header rules are matched against the INCOMING path
+			 * and are not re-evaluated afterwards. Listing only `/api/docs/:slug` left the two
+			 * highest-traffic documents — both linked from the signup form and from email — serving
+			 * bucket-controlled HTML under the app's own policy, which permits inline script on our
+			 * origin. Verified on the wire, not by reading: `curl -D- /terms` must show `sandbox`.
 			 */
-			{
-				source: '/api/docs/:slug',
+			...['/api/docs/:slug', '/terms', '/privacy'].map(source => ({
+				source,
 				headers: [
 					{
 						key: 'Content-Security-Policy',
-						value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; sandbox",
+						value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src data: https://fonts.gstatic.com; sandbox",
 					},
 				],
-			},
+			})),
 		];
 	},
 	// Clean URLs for the standalone legal documents, now served from storage.

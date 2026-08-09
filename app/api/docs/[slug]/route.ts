@@ -49,7 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 				// directly. A CSP of its own means an uploaded file cannot execute script or call out,
 				// wherever it ends up being opened.
 				'Content-Security-Policy':
-					"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; sandbox",
+					"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src data: https://fonts.gstatic.com; sandbox",
 				// Short enough that a re-upload is visible in minutes, long enough that a 1.4 MB
 				// document is not re-fetched on every navigation.
 				'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',

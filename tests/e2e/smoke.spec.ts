@@ -47,6 +47,32 @@ test.describe('smoke', () => {
 	});
 
 	/**
+	 * The sandbox policy on those documents is the whole security model for serving them.
+	 *
+	 * Their contents can be replaced by an upload with no code review, so they are untrusted HTML —
+	 * and they are served from our own origin, where a script would run with the reader's session.
+	 * The strict policy is applied by a `headers()` rule, and a rule that stops matching fails
+	 * silently: the response still has a `Content-Security-Policy`, just the app's permissive one.
+	 * That is precisely what happened to `/terms` and `/privacy`, which reach the handler through a
+	 * rewrite and so never matched the `/api/docs/:slug` rule. Asserting the header on the wire is
+	 * the only check that can tell the two policies apart.
+	 */
+	test('stored documents are sandboxed and cannot run script', async ({ request }) => {
+		const unprotected: string[] = [];
+
+		for (const path of ['/api/docs/help', '/api/docs/terms', '/api/docs/privacy', '/terms', '/privacy']) {
+			const res = await request.get(path, { maxRedirects: 5 });
+			const csp = res.headers()['content-security-policy'] ?? '';
+
+			if (!csp.includes('sandbox') || !csp.includes("default-src 'none'") || csp.includes("script-src 'self'")) {
+				unprotected.push(`${path} -> ${csp || '(no CSP)'}`);
+			}
+		}
+
+		expect(unprotected, 'documents served without the sandbox policy').toEqual([]);
+	});
+
+	/**
 	 * Every URL the service worker precaches must be fetchable on the real host.
 	 *
 	 * Workbox precaches during `install`, so ONE unfetchable URL rejects the install and no worker

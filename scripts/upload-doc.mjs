@@ -44,17 +44,38 @@ if (!url || !serviceRoleKey) {
 
 const html = readFileSync(filePath);
 
-// A document that is not self-contained would render without styling or images once it is served
-// from storage rather than from the site, and nothing would report that — it would simply look
-// broken. Refuse rather than upload something that cannot work.
 const text = html.toString('utf8');
-const externalRefs = [...text.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map(match => match[1]);
-if (externalRefs.length > 0) {
+
+/*
+ * These documents are served under a deliberately strict CSP (see `next.config.ts`): no script, no
+ * network, `sandbox`. Two checks, for two different reasons.
+ *
+ * Script is refused outright. A document in this bucket can be replaced by an upload with no code
+ * review, and it is served from our own origin — so a script in one would run with the reader's
+ * session. The CSP already blocks it; refusing here as well means a mistake is caught by the person
+ * making it rather than showing up as a silent console error on a legal page.
+ *
+ * Anything else external is only warned about. The earlier version of this refused every external
+ * URL on the grounds that it "will not be available from storage", which is simply wrong — the
+ * browser fetches it perfectly well. What actually decides is whether the CSP permits the host, so
+ * the warning names the URLs and lets the operator check rather than blocking a valid upload. This
+ * is what stopped the real terms and privacy documents, which use Google Fonts, from being uploaded.
+ */
+const scriptRefs = [...text.matchAll(/<script\b[^>]*>/gi)].map(match => match[0]);
+if (scriptRefs.length > 0) {
 	console.error(
-		`Refusing to upload: the document references ${externalRefs.length} external URL(s), which will not be` +
-			` available from storage. First: ${externalRefs[0]}`,
+		`Refusing to upload: the document contains ${scriptRefs.length} <script> tag(s). These documents are` +
+			` served from our own origin under a no-script CSP. First: ${scriptRefs[0].slice(0, 120)}`,
 	);
 	process.exit(1);
+}
+
+const externalRefs = [
+	...new Set([...text.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map(m => new URL(m[1]).host)),
+];
+if (externalRefs.length > 0) {
+	console.warn(`Note: references external host(s): ${externalRefs.join(', ')}`);
+	console.warn('      These load only if the document CSP in next.config.ts allows them.');
 }
 
 const supabase = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
