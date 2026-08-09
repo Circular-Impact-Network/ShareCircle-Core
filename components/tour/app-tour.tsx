@@ -20,7 +20,9 @@ const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
  */
 function toDriverSteps(steps: TourStep[], getDriver: () => Driver | null) {
 	return steps.map(step => ({
-		element: `[data-tour="${step.anchor}"]`,
+		// The resolved element, not the selector: driver.js would otherwise re-query and find the
+		// hidden copy in the other layout.
+		element: findVisibleAnchor(step.anchor) ?? `[data-tour="${step.anchor}"]`,
 		popover: {
 			title: step.title,
 			description: step.description,
@@ -60,8 +62,44 @@ function writeLocalCompleted(): void {
 	}
 }
 
+/**
+ * The element a step should point at, choosing the visible one when both layouts render it.
+ *
+ * Both navigations are always in the DOM: the sidebar is `hidden lg:flex` and the bottom bar is
+ * `lg:hidden`, so only CSS decides which is on screen. `querySelector` returns the first match in
+ * document order regardless of visibility, which on a phone is the hidden sidebar link — and
+ * driver.js would then spotlight a box of zero size somewhere off screen.
+ *
+ * `getClientRects()` is the test rather than `offsetParent`, because both navigations are
+ * `position: fixed` and a fixed element reports a null `offsetParent` even when perfectly visible.
+ */
+function findVisibleAnchor(anchor: string): HTMLElement | null {
+	const candidates = document.querySelectorAll<HTMLElement>(`[data-tour="${anchor}"]`);
+	for (const candidate of candidates) {
+		if (candidate.getClientRects().length > 0) {
+			return candidate;
+		}
+	}
+	return null;
+}
+
+/**
+ * Which layout is actually on screen.
+ *
+ * Asks the DOM rather than the viewport width. A media query here would be a second copy of the
+ * breakpoint, free to drift from the one in the classes that do the hiding; asking whether the
+ * sidebar is visible cannot drift, and it stays correct in a responsive-mode window too.
+ *
+ * `?tour=mobile` or `?tour=desktop` forces a layout, for looking at the other one without a device.
+ */
 function currentPlatform(): TourPlatform {
-	return window.matchMedia('(min-width: 1024px)').matches ? 'desktop' : 'mobile';
+	const forced = new URLSearchParams(window.location.search).get('tour');
+	if (forced === 'mobile' || forced === 'desktop') {
+		return forced;
+	}
+
+	const sidebar = document.querySelector<HTMLElement>('[data-tour-layout="sidebar"]');
+	return sidebar && sidebar.getClientRects().length > 0 ? 'desktop' : 'mobile';
 }
 
 /**
@@ -96,9 +134,7 @@ export function AppTour({ onFinished }: AppTourProps) {
 	}, []);
 
 	const start = useCallback(() => {
-		const steps = selectPresentSteps(getTourSteps(currentPlatform()), anchor =>
-			Boolean(document.querySelector(`[data-tour="${anchor}"]`)),
-		);
+		const steps = selectPresentSteps(getTourSteps(currentPlatform()), anchor => Boolean(findVisibleAnchor(anchor)));
 
 		// Every anchor missing means the shell has not painted yet, or this layout has none of them.
 		// Starting an empty tour would show a stray overlay with nothing highlighted.
@@ -186,9 +222,7 @@ export function startTourManually(): void {
 		// Falls through to the driver below regardless.
 	}
 
-	const steps = selectPresentSteps(getTourSteps(currentPlatform()), anchor =>
-		Boolean(document.querySelector(`[data-tour="${anchor}"]`)),
-	);
+	const steps = selectPresentSteps(getTourSteps(currentPlatform()), anchor => Boolean(findVisibleAnchor(anchor)));
 
 	if (steps.length === 0) {
 		return;

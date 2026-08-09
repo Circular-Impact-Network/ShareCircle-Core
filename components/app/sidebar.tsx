@@ -82,7 +82,10 @@ export function Sidebar() {
 
 	return (
 		<>
-			<aside className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex">
+			<aside
+				data-tour-layout="sidebar"
+				className="fixed left-0 top-0 z-40 hidden h-[100dvh] w-60 flex-col border-r border-border bg-card/95 backdrop-blur lg:flex"
+			>
 				<div className="flex h-full flex-col overflow-hidden">
 					{/* Logo */}
 					<div className="flex items-center gap-3 border-b border-border px-2 py-1.5">
