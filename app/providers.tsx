@@ -65,7 +65,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 function PreferencesProvider({ children }: { children: React.ReactNode }) {
-	const { status } = useSession();
+	const { data: session, status } = useSession();
+	const userId = session?.user?.id;
 	const [theme, setTheme] = useState<string>(() => readStored(PREFERENCE_STORAGE_KEYS.theme) ?? 'light');
 	const [fontSize, setFontSizeState] = useState<FontSizeKey>(() =>
 		coerceFontSize(readStored(PREFERENCE_STORAGE_KEYS.fontSize) ?? DEFAULT_FONT_SIZE),
@@ -173,7 +174,40 @@ function PreferencesProvider({ children }: { children: React.ReactNode }) {
 				const remote = (await res.json()) as StoredPreferences;
 
 				if (!remote.stored) {
-					persist({ theme, fontSize, weightUnit, currency });
+					// Nothing saved for this account yet, so this browser's values are the only
+					// candidate — but only if they are this account's values. On a shared browser the
+					// four keys still hold whoever signed in last, and adopting those would write a
+					// stranger's units into a brand-new account permanently. Start such an account on
+					// the defaults instead, and let them choose for themselves.
+					const owner = readStored(PREFERENCE_STORAGE_KEYS.owner);
+					const inherited = Boolean(owner) && owner !== userId;
+
+					const next = inherited
+						? {
+								theme: 'light',
+								fontSize: DEFAULT_FONT_SIZE,
+								weightUnit: DEFAULT_WEIGHT_UNIT,
+								currency: DEFAULT_CURRENCY,
+							}
+						: { theme, fontSize, weightUnit, currency };
+
+					if (inherited) {
+						setTheme(next.theme);
+						applyTheme(next.theme);
+						setFontSizeState(next.fontSize);
+						applyFontSize(next.fontSize);
+						setWeightUnitState(next.weightUnit);
+						setCurrencyState(next.currency);
+						writeStored(PREFERENCE_STORAGE_KEYS.theme, next.theme);
+						writeStored(PREFERENCE_STORAGE_KEYS.fontSize, next.fontSize);
+						writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, next.weightUnit);
+						writeStored(PREFERENCE_STORAGE_KEYS.currency, next.currency);
+					}
+
+					if (userId) {
+						writeStored(PREFERENCE_STORAGE_KEYS.owner, userId);
+					}
+					persist(next);
 					return;
 				}
 
@@ -190,6 +224,11 @@ function PreferencesProvider({ children }: { children: React.ReactNode }) {
 				writeStored(PREFERENCE_STORAGE_KEYS.fontSize, nextFontSize);
 				writeStored(PREFERENCE_STORAGE_KEYS.weightUnit, coerceWeightUnit(remote.weightUnit));
 				writeStored(PREFERENCE_STORAGE_KEYS.currency, coerceCurrency(remote.currency));
+				// These values now belong to this account, so a later sign-in by somebody else can tell
+				// they are not theirs.
+				if (userId) {
+					writeStored(PREFERENCE_STORAGE_KEYS.owner, userId);
+				}
 			} catch (error) {
 				// The locally stored values remain in force; this only costs cross-device sync.
 				console.error('Failed to load preferences from your account:', error);
