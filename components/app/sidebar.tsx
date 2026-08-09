@@ -37,7 +37,10 @@ const navItems = [
 	{ id: 'activity', label: 'My Activity', icon: History, href: '/activity' },
 	{ id: 'messages', label: 'Messages', icon: MessageSquare, href: '/messages' },
 	{ id: 'notifications', label: 'Notifications', icon: Bell, href: '/notifications' },
-	{ id: 'help', label: 'Help & Guide', icon: LifeBuoy, href: '/help' },
+	// Opens in the browser, not in the app. It is a standalone document like the terms and privacy
+	// policy, and inside an installed PWA an embedded viewer traps the reader in a frame with no
+	// browser chrome to scroll, zoom, search, print or share it.
+	{ id: 'help', label: 'Help & Guide', icon: LifeBuoy, href: '/api/docs/help', external: true },
 	{ id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
 ];
 
@@ -105,10 +108,17 @@ export function Sidebar() {
 								let unreadCount = 0;
 								if (item.id === 'notifications') unreadCount = totalNotificationUnread;
 								else if (item.id === 'messages') unreadCount = totalMessageUnread;
+								// External entries render as a plain anchor: Next's Link client-navigates, which
+								// would swallow target="_blank" and pull the document into the app shell.
+								const LinkComponent = item.external ? 'a' : Link;
+								const externalProps = item.external
+									? { target: '_blank', rel: 'noopener noreferrer' }
+									: {};
 								return (
-									<Link
+									<LinkComponent
 										key={item.id}
 										href={item.href}
+										{...externalProps}
 										data-tour={`nav-${item.id}`}
 										className={cn(
 											'flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
@@ -127,7 +137,7 @@ export function Sidebar() {
 												{unreadCount > 99 ? '99+' : unreadCount}
 											</Badge>
 										)}
-									</Link>
+									</LinkComponent>
 								);
 							})}
 						</nav>

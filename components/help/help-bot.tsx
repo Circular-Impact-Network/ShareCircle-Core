@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Bot, LifeBuoy, Loader2, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -204,14 +203,15 @@ export function HelpBot() {
 						<Send className="h-4 w-4" />
 					</Button>
 				</form>
-				<Link
-					href="/help"
-					onClick={() => setOpen(false)}
+				<a
+					href="/api/docs/help"
+					target="_blank"
+					rel="noopener noreferrer"
 					className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
 				>
 					<LifeBuoy className="h-3.5 w-3.5" />
 					Browse the full help guide
-				</Link>
+				</a>
 			</footer>
 		</div>
 	);

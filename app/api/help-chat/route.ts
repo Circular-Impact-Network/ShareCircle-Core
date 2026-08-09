@@ -86,9 +86,16 @@ export async function POST(req: Request) {
 				// question is written to look like a system instruction.
 				{ role: 'user' as const, content: `<user_question>${message}</user_question>` },
 			],
-			// A help answer that runs long has stopped being a help answer, and an unbounded response
-			// is the expensive half of any abuse.
-			maxOutputTokens: 600,
+			// Gemini 2.5 spends reasoning tokens from the same budget as the reply, so a limit chosen
+			// for the answer alone truncated real answers mid-sentence. Looking something up in a
+			// short reference needs no deliberation, so thinking is turned off and the whole budget
+			// goes to the response.
+			providerOptions: {
+				google: { thinkingConfig: { thinkingBudget: 0 } },
+			},
+			// Generous enough for a numbered procedure, bounded because an unbounded response is the
+			// expensive half of any abuse.
+			maxOutputTokens: 800,
 			temperature: 0.2,
 		});
 

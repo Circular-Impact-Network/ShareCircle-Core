@@ -141,10 +141,10 @@ const securityHeaders = [
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
 			"font-src 'self' data: https://fonts.gstatic.com",
 			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
-			// 'self', not 'none': the Help & Guide page renders the stored document in a sandboxed
-			// same-origin iframe. Under 'none' that frame is blocked outright and the page shows an
-			// empty box, with the refusal visible only in the console.
-			"frame-src 'self'",
+			// The app frames nothing. The help guide briefly rendered in an iframe, which needed
+			// 'self' here; it now opens in a browser tab instead, so this goes back to the stricter
+			// value rather than being left permissive for a feature that no longer exists.
+			"frame-src 'none'",
 			"object-src 'none'",
 			"base-uri 'self'",
 			"form-action 'self'",
@@ -195,10 +195,6 @@ const nextConfig: NextConfig = {
 						key: 'Content-Security-Policy',
 						value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; sandbox",
 					},
-					// SAMEORIGIN rather than the app-wide DENY. `DENY` refuses framing even by our own
-					// origin, so the Help & Guide page would have rendered an empty box, with the refusal
-					// reported only in the browser console. Other sites still cannot frame these.
-					{ key: 'X-Frame-Options', value: 'SAMEORIGIN' },
 				],
 			},
 		];
@@ -212,6 +208,12 @@ const nextConfig: NextConfig = {
 			{ source: '/terms', destination: '/api/docs/terms' },
 			{ source: '/privacy', destination: '/api/docs/privacy' },
 		];
+	},
+	// context.md is read at runtime by the help assistant. Next only bundles files it can see being
+	// imported, and this one is read by path, so it has to be traced explicitly or the deployed
+	// function has no reference material and every answer becomes "I do not know".
+	outputFileTracingIncludes: {
+		'/api/help-chat': ['./context.md'],
 	},
 	serverExternalPackages: ['@prisma/client', 'prisma'],
 	experimental: {
