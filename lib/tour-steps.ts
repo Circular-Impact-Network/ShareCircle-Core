@@ -1,6 +1,12 @@
 /**
  * What the guided tour points at, per layout.
  *
+ * The order is the order a new account has to do things in, not the order the navigation happens to
+ * be in. That distinction is the whole point of the tour: ShareCircle does nothing useful until you
+ * are in a circle, because every item is private to one — so somebody who lists an item first sees
+ * an empty Browse and concludes the app is broken. Circles therefore comes first and says plainly
+ * that it is the starting point.
+ *
  * Desktop and mobile need genuinely different lists rather than one list with different copy: the
  * sidebar does not exist on a phone and the bottom bar does not exist on a computer, so a shared
  * list would spend half its steps pointing at nothing.
@@ -19,69 +25,64 @@ export type TourStep = {
 
 export type TourPlatform = 'desktop' | 'mobile';
 
-const SHARED_CLOSING: TourStep[] = [
-	{
-		anchor: 'help-bot',
-		title: 'Stuck? Just ask',
-		description:
-			'The assistant answers questions about how ShareCircle works, any time. The full help guide lives here too.',
-	},
-];
+const STEP_HOME: TourStep = {
+	anchor: 'nav-home',
+	title: 'Welcome to ShareCircle',
+	description:
+		'Borrow what you need from people you trust, and lend what you are not using. This is Home — whatever needs your attention shows up here. Let us walk through getting started.',
+};
+
+const STEP_CIRCLES: TourStep = {
+	anchor: 'nav-circles',
+	title: 'Start here: join or create a circle',
+	description:
+		'A circle is a private group — neighbours, friends, colleagues. Everything in ShareCircle happens inside one, so nothing is shared and nothing is visible until you belong to at least one. Create a circle and invite people, or join with a code someone sent you.',
+};
+
+const STEP_BROWSE: TourStep = {
+	anchor: 'nav-browse',
+	title: 'Then find something to borrow',
+	description:
+		'Browse shows everything shared into your circles. Open an item and choose Request Access to ask the owner. If nobody has what you need, Request Item asks your circles for it.',
+};
+
+const STEP_HELP: TourStep = {
+	anchor: 'help-bot',
+	title: 'Stuck at any point? Just ask',
+	description:
+		'The assistant answers questions about how ShareCircle works, any time. You can replay this tour from Settings whenever you like.',
+};
 
 const DESKTOP_STEPS: TourStep[] = [
-	{
-		anchor: 'nav-home',
-		title: 'Your home base',
-		description: 'A summary of what needs your attention: requests waiting on you, and items on loan.',
-	},
-	{
-		anchor: 'nav-browse',
-		title: 'Find something to borrow',
-		description: 'Everything shared into your circles. Search it, or ask for something nobody has listed yet.',
-	},
-	{
-		anchor: 'nav-circles',
-		title: 'Your circles',
-		description:
-			'Circles are private groups you share within. Create one and invite people, or join with an invite code.',
-	},
+	STEP_HOME,
+	STEP_CIRCLES,
 	{
 		anchor: 'nav-listings',
-		title: 'List what you own',
+		title: 'Next, list something you own',
 		description:
-			'Add an item from a photo and the app fills in the details for you. Nothing is visible until you share it into a circle.',
+			'Add an item from a photo and the details are filled in for you. Remember to share it into a circle — an item in no circle is invisible to everybody, which is the single most common reason a listing seems to disappear.',
 	},
+	STEP_BROWSE,
 	{
 		anchor: 'nav-activity',
-		title: 'Track your borrowing',
-		description: 'Borrow requests you sent and received, items currently out, your queue, and your history.',
+		title: 'Keep track of it all',
+		description:
+			'My Activity holds the requests you have sent, what you have borrowed and lent, your place in any queue, and your history.',
 	},
-	...SHARED_CLOSING,
+	STEP_HELP,
 ];
 
 const MOBILE_STEPS: TourStep[] = [
-	{
-		anchor: 'nav-home',
-		title: 'Your home base',
-		description: 'A summary of what needs your attention: requests waiting on you, and items on loan.',
-	},
-	{
-		anchor: 'nav-browse',
-		title: 'Find something to borrow',
-		description: 'Everything shared into your circles. Search it, or ask for something nobody has listed yet.',
-	},
-	{
-		anchor: 'nav-circles',
-		title: 'Your circles',
-		description:
-			'Circles are private groups you share within. Create one and invite people, or join with an invite code.',
-	},
+	STEP_HOME,
+	STEP_CIRCLES,
+	STEP_BROWSE,
 	{
 		anchor: 'mobile-menu',
-		title: 'Everything else is here',
-		description: 'My Listings, My Activity, Help and Settings live behind your avatar.',
+		title: 'List an item, and track your activity',
+		description:
+			'My Listings and My Activity live behind your avatar, along with Help and Settings. Add an item from a photo, and remember to share it into a circle — an item in no circle is invisible to everybody.',
 	},
-	...SHARED_CLOSING,
+	STEP_HELP,
 ];
 
 export function getTourSteps(platform: TourPlatform): TourStep[] {

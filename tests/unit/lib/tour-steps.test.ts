@@ -24,6 +24,28 @@ describe('getTourSteps', () => {
 		expect(getTourSteps('mobile').at(-1)?.anchor).toBe('help-bot');
 	});
 
+	// The tour teaches the order things must be done in, not the order the navigation is in.
+	// Nothing in ShareCircle is visible until you are in a circle, so a user who lists an item
+	// first meets an empty Browse and concludes the app is broken.
+	it('introduces circles before anything that depends on having one', () => {
+		for (const platform of ['desktop', 'mobile'] as const) {
+			const anchors = getTourSteps(platform).map(step => step.anchor);
+			const circles = anchors.indexOf('nav-circles');
+			expect(circles).toBeGreaterThanOrEqual(0);
+			for (const dependent of ['nav-browse', 'nav-listings', 'nav-activity', 'mobile-menu']) {
+				const at = anchors.indexOf(dependent);
+				if (at >= 0) {
+					expect(at).toBeGreaterThan(circles);
+				}
+			}
+		}
+	});
+
+	it('says why a circle comes first, rather than just naming the screen', () => {
+		const circles = getTourSteps('desktop').find(step => step.anchor === 'nav-circles');
+		expect(circles?.description).toMatch(/until you belong to at least one/i);
+	});
+
 	it('gives every step something to say', () => {
 		for (const platform of ['desktop', 'mobile'] as const) {
 			for (const step of getTourSteps(platform)) {
