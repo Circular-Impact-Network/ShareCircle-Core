@@ -70,9 +70,7 @@ if (scriptRefs.length > 0) {
 	process.exit(1);
 }
 
-const externalRefs = [
-	...new Set([...text.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map(m => new URL(m[1]).host)),
-];
+const externalRefs = [...new Set([...text.matchAll(/(?:src|href)="https?:\/\/([^/"]+)/g)].map(match => match[1]))];
 if (externalRefs.length > 0) {
 	console.warn(`Note: references external host(s): ${externalRefs.join(', ')}`);
 	console.warn('      These load only if the document CSP in next.config.ts allows them.');

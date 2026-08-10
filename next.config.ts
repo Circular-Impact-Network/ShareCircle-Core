@@ -175,6 +175,34 @@ const nextConfig: NextConfig = {
 			 * what everything else serves. Browsers already bypass their own HTTP cache when checking
 			 * for worker updates; this makes the CDN do the same.
 			 */
+			/*
+			 * App pages must never be held by the shared CDN. THE CAUSE OF PAGES RENDERING AS RAW
+			 * REACT PAYLOAD TEXT.
+			 *
+			 * Every URL in the App Router has two representations: the HTML document, and the RSC
+			 * "flight" payload the client router fetches for a soft navigation. They differ only by
+			 * request headers, so Next sends `Vary: RSC, Next-Router-Prefetch, …` to keep a cache from
+			 * confusing them. Hostinger's edge strips `Vary` and applies `s-maxage=31536000` — a year —
+			 * so both representations collapse onto one cache entry and whichever arrives first is
+			 * served to everybody. When the flight payload wins, a normal navigation renders as a
+			 * screenful of `1:I[65838,[...]]`, and reloading only re-serves the poisoned entry.
+			 *
+			 * `private` is the substantive half: these are authenticated pages, and a shared cache
+			 * holding one signed-in user's HTML is a problem well beyond a rendering glitch.
+			 *
+			 * Static assets are excluded and keep their immutable caching — they are content-hashed,
+			 * have exactly one representation, and are the only thing edge caching was buying us.
+			 * `/api/docs/:slug` is excluded too: those documents are public, identical for everyone,
+			 * and set their own five-minute policy.
+			 */
+			{
+				source: '/((?!_next/static|_next/image|api/docs|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|mjs|map|woff|woff2|ttf|otf|txt|xml|webmanifest)$).*)',
+				headers: [
+					{ key: 'Cache-Control', value: 'private, no-store, must-revalidate' },
+					// Sent even though this host strips it, so the app is correct behind any other CDN.
+					{ key: 'Vary', value: 'RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url' },
+				],
+			},
 			...['/sw.js', '/sw-extra.js', '/swe-worker-:hash.js', '/fallback-:hash.js'].map(source => ({
 				source,
 				headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }],
