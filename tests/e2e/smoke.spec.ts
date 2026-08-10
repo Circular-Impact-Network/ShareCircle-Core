@@ -47,6 +47,34 @@ test.describe('smoke', () => {
 	});
 
 	/**
+	 * App pages must not be storable by a shared cache.
+	 *
+	 * Every App Router URL has two representations — the HTML document and the RSC payload — telling
+	 * them apart requires `Vary`, and this host strips it while applying a year-long `s-maxage`. The
+	 * two then collapse onto one CDN entry, and when the RSC payload wins, every visitor gets a page
+	 * of raw `1:I[65838,…]` text that a reload cannot clear. It happened in production.
+	 *
+	 * Asserted against the live host rather than in a unit test, because the header that matters is
+	 * the one the edge actually returns, not the one the config asked for.
+	 */
+	test('app pages are not stored by a shared cache', async ({ request }) => {
+		const shared: string[] = [];
+
+		for (const path of ['/login', '/signup']) {
+			const res = await request.get(path, { maxRedirects: 0, failOnStatusCode: false });
+			const cacheControl = res.headers()['cache-control'] ?? '';
+
+			// `s-maxage` is the shared-cache directive; `private`/`no-store` are what must replace it.
+			const storable = /s-maxage/.test(cacheControl) || !/private|no-store/.test(cacheControl);
+			if (storable) {
+				shared.push(`${path} -> ${cacheControl || '(no Cache-Control)'}`);
+			}
+		}
+
+		expect(shared, 'pages a CDN may store, where HTML and RSC share one entry').toEqual([]);
+	});
+
+	/**
 	 * The sandbox policy on those documents is the whole security model for serving them.
 	 *
 	 * Their contents can be replaced by an upload with no code review, so they are untrusted HTML —
