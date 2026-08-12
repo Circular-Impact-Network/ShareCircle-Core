@@ -22,6 +22,35 @@ const SLUG_TO_OBJECT: Record<string, string> = {
 
 const BUCKET = 'legal';
 
+/*
+ * A way back into the app, added to the document because there is nothing around it to put a
+ * header in — the document *is* the page.
+ *
+ * These links open in a new tab, which in the installed app is a window with no browser chrome at
+ * all: no address bar, no back button, no tab strip. Opening the help guide there left no way out
+ * except force-quitting, and it is the one screen a stuck user is most likely to be on.
+ *
+ * A link rather than `history.back()`, because the CSP on these documents forbids script and that
+ * is worth far more than a nicer back gesture. `/` resolves to the dashboard for a signed-in
+ * reader and to the login page otherwise, which is the right destination in both cases — the terms
+ * and privacy documents are read by people who do not have an account yet. Checked that the
+ * `sandbox` directive still permits a link to navigate the page; it restricts script, forms and
+ * plugins, not ordinary navigation.
+ */
+const BACK_LINK =
+	'<style>body{padding-bottom:5.5rem}</style>' +
+	'<a href="/" style="position:fixed;left:1rem;bottom:calc(1rem + env(safe-area-inset-bottom));' +
+	'z-index:2147483647;display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1rem;' +
+	'border-radius:999px;background:#111827;color:#fff;text-decoration:none;' +
+	'font:600 14px/1 system-ui,-apple-system,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.35)">' +
+	'&larr; Back to ShareCircle</a>';
+
+/** Appended inside `<body>` so the document's own styles cannot be the last word on the fixed pill. */
+function withBackLink(html: string): string {
+	const close = html.toLowerCase().lastIndexOf('</body>');
+	return close === -1 ? html + BACK_LINK : html.slice(0, close) + BACK_LINK + html.slice(close);
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
 	const objectName = SLUG_TO_OBJECT[slug];
@@ -40,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 			return unavailable(slug);
 		}
 
-		return new NextResponse(await data.arrayBuffer(), {
+		return new NextResponse(withBackLink(await data.text()), {
 			status: 200,
 			headers: {
 				'Content-Type': 'text/html; charset=utf-8',
