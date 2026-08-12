@@ -50,6 +50,18 @@
 	--shadow-spread: 0px;
 	--shadow-opacity: 0.05;
 	--shadow-color: #000000;
+
+	/*
+	 * Height of the mobile bottom navigation, for anything that has to float clear of it.
+	 *
+	 * Three fixed elements — the help launcher, the help panel and the push permission card — were
+	 * already positioning themselves against `var(--bottom-nav-height, 4rem)`, and nothing had ever
+	 * defined it. All three silently used the fallback, which is the bar's `h-16` and not its
+	 * height: the bar also carries `pb-safe-bottom`, so on a phone with a gesture area it stands
+	 * some 50px taller than 4rem, and the bottom half of the launcher and of the panel's two
+	 * buttons sat behind it. Invisible on a desktop viewport, where that inset is zero.
+	 */
+	--bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
 }
 
 .dark {
@@ -232,8 +244,9 @@
 		padding-bottom: env(safe-area-inset-bottom);
 	}
 
+	/* Same quantity as the floating elements clear, so the two cannot drift apart. */
 	.pb-bottom-nav {
-		padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+		padding-bottom: var(--bottom-nav-height);
 	}
 }
 
