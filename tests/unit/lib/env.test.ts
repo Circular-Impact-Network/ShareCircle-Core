@@ -16,6 +16,10 @@ const COMPLETE = {
 	NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'pub',
 	VAPID_PRIVATE_KEY: 'priv',
 	VAPID_SUBJECT: 'mailto:ops@example.com',
+	// The name @ai-sdk/google reads. Without it every AI feature fails — photo detection, image
+	// analysis, the help assistant — and the health check used to answer `env: ok` regardless.
+	GOOGLE_GENERATIVE_AI_API_KEY: 'gemini',
+	VOYAGE_API_KEY: 'voyage',
 } as unknown as NodeJS.ProcessEnv;
 
 /**
@@ -58,6 +62,19 @@ describe('checkEnv', () => {
 		const result = checkEnv({ ...COMPLETE, RESEND_API_KEY: undefined });
 		expect(result.ok).toBe(true);
 		expect(result.warnings.join(' ')).toContain('RESEND_API_KEY');
+	});
+
+	/**
+	 * A missing AI key used to be completely invisible: `checkEnv` never looked at it, so
+	 * `/api/health` answered `env: ok` on a deploy where photo detection, image analysis and the
+	 * help assistant were all dead. When those features then fail intermittently, the environment
+	 * is the first thing you want to rule out, and nothing could.
+	 */
+	it('warns when the AI key the SDK actually reads is absent', () => {
+		const result = checkEnv({ ...COMPLETE, GOOGLE_GENERATIVE_AI_API_KEY: undefined });
+
+		expect(result.ok).toBe(true);
+		expect(result.warnings.join(' ')).toContain('GOOGLE_GENERATIVE_AI_API_KEY');
 	});
 
 	it('never echoes a value, only the variable name', () => {
