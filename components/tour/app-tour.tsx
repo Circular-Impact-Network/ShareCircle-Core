@@ -84,29 +84,34 @@ function toDriverSteps(steps: TourStep[], getDriver: () => Driver | null) {
 	}));
 }
 
-/** Mirrors the account flag so the tour does not flash before the session resolves. */
-const LOCAL_KEY = 'sharecircle_tour_completed';
+/**
+ * There is no local copy of the completion flag. The account is the only record.
+ *
+ * There used to be one — a single `sharecircle_tour_completed` key in localStorage, read before
+ * anything else and returning early when set. It was described as preventing a flash, which it did
+ * not do: the tour only ever starts after the account flag has been fetched and come back false, so
+ * removing the key changes nothing a user can see. What it actually did was key the tour to the
+ * *browser* instead of the account. Finish the tour on a laptop, sign out, sign up again, and the
+ * new account was silently denied its onboarding — the server was never even asked.
+ *
+ * It was also self-inflicting. `/api/tour` answers `completed: true` when its own read fails, on the
+ * grounds that an unexpected tour is worse than a missing one; the client then wrote that answer to
+ * localStorage. So one transient database hiccup permanently suppressed the tour for every account
+ * that browser would ever see, while the account flags all stayed null. Four of the last eight
+ * production signups reached this state.
+ *
+ * Without the key the failure is self-healing: a bad response costs this page load, and the next one
+ * asks again.
+ */
 
 type AppTourProps = {
 	/** Raised once the tour has ended, so the push prompt can take its turn. */
 	onFinished: () => void;
 };
 
-function readLocalCompleted(): boolean {
-	try {
-		return window.localStorage.getItem(LOCAL_KEY) === '1';
-	} catch {
-		return false;
-	}
-}
-
-function writeLocalCompleted(): void {
-	try {
-		window.localStorage.setItem(LOCAL_KEY, '1');
-	} catch {
-		// The account flag is the real record; this is only here to avoid a flash on reload.
-	}
-}
+/** How long to wait for the navigation to paint, and how many times to keep waiting. */
+const START_RETRY_MS = 600;
+const MAX_START_ATTEMPTS = 6;
 
 /**
  * The element a step should point at, choosing the visible one when both layouts render it.
@@ -170,7 +175,6 @@ export function AppTour({ onFinished }: AppTourProps) {
 	}, [onFinished]);
 
 	const markCompleted = useCallback(() => {
-		writeLocalCompleted();
 		// Fire and forget: a failed write costs a repeated tour, not correctness, and blocking the
 		// user's first minute on a request would be a poor trade.
 		void fetch('/api/tour', { method: 'POST', credentials: 'include' }).catch(error =>
@@ -183,10 +187,14 @@ export function AppTour({ onFinished }: AppTourProps) {
 		const steps = selectPresentSteps(getTourSteps(currentPlatform()), anchor => Boolean(findVisibleAnchor(anchor)));
 
 		// Every anchor missing means the shell has not painted yet, or this layout has none of them.
-		// Starting an empty tour would show a stray overlay with nothing highlighted.
+		// Starting an empty tour would show a stray overlay with nothing highlighted, so report that
+		// nothing ran and let the caller decide whether to wait for the navigation and try again.
+		//
+		// It used to record completion here instead, which meant a phone slow enough that the
+		// navigation had not painted within 600ms burned the account's one shot at the tour without
+		// ever drawing it — permanently, since nothing else sets that flag and nothing clears it.
 		if (steps.length === 0) {
-			markCompleted();
-			return;
+			return false;
 		}
 
 		const instance = driver({
@@ -204,24 +212,21 @@ export function AppTour({ onFinished }: AppTourProps) {
 
 		driverRef.current = instance;
 		instance.drive();
+		return true;
 	}, [markCompleted]);
 
 	useEffect(() => {
-		if (readLocalCompleted()) {
-			finishRef.current();
-			return;
-		}
-
 		let cancelled = false;
 		void (async () => {
 			try {
+				// The account is asked every time. This is the only gate: whoever is signed in now
+				// gets the tour if and only if their own account has never finished it.
 				const res = await fetch('/api/tour', { credentials: 'include' });
 				if (cancelled) {
 					return;
 				}
 				const data = (await res.json()) as { completed?: boolean };
 				if (data.completed) {
-					writeLocalCompleted();
 					finishRef.current();
 					return;
 				}
@@ -241,8 +246,26 @@ export function AppTour({ onFinished }: AppTourProps) {
 		if (!ready) {
 			return;
 		}
-		// One frame of delay so the nav has painted and its anchors exist to be measured.
-		const timer = window.setTimeout(start, 600);
+
+		// One frame of delay so the nav has painted and its anchors exist to be measured — then keep
+		// asking, because 600ms is a guess about someone else's phone. A single attempt meant a slow
+		// first paint silently cost the user their onboarding: the component is mounted by the
+		// authenticated layout, which survives client-side navigation, so nothing would mount it
+		// again and try. Only a full page reload would, and a new user has no reason to perform one.
+		let attempts = 0;
+		let timer = window.setTimeout(function attempt() {
+			if (start()) {
+				return;
+			}
+			attempts += 1;
+			if (attempts >= MAX_START_ATTEMPTS) {
+				// Give up for this page load without recording anything, so the next one retries.
+				finishRef.current();
+				return;
+			}
+			timer = window.setTimeout(attempt, START_RETRY_MS);
+		}, START_RETRY_MS);
+
 		return () => {
 			window.clearTimeout(timer);
 			driverRef.current?.destroy();
