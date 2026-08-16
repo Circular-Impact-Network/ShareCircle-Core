@@ -1,9 +1,51 @@
 import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateObject, NoObjectGeneratedError } from 'ai';
 import { z } from 'zod';
 
 // ============ GEMINI VISION (Image Analysis) ============
-// Uses GEMINI_API_KEY from env (auto-picked by @ai-sdk/google)
+// Uses GOOGLE_GENERATIVE_AI_API_KEY, which is the name @ai-sdk/google actually reads. The comment
+// here used to say GEMINI_API_KEY — a name nothing in the SDK looks at, so anyone setting it on a
+// host would have had a correctly-configured-looking deploy where every vision call failed.
+
+/** One image, one instruction — the shape every vision call in this file uses. */
+async function visionObject<T>(label: string, schema: z.ZodType<T>, imageUrl: string, prompt: string): Promise<T> {
+	const call = () =>
+		generateObject({
+			model: google('gemini-2.5-flash'),
+			maxRetries: 2,
+			// gemini-2.5-flash reasons before it answers, and those thoughts are billed as output
+			// tokens that arrive *before* the JSON does — measured at ~300 reasoning tokens against
+			// 40-60 tokens of actual answer. Naming an object in a photo is not a reasoning problem,
+			// and every thought token is one more chance for the reply to end before the schema is
+			// satisfied. Turning it off also took ~10% off the latency of each call.
+			providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
+			schema,
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'image', image: imageUrl },
+						{ type: 'text', text: prompt },
+					],
+				},
+			],
+		});
+
+	try {
+		return (await call()).object;
+	} catch (error) {
+		// `maxRetries` does not cover this one. A reply that is not valid JSON, or that stops before
+		// the schema is satisfied, is not an API error, so the SDK gives up on the first attempt —
+		// and it is exactly the failure most likely to succeed on a second try with the same image.
+		// In production this surfaced as "AI Analysis Failed, please fill in the details manually",
+		// leaving a listing saved with no description, no categories and no tags.
+		if (!NoObjectGeneratedError.isInstance(error)) {
+			throw error;
+		}
+		console.warn(`${label}: model returned no usable object, retrying once`);
+		return (await call()).object;
+	}
+}
 
 const itemAnalysisSchema = z.object({
 	name: z.string().describe('A short, clear name for the item (2-5 words)'),
@@ -65,18 +107,11 @@ export type ItemValidation = z.infer<typeof itemValidationSchema>;
  * @returns Validation result indicating if the described item exists in the photo
  */
 export async function validateItemInImage(imageUrl: string, userDescription: string): Promise<ItemValidation> {
-	const result = await generateObject({
-		model: google('gemini-2.5-flash'),
-		maxRetries: 2,
-		schema: itemValidationSchema,
-		messages: [
-			{
-				role: 'user',
-				content: [
-					{ type: 'image', image: imageUrl },
-					{
-						type: 'text',
-						text: `The user says this image contains: "${userDescription}"
+	return visionObject(
+		'validateItemInImage',
+		itemValidationSchema,
+		imageUrl,
+		`The user says this image contains: "${userDescription}"
 
 Your task is to verify whether this item actually exists in the image.
 
@@ -98,13 +133,7 @@ Return:
 - detectedItems: List all items you can see in the image
 
 Be lenient - it's better to allow a slightly mismatched description than to reject a valid item.`,
-					},
-				],
-			},
-		],
-	});
-
-	return result.object;
+	);
 }
 
 /** Result of validating listing text against multiple images (e.g. main + supporting). */
@@ -138,18 +167,11 @@ async function validateListingMatchInImage(imageUrl: string, listing: ListingFie
 	const cats = (listing.categories ?? []).join(', ');
 	const tagsList = (listing.tags ?? []).join(', ');
 
-	const result = await generateObject({
-		model: google('gemini-2.5-flash'),
-		maxRetries: 2,
-		schema: itemValidationSchema,
-		messages: [
-			{
-				role: 'user',
-				content: [
-					{ type: 'image', image: imageUrl },
-					{
-						type: 'text',
-						text: `An item listing has been entered with the following:
+	return visionObject(
+		'validateListingMatchInImage',
+		itemValidationSchema,
+		imageUrl,
+		`An item listing has been entered with the following:
 
 NAME (required to match): "${name}"
 DESCRIPTION: ${desc || '(none)'}
@@ -170,13 +192,7 @@ Return:
 - detectedItems: list of main items you see in the image
 
 Be strict: reject clear mismatches between the listing name and the image content.`,
-					},
-				],
-			},
-		],
-	});
-
-	return result.object;
+	);
 }
 
 /**
@@ -291,25 +307,7 @@ Use this description to help identify and analyze the correct item. Extract:
 Focus on items that match "${options.userHint}" and prioritize accuracy based on the user's description.`;
 	}
 
-	const result = await generateObject({
-		model: google('gemini-2.5-flash'),
-		maxRetries: 2,
-		schema: itemAnalysisSchema,
-		messages: [
-			{
-				role: 'user',
-				content: [
-					{ type: 'image', image: imageUrl },
-					{
-						type: 'text',
-						text: promptText,
-					},
-				],
-			},
-		],
-	});
-
-	return result.object;
+	return visionObject('analyzeImage', itemAnalysisSchema, imageUrl, promptText);
 }
 
 /**
@@ -319,18 +317,11 @@ Focus on items that match "${options.userHint}" and prioritize accuracy based on
  * @returns Array of detected items with names, categories, and confidence levels
  */
 export async function detectItems(imageUrl: string): Promise<ItemDetection> {
-	const result = await generateObject({
-		model: google('gemini-2.5-flash'),
-		maxRetries: 2,
-		schema: itemDetectionSchema,
-		messages: [
-			{
-				role: 'user',
-				content: [
-					{ type: 'image', image: imageUrl },
-					{
-						type: 'text',
-						text: `Analyze this image and identify items that could realistically be shared or lent to someone in a community sharing app.
+	return visionObject(
+		'detectItems',
+		itemDetectionSchema,
+		imageUrl,
+		`Analyze this image and identify items that could realistically be shared or lent to someone in a community sharing app.
 
 ONLY include items that are portable and ownable — things that can be physically handed to another person. Examples: clothing, accessories, tools, electronics, appliances, sports equipment, bags, books, toys, musical instruments, camping gear, moveable furniture, kitchen gadgets.
 
@@ -348,13 +339,7 @@ Return an array of shareable items found with:
 - confidence: How confident you are about this detection
 
 If no shareable items are visible, return an empty array.`,
-					},
-				],
-			},
-		],
-	});
-
-	return result.object;
+	);
 }
 
 // ============ VOYAGE MULTIMODAL EMBEDDINGS ============

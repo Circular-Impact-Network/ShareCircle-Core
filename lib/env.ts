@@ -41,12 +41,21 @@ const requiredSchema = z.object({
  * restarting is not enough, the app has to be rebuilt or the browser still ships without a key
  * and the push toggle stays disabled.
  */
+/**
+ * `GOOGLE_GENERATIVE_AI_API_KEY` is the name `@ai-sdk/google` reads, and nothing was asserting it.
+ * Without it every AI feature fails — listing photo detection, image analysis, the help assistant —
+ * while `/api/health` still answered `env: ok`, because this list was the only thing that looked.
+ * That is the worst possible combination when the failures are also intermittent: no way to rule the
+ * environment out. `VOYAGE_API_KEY` is the same story for embeddings, and therefore for search.
+ */
 const PRODUCTION_RECOMMENDED = [
 	'DIRECT_URL',
 	'RESEND_API_KEY',
 	'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
 	'VAPID_PRIVATE_KEY',
 	'VAPID_SUBJECT',
+	'GOOGLE_GENERATIVE_AI_API_KEY',
+	'VOYAGE_API_KEY',
 ] as const;
 
 export type EnvCheck = {

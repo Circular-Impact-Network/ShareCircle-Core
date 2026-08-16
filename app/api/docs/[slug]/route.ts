@@ -38,12 +38,14 @@ const BUCKET = 'legal';
  * plugins, not ordinary navigation.
  */
 const BACK_LINK =
-	'<style>body{padding-bottom:5.5rem}</style>' +
-	'<a href="/" style="position:fixed;left:1rem;bottom:calc(1rem + env(safe-area-inset-bottom));' +
-	'z-index:2147483647;display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1rem;' +
-	'border-radius:999px;background:#111827;color:#fff;text-decoration:none;' +
-	'font:600 14px/1 system-ui,-apple-system,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.35)">' +
-	'&larr; Back to ShareCircle</a>';
+	// Pushes the document's own content clear of the control rather than letting it cover text.
+	'<style>body{padding-top:4.25rem}</style>' +
+	'<a href="/" aria-label="Close and return to ShareCircle" ' +
+	'style="position:fixed;top:calc(.75rem + env(safe-area-inset-top));right:.75rem;' +
+	'z-index:2147483647;display:inline-flex;align-items:center;gap:.5rem;height:3rem;padding:0 1.15rem;' +
+	'border-radius:999px;background:#111827;color:#fff;text-decoration:none;border:2px solid #fff;' +
+	'font:700 16px/1 system-ui,-apple-system,sans-serif;box-shadow:0 3px 14px rgba(0,0,0,.45)">' +
+	'<span style="font-size:22px;line-height:1;font-weight:400">&#10005;</span>Close</a>';
 
 /** Appended inside `<body>` so the document's own styles cannot be the last word on the fixed pill. */
 function withBackLink(html: string): string {
