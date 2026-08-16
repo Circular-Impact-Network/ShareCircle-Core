@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { detectItems } from '@/lib/ai';
+import { aiFailureResponse } from '@/lib/ai-errors';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkOwnSupabaseUrl } from '@/lib/supabase-url';
 
@@ -46,20 +47,6 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json(detection, { status: 200 });
 	} catch (error) {
 		console.error('Item detection error:', error);
-
-		// Provide more specific error messages
-		if (error instanceof Error) {
-			if (error.message.includes('API key')) {
-				return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
-			}
-			if (error.message.includes('rate limit')) {
-				return NextResponse.json(
-					{ error: 'AI service rate limit reached. Please try again later.' },
-					{ status: 429 },
-				);
-			}
-		}
-
-		return NextResponse.json({ error: 'Failed to detect items in image' }, { status: 500 });
+		return aiFailureResponse(error, 'Failed to detect items in image');
 	}
 }

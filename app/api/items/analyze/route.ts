@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { analyzeImage, validateItemInImage } from '@/lib/ai';
+import { aiFailureResponse } from '@/lib/ai-errors';
 import { checkRateLimit, getClientIdentifier, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkOwnSupabaseUrl } from '@/lib/supabase-url';
 
@@ -108,35 +109,8 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json(analysis, { status: 200 });
 	} catch (error) {
 		console.error('Image analysis error:', error);
-
-		// Provide more specific, user-friendly error messages — never surface the raw
-		// multi-line provider error (quota dumps, stack traces) to the client.
-		if (error instanceof Error) {
-			const msg = error.message.toLowerCase();
-			if (msg.includes('api key') || msg.includes('api_key')) {
-				return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
-			}
-			// Gemini quota / rate-limit surfaces as "quota", "exceeded", "rate limit",
-			// "resource_exhausted", or HTTP 429 — collapse them all to one clean message.
-			if (
-				msg.includes('quota') ||
-				msg.includes('exceeded') ||
-				msg.includes('rate limit') ||
-				msg.includes('rate_limit') ||
-				msg.includes('resource_exhausted') ||
-				msg.includes('429') ||
-				msg.includes('too many requests')
-			) {
-				return NextResponse.json(
-					{
-						error: 'AI is busy right now (usage limit reached). Please try again in a minute, or fill in the details manually.',
-						code: 'AI_RATE_LIMITED',
-					},
-					{ status: 429 },
-				);
-			}
-		}
-
-		return NextResponse.json({ error: 'Failed to analyze image' }, { status: 500 });
+		// Shared with /api/items/detect — see lib/ai-errors. Never forwards the provider's own
+		// message, which arrives as a multi-line quota dump with request ids in it.
+		return aiFailureResponse(error, 'Failed to analyze image');
 	}
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Bot, Compass, LifeBuoy, Loader2, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,19 @@ export const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
 export const HELP_BOT_CLOSE_EVENT = 'sharecircle:close-help-bot';
 
 const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
+
+/**
+ * A conversation thread owns the bottom-right corner, so the assistant stays out of it.
+ *
+ * The composer is pinned above the bottom navigation and its Send button sits in exactly the
+ * spot the launcher floats in — same corner, same offset, and the launcher wins because it is
+ * `fixed` and painted later. That made it impossible to send a message at all, which is far
+ * worse than not being able to reach the assistant on one screen. The thread is also the last
+ * place someone needs it: they are talking to a person, not asking the app how it works.
+ *
+ * Matches `/messages/<id>` only. The thread list has no composer, so the launcher belongs there.
+ */
+const THREAD_ROUTE = /^\/messages\/[^/]+\/?$/;
 
 /**
  * Floating help assistant, available on every authenticated screen.
@@ -29,6 +43,8 @@ export function HelpBot() {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const pathname = usePathname();
+	const inThread = THREAD_ROUTE.test(pathname ?? '');
 
 	// The guided tour opens the panel for its closing step, so that step can highlight a control
 	// that only exists once the panel is on screen. An event rather than a shared store: the two
@@ -123,6 +139,12 @@ export function HelpBot() {
 			setPending(false);
 		}
 	};
+
+	// Every hook above still runs; only the rendering is skipped, so opening the assistant, walking
+	// into a thread and back out does not lose the conversation.
+	if (inThread) {
+		return null;
+	}
 
 	if (!open) {
 		return (
