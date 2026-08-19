@@ -135,7 +135,11 @@ const securityHeaders = [
 			// injected string becomes executable code. `unsafe-inline` has to stay for now — Next's
 			// RSC payload and the PWA register script are inlined without a nonce — so this is a
 			// reduction in blast radius, not a complete defence.
-			isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
+			// fpnpmcdn.net: the Fingerprint npm package is only a thin loader — the agent bundle itself is
+			// fetched from that CDN at runtime, so 'self' alone blocks it with a `csp_block` error.
+			isDev
+				? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fpnpmcdn.net"
+				: "script-src 'self' 'unsafe-inline' https://fpnpmcdn.net",
 			// fonts.googleapis.com / fonts.gstatic.com: the standalone legal pages (/terms, /privacy) load Google Fonts.
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
