@@ -48,6 +48,10 @@ const withPWA = withPWAInit({
 		cleanupOutdatedCaches: true,
 		importScripts: ['/sw-extra.js'],
 		runtimeCaching: [
+			// Fingerprint's own hosts are deliberately absent from this list: no Workbox strategy works
+			// for them, including NetworkOnly, which turned the one request that had been succeeding into
+			// an ERR_ABORTED. They are excluded from the service worker altogether in
+			// public/sw-extra.js instead. See the comment there.
 			{
 				urlPattern: ({ request, url }) =>
 					request.url.startsWith('http') && url.pathname.startsWith('/api/auth/'),
