@@ -96,3 +96,40 @@ describe('the service worker leaves Fingerprint alone', () => {
 		expect(offenders, 'a Workbox route now matches Fingerprint again').toHaveLength(0);
 	});
 });
+
+describe('the CSP admits the agent without evicting the service worker', () => {
+	// Comments are stripped first. The prose here quotes directives verbatim to explain them, and
+	// matching those instead of the real ones made this suite assert against its own documentation.
+	const csp = NEXT_CONFIG.slice(
+		NEXT_CONFIG.indexOf("key: 'Content-Security-Policy'"),
+		NEXT_CONFIG.indexOf('const nextConfig'),
+	)
+		.split('\n')
+		.filter(line => !line.trim().startsWith('//'))
+		.join('\n');
+
+	it('allows the agent bundle in script-src, in production as well as development', () => {
+		const scriptSrc = csp.match(/script-src[^"]*/g) ?? [];
+		expect(scriptSrc.length).toBeGreaterThan(0);
+		for (const directive of scriptSrc) {
+			expect(directive).toContain('https://fpnpmcdn.net');
+		}
+	});
+
+	it('allows identification in connect-src', () => {
+		expect(csp).toContain('https://api.fpjs.io');
+	});
+
+	/**
+	 * Naming worker-src at all replaces the default-src fallback that is the only thing permitting
+	 * /sw.js. The documented "worker-src blob:" on its own would take the PWA's service worker — and
+	 * with it offline support and push — down with it.
+	 */
+	it("keeps 'self' in worker-src so the PWA service worker still registers", () => {
+		const workerSrc = csp.match(/"worker-src[^"]*"/)?.[0];
+
+		expect(workerSrc, 'worker-src is missing; the agent needs blob:').toBeDefined();
+		expect(workerSrc).toContain('blob:');
+		expect(workerSrc).toContain("'self'");
+	});
+});
