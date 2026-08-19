@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from './providers';
 import { PWAInstallGuard } from '@/components/providers/pwa-install-guard';
+import { FingerprintProvider } from '@/components/providers/fingerprint-provider';
 import { Plus_Jakarta_Sans, Poppins } from 'next/font/google';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -119,7 +120,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				/>
 			</head>
 			<body className={`${plusJakartaSans.variable} ${poppins.variable} font-sans`}>
-				<ThemeProvider>{children}</ThemeProvider>
+				<FingerprintProvider>
+					<ThemeProvider>{children}</ThemeProvider>
+				</FingerprintProvider>
 				<PWAInstallGuard />
 			</body>
 		</html>
