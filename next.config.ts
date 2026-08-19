@@ -151,6 +151,11 @@ const securityHeaders = [
 			// The app frames nothing. The help guide briefly rendered in an iframe, which needed
 			// 'self' here; it now opens in a browser tab instead, so this goes back to the stricter
 			// value rather than being left permissive for a feature that no longer exists.
+			// The Fingerprint agent runs its collection inside a blob: WebWorker. 'self' has to stay listed
+			// explicitly: naming worker-src at all replaces the default-src fallback that is currently the
+			// only thing permitting /sw.js, so the documented "worker-src blob:" on its own would silently
+			// kill the PWA service worker, and with it offline support and push.
+			"worker-src 'self' blob:",
 			"frame-src 'none'",
 			"object-src 'none'",
 			"base-uri 'self'",
