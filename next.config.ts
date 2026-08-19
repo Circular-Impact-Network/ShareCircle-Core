@@ -144,7 +144,10 @@ const securityHeaders = [
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com",
 			"font-src 'self' data: https://fonts.gstatic.com",
-			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
+			// api.fpjs.io is Fingerprint's primary identification endpoint, documented as never changing
+			// automatically. The wildcard covers the regional hosts and the fallback endpoints the agent
+			// rotates through as ad blockers catch up with them.
+			"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://api.fpjs.io https://*.api.fpjs.io",
 			// The app frames nothing. The help guide briefly rendered in an iframe, which needed
 			// 'self' here; it now opens in a browser tab instead, so this goes back to the stricter
 			// value rather than being left permissive for a feature that no longer exists.
