@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 /**
  * Anything floating above the mobile bottom navigation must clear the bar's real height.
  *
- * Three fixed elements position themselves against `var(--bottom-nav-height, 4rem)` and the
- * variable was never defined anywhere, so every one of them quietly used the fallback. A CSS
+ * The fixed elements above the bar position themselves against `var(--bottom-nav-height, 4rem)` and
+ * the variable was never defined anywhere, so every one of them quietly used the fallback. A CSS
  * variable that does not exist produces no error and no warning — the fallback simply wins — and
  * the fallback is wrong: the bar is `h-16` *plus* `pb-safe-bottom`, so on a phone with a gesture
  * area it stands some 50px taller than 4rem. The help launcher and the help panel's two buttons
@@ -31,7 +31,10 @@ describe('--bottom-nav-height', () => {
 			return [...text.matchAll(/var\(--bottom-nav-height/g)];
 		});
 
-		expect(uses.length).toBeGreaterThanOrEqual(3);
+		// Two, not three: the help launcher was the third and no longer exists as a floating element
+		// — its trigger moved into the header and the sidebar, because in the bottom-right corner it
+		// covered the message composer's Send button. The panel and the push prompt still float.
+		expect(uses.length).toBeGreaterThanOrEqual(2);
 	});
 
 	it('is defined, so consumers are not silently falling back', () => {

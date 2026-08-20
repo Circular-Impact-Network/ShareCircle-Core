@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { Bot, Compass, LifeBuoy, Loader2, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,38 +12,35 @@ type Turn = { role: 'user' | 'assistant'; content: string };
 export const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
 export const HELP_BOT_CLOSE_EVENT = 'sharecircle:close-help-bot';
 
+const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
+
 /**
  * Open the assistant from anywhere.
  *
- * The same window event the tour already uses, so a trigger outside this file does not need a shared
- * store for one message. Nothing but the tour uses it yet.
+ * The trigger lives in the navigation — the header on a phone, the sidebar on a computer — next to
+ * Help & Guide and Share feedback, which is where someone looking for help already goes. It reaches
+ * the panel through the same window event the tour uses rather than a shared store, because these
+ * are otherwise unrelated components and a store would couple them for one message.
  */
 export function openHelpBot() {
 	window.dispatchEvent(new Event(HELP_BOT_OPEN_EVENT));
 }
 
-const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
-
 /**
- * A conversation thread owns the bottom-right corner, so the assistant stays out of it.
- *
- * The composer is pinned above the bottom navigation and its Send button sits in exactly the
- * spot the launcher floats in — same corner, same offset, and the launcher wins because it is
- * `fixed` and painted later. That made it impossible to send a message at all, which is far
- * worse than not being able to reach the assistant on one screen. The thread is also the last
- * place someone needs it: they are talking to a person, not asking the app how it works.
- *
- * Matches `/messages/<id>` only. The thread list has no composer, so the launcher belongs there.
- */
-const THREAD_ROUTE = /^\/messages\/[^/]+\/?$/;
-
-/**
- * Floating help assistant, available on every authenticated screen.
+ * The help assistant panel, available on every authenticated screen.
  *
  * It answers from a fixed body of product knowledge and has no access to the user's account, so it
  * can explain where to find a borrow request but never what is in one. The only thing it is told
  * about the person asking is whether they are on a phone or a computer, which is what lets it name
  * the right navigation instead of describing a sidebar to someone holding a phone.
+ *
+ * This renders the panel only. It used to also render its own floating launcher, pinned to the
+ * bottom-right corner — the same corner, at the same offset, as the message composer's Send button,
+ * which is `fixed` and painted earlier and therefore lost. Sending a message became impossible on a
+ * phone. That was first patched by hiding the launcher on `/messages/<id>`, which fixed the thread
+ * and left the assistant unreachable on the one screen people were stuck on. Putting the trigger in
+ * the navigation removes the collision instead of dodging it, so the assistant is now reachable
+ * everywhere, threads included.
  */
 export function HelpBot() {
 	const [open, setOpen] = useState(false);
@@ -53,8 +49,6 @@ export function HelpBot() {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const pathname = usePathname();
-	const inThread = THREAD_ROUTE.test(pathname ?? '');
 
 	// The guided tour opens the panel for its closing step, so that step can highlight a control
 	// that only exists once the panel is on screen. An event rather than a shared store: the two
@@ -150,27 +144,10 @@ export function HelpBot() {
 		}
 	};
 
-	// Every hook above still runs; only the rendering is skipped, so opening the assistant, walking
-	// into a thread and back out does not lose the conversation.
-	if (inThread) {
-		return null;
-	}
-
+	// Every hook above still runs while the panel is closed, so a conversation survives navigating
+	// away and back.
 	if (!open) {
-		return (
-			<button
-				type="button"
-				data-testid="help-bot-launcher"
-				data-tour="help-bot"
-				onClick={() => setOpen(true)}
-				aria-label="Open help assistant"
-				// Lifted clear of the bottom navigation on a phone, where it would otherwise sit on top
-				// of the Alerts tab.
-				className="fixed right-4 bottom-[calc(var(--bottom-nav-height,4rem)+1rem)] z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none lg:right-6 lg:bottom-6"
-			>
-				<Bot className="h-5 w-5" />
-			</button>
-		);
+		return null;
 	}
 
 	return (
