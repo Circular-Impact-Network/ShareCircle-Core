@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LogOut, Settings, List, History, MessageSquarePlus, HelpCircle } from 'lucide-react';
+import { LogOut, Settings, List, History, MessageSquarePlus, HelpCircle, Bot } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -16,6 +16,7 @@ import {
 import { useAppSelector } from '@/lib/redux/hooks';
 import { selectUserImage, selectUserName, selectUserEmail } from '@/lib/redux/selectors/userSelectors';
 import { FeedbackModal } from '@/components/modals/feedback-modal';
+import { openHelpBot } from '@/components/help/help-bot';
 
 function getInitials(name: string) {
 	if (!name) return 'U';
@@ -57,8 +58,20 @@ export function MobileHeader() {
 				</Link>
 
 				<div className="flex items-center gap-1">
-					{/* Help and feedback both sit here rather than in the menu: they are the two things
-					    a stuck user reaches for, and a stuck user does not go hunting through a menu. */}
+					{/* The assistant, the guide and feedback all sit here rather than in the menu: they are
+					    what a stuck user reaches for, and a stuck user does not go hunting through a menu.
+					    The assistant used to float over the bottom-right corner instead, where it covered
+					    the message composer's Send button. */}
+					<button
+						type="button"
+						data-tour="help-bot"
+						data-testid="help-bot-trigger-mobile"
+						onClick={openHelpBot}
+						className="flex h-9 w-9 items-center justify-center rounded-full text-foreground outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
+						aria-label="Open help assistant"
+					>
+						<Bot className="h-5 w-5" />
+					</button>
 					<a
 						href="/api/docs/help"
 						target="_blank"
