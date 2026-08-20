@@ -13,6 +13,16 @@ type Turn = { role: 'user' | 'assistant'; content: string };
 export const HELP_BOT_OPEN_EVENT = 'sharecircle:open-help-bot';
 export const HELP_BOT_CLOSE_EVENT = 'sharecircle:close-help-bot';
 
+/**
+ * Open the assistant from anywhere.
+ *
+ * The same window event the tour already uses, so a trigger outside this file does not need a shared
+ * store for one message. Nothing but the tour uses it yet.
+ */
+export function openHelpBot() {
+	window.dispatchEvent(new Event(HELP_BOT_OPEN_EVENT));
+}
+
 const SUGGESTIONS = ['How do I borrow an item?', 'How do invite codes work?', 'Why can nobody see my item?'];
 
 /**
