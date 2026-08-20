@@ -63,6 +63,17 @@ describe('tour anchors match the markup', () => {
 		expect(rendered).toContain('mobile-menu');
 	});
 
+	/**
+	 * `rendered` is a union across all four files, which is the right question for "does this anchor
+	 * exist anywhere" and the wrong one for the assistant. Its trigger now lives in two
+	 * layout-specific components and only one of them is ever on screen, so dropping either would
+	 * lose the step for half the users while every check above stayed green.
+	 */
+	it('anchors the assistant in both layouts, not just whichever one still has it', () => {
+		expect(literalAnchors(source('components', 'app', 'mobile-header.tsx')), 'mobile header').toContain('help-bot');
+		expect(literalAnchors(source('components', 'app', 'sidebar.tsx')), 'desktop sidebar').toContain('help-bot');
+	});
+
 	it('every desktop step points at an anchor that exists', () => {
 		for (const step of getTourSteps('desktop')) {
 			expect(rendered, `desktop step "${step.title}" has no data-tour="${step.anchor}"`).toContain(step.anchor);
