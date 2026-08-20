@@ -14,6 +14,7 @@ import {
 	MessageSquarePlus,
 	LifeBuoy,
 	ExternalLink,
+	Bot,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -29,6 +30,7 @@ import { useGetUnreadMessageCountQuery } from '@/lib/redux/api/messagesApi';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { FeedbackModal } from '@/components/modals/feedback-modal';
+import { openHelpBot } from '@/components/help/help-bot';
 
 const navItems = [
 	{ id: 'home', label: 'Home', icon: Home, href: '/home' },
@@ -144,6 +146,18 @@ export function Sidebar() {
 					    browser, the other a dialog — and listing them beside Home and Messages implied
 					    they were screens you could be "on". */}
 					<div className="space-y-1 px-3 pb-2">
+						{/* The assistant joins them for the same reason, and because it no longer floats
+						    over the bottom-right corner where it collided with the message composer. */}
+						<button
+							type="button"
+							data-tour="help-bot"
+							data-testid="help-bot-trigger-desktop"
+							onClick={openHelpBot}
+							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+						>
+							<Bot className="h-4 w-4" />
+							<span>Ask the assistant</span>
+						</button>
 						<a
 							href="/api/docs/help"
 							target="_blank"
